@@ -17,7 +17,7 @@
 import { createRT } from 'framegen';
 
 export const RIFE_SETTINGS = {
-  SCENE_CUT_THRESHOLD: 0.35,      // Diferencia media absoluta para clasificar corte de plano
+  SCENE_CUT_THRESHOLD: 0.28,      // Diferencia media absoluta para clasificar corte de plano (> 0.28)
   DUPLICATE_THRESHOLD: 0.015,     // Umbral de diferencia para detectar fotograma duplicado en anime
   MAX_GPU_BUDGET_RATIO: 0.85,     // 85% del intervalo de fotograma como presupuesto máximo
   OVERLOAD_PERSIST_MS: 3000,      // Tiempo de sobrecarga antes del auto-apagado
@@ -209,13 +209,13 @@ export async function createRifeEngine({
   const texA = device.createTexture({
     size: [w, h],
     format: 'rgba8unorm',
-    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
   });
 
   const texB = device.createTexture({
     size: [w, h],
     format: 'rgba8unorm',
-    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
   });
 
   const outTex = device.createTexture({
