@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orunei Labs — RIFE WebGPU Neural Frame Interpolation Workbench</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0b0f17; color: #e2e8f0; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body class="p-4 sm:p-8 max-w-7xl mx-auto">
+  <header class="mb-6 border-b border-slate-800 pb-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">
+            ORUNEI LABS • EXPERIMENTAL
+          </span>
+          <span class="text-xs text-amber-400 font-medium">Evaluación Local VFI</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 text-white">
+          RIFE + WebGPU Neural Frame Generation
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+          Prueba reproducible de interpolación neuronal real de video anime (24→48 FPS / 30→60 FPS) mediante flujo óptico bidireccional y WGSL compute shaders.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
+          Volver a Orunei
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Panel de Diagnóstico WebGPU y Hardware -->
+  <div id="gpu-banner" class="mb-6 p-4 rounded-xl border border-slate-800 bg-slate-900/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+    <div class="flex items-center gap-3">
+      <div id="gpu-status-dot" class="w-3 h-3 rounded-full bg-amber-400 animate-pulse"></div>
+      <div>
+        <span class="font-bold text-slate-200">Dispositivo WebGPU: </span>
+        <span id="gpu-name" class="mono text-violet-300">Consultando hardware...</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 text-slate-400">
+      <span>shader-f16: <strong id="gpu-f16" class="mono text-slate-300">--</strong></span>
+      <span>Resolución: <strong id="canvas-res" class="mono text-slate-300">640×368</strong></span>
+    </div>
+  </div>
+
+  <!-- Controles Principales -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/40">
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Modo de Cadencia</label>
+      <div class="grid grid-cols-2 gap-1.5">
+        <button id="btn-target-48" class="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-violet-600 text-white shadow">
+          24 → 48 FPS
+        </button>
+        <button id="btn-target-60" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          30 → 60 FPS
+        </button>
+      </div>
+    </div>
+
+    <div class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/40">
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Algoritmo del Cuadro Intermedio</label>
+      <div class="grid grid-cols-3 gap-1">
+        <button id="mode-rife" class="px-2 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white">
+          RIFE Neural
+        </button>
+        <button id="mode-blend" class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          Alpha Blend
+        </button>
+        <button id="mode-native" class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          Nativo
+        </button>
+      </div>
+    </div>
+
+    <div class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/40">
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Simulación de Eventos</label>
+      <div class="flex gap-2">
+        <button id="btn-trigger-cut" class="flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30">
+          ✂️ Corte Plano
+        </button>
+        <button id="btn-trigger-hold" class="flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30">
+          ⏸️ Hold (Anime 2s)
+        </button>
+      </div>
+    </div>
+
+    <div class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/40">
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Fuente de Video</label>
+      <div class="flex gap-2">
+        <button id="btn-play-pause" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">
+          ▶ Pausar
+        </button>
+        <label class="flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer text-center truncate">
+          <span>Cargar MP4</span>
+          <input type="file" id="file-picker" accept="video/mp4,video/webm" class="hidden" />
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vista Comparativa Side-by-Side -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Panel Izquierdo: Original -->
+    <div class="flex flex-col rounded-2xl border border-slate-800 bg-slate-900/50 p-3 shadow-xl">
+      <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs">
+        <span class="font-bold text-slate-300 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-slate-400"></span> Video Original (Nativo)
+        </span>
+        <span id="label-orig-fps" class="mono font-bold text-slate-400">24 FPS</span>
+      </div>
+      <div class="relative aspect-video rounded-xl overflow-hidden bg-black flex items-center justify-center">
+        <canvas id="canvas-original" width="640" height="368" class="w-full h-full object-contain"></canvas>
+      </div>
+      <div class="mt-2 text-[11px] text-slate-400 flex justify-between">
+        <span>Cadencia original sin interpolar</span>
+        <span id="orig-pacing" class="mono text-slate-500">41.6ms / frame</span>
+      </div>
+    </div>
+
+    <!-- Panel Derecho: Interpolado -->
+    <div class="flex flex-col rounded-2xl border border-violet-500/30 bg-violet-950/10 p-3 shadow-xl">
+      <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs">
+        <span class="font-bold text-violet-300 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          Salida Interpolada (<span id="label-output-mode">RIFE Neural</span>)
+        </span>
+        <span id="label-output-fps" class="mono font-extrabold text-emerald-400">48 FPS</span>
+      </div>
+      <div class="relative aspect-video rounded-xl overflow-hidden bg-black flex items-center justify-center">
+        <canvas id="canvas-output" width="640" height="368" class="w-full h-full object-contain"></canvas>
+      </div>
+      <div class="mt-2 text-[11px] text-slate-400 flex justify-between">
+        <span id="interp-status-desc" class="text-emerald-400">Flujo óptico bidireccional activo</span>
+        <span id="interp-pacing" class="mono text-slate-400">20.8ms / frame</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Telemetría en Tiempo Real y Diagnóstico Científico -->
+  <div class="p-4 rounded-xl border border-slate-800 bg-slate-900/60 mb-6">
+    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+      <span>📊 Telemetría y Métricas en Tiempo Real</span>
+    </h3>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-center">
+      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
+        <div class="text-[10px] text-slate-400 uppercase">FPS Presentados</div>
+        <div id="stat-fps" class="text-base sm:text-lg font-mono font-bold text-emerald-400">0</div>
+      </div>
+      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
+        <div class="text-[10px] text-slate-400 uppercase">Latencia GPU (ms)</div>
+        <div id="stat-gpu-ms" class="text-base sm:text-lg font-mono font-bold text-violet-300">0.0 ms</div>
+      </div>
+      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
+        <div class="text-[10px] text-slate-400 uppercase">Cuadros Perdidos</div>
+        <div id="stat-drops" class="text-base sm:text-lg font-mono font-bold text-amber-400">0</div>
+      </div>
+      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
+        <div class="text-[10px] text-slate-400 uppercase">Índice Movimiento (Δ)</div>
+        <div id="stat-diff" class="text-base sm:text-lg font-mono font-bold text-slate-200">0.000</div>
+      </div>
+      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
+        <div class="text-[10px] text-slate-400 uppercase">Corte de Plano</div>
+        <div id="stat-cut" class="text-xs font-mono font-bold text-slate-400 mt-1">Normal</div>
+      </div>
+      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
+        <div class="text-[10px] text-slate-400 uppercase">Hold (2s Anime)</div>
+        <div id="stat-hold" class="text-xs font-mono font-bold text-slate-400 mt-1">Off</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aviso Legal y de Licenciamiento -->
+  <div class="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs text-amber-200/90 leading-relaxed">
+    <strong class="font-bold">⚠️ Requisito estricto de licencias:</strong>
+    Este banco de pruebas opera con el modelo preentrenado de Framegen únicamente para evaluación técnica interna.
+    Los pesos derivados de RIFE poseen restricciones de uso no comercial.
+    No se incorporarán a la rama principal de producción ni se distribuirán públicamente con fines lucrativos.
+    Véase <a href="./LEGAL_AND_LICENSING.md" class="underline font-bold text-amber-300">LEGAL_AND_LICENSING.md</a> para el análisis de destilación y requisitos de entrenamiento propio.
+  </div>
+
+  <script type="module">
+    import { checkWebGPUSupport, createRifeEngine, calculateFrameDifference } from './rifeEngine.js';
+
+    const canvasOrig = document.getElementById('canvas-original');
+    const ctxOrig = canvasOrig.getContext('2d');
+    const canvasOut = document.getElementById('canvas-output');
+    const ctxOut = canvasOut.getContext('2d');
+
+    const statFps = document.getElementById('stat-fps');
+    const statGpuMs = document.getElementById('stat-gpu-ms');
+    const statDrops = document.getElementById('stat-drops');
+    const statDiff = document.getElementById('stat-diff');
+    const statCut = document.getElementById('stat-cut');
+    const statHold = document.getElementById('stat-hold');
+
+    let currentTarget = '48fps';
+    let currentMode = 'rife';
+    let isPlaying = true;
+    let forceSceneCut = false;
+    let forceDuplicateHold = false;
+
+    // Generador de prueba procedural de anime con movimiento conocido
+    let animTime = 0;
+    const width = 640;
+    const height = 368;
+
+    function renderProceduralAnimeScene(ctx, t, isCut = false) {
+      if (isCut) {
+        // Escena de corte: fondo rojo intenso y círculo negro (discontinuidad extrema)
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#111827';
+        ctx.beginPath();
+        ctx.arc(width / 2, height / 2, 80, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px monospace';
+        ctx.fillText('SCENE CUT EVENT', width / 2 - 120, height / 2 + 8);
+        return;
+      }
+
+      // 1. Fondo degradado animado (cielo nocturno de anime)
+      const grad = ctx.createLinearGradient(0, 0, width, height);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(1, '#1e1b4b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+
+      // 2. Líneas diagonales de velocidad / fondo en paneo horizontal
+      const panOffset = (t * 240) % 80;
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+      ctx.lineWidth = 1.5;
+      for (let x = -80 + panOffset; x < width + 80; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + 60, height);
+        ctx.stroke();
+      }
+
+      // 3. Personaje estilizado con líneas finas y cabello en movimiento
+      const charX = width * 0.45 + Math.sin(t * 3.5) * 160;
+      const charY = height * 0.45 + Math.cos(t * 4.0) * 40;
+
+      // Cara
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.arc(charX, charY, 45, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Mechones de cabello con movimiento elástico
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 4;
+      for (let i = -3; i <= 3; i++) {
+        const hairAngle = t * 6.0 + i * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(charX + i * 10, charY - 35);
+        ctx.quadraticCurveTo(
+          charX + i * 18 + Math.sin(hairAngle) * 35,
+          charY - 80 + Math.cos(hairAngle) * 20,
+          charX + i * 14 + Math.sin(hairAngle) * 45,
+          charY - 110
+        );
+        ctx.stroke();
+      }
+
+      // Ojos con parpadeo y brillos especulares
+      const eyeOpen = Math.sin(t * 2) > -0.7;
+      ctx.fillStyle = '#0f172a';
+      if (eyeOpen) {
+        ctx.fillRect(charX - 22, charY - 10, 12, 16);
+        ctx.fillRect(charX + 10, charY - 10, 12, 16);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(charX - 20, charY - 8, 4, 4);
+        ctx.fillRect(charX + 12, charY - 8, 4, 4);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(charX - 24, charY);
+        ctx.lineTo(charX - 10, charY);
+        ctx.moveTo(charX + 8, charY);
+        ctx.lineTo(charX + 22, charY);
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // Texto de prueba en movimiento
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 15px monospace';
+      ctx.fillText(`Framegen VFI Test • t = ${t.toFixed(2)}s`, 20, 30);
+    }
+
+    // Inicialización del Motor RIFE
+    async function init() {
+      const gpuCheck = await checkWebGPUSupport();
+      const dot = document.getElementById('gpu-status-dot');
+      const nameEl = document.getElementById('gpu-name');
+      const f16El = document.getElementById('gpu-f16');
+
+      if (!gpuCheck.supported || !gpuCheck.hasF16) {
+        dot.className = 'w-3 h-3 rounded-full bg-rose-500';
+        nameEl.innerText = gpuCheck.reason;
+        f16El.innerText = gpuCheck.hasF16 ? 'Sí' : 'No';
+        return;
+      }
+
+      dot.className = 'w-3 h-3 rounded-full bg-emerald-400';
+      nameEl.innerText = `${gpuCheck.gpuInfo?.vendor || 'WebGPU'} (${gpuCheck.gpuInfo?.device || gpuCheck.gpuInfo?.architecture || 'Device'})`;
+      f16El.innerText = 'Disponible';
+
+      let rife = null;
+      try {
+        rife = await createRifeEngine({
+          width,
+          height,
+          targetMode: currentTarget,
+          onTelemetry: (t) => {
+            statGpuMs.innerText = `${t.lastInferenceMs} ms`;
+            statDrops.innerText = t.droppedFrames;
+            statDiff.innerText = t.diff;
+          },
+          onSceneCut: () => {
+            statCut.innerText = 'Corte Detectado (Bypass)';
+            statCut.className = 'text-xs font-mono font-bold text-rose-400 mt-1';
+            setTimeout(() => {
+              statCut.innerText = 'Normal';
+              statCut.className = 'text-xs font-mono font-bold text-slate-400 mt-1';
+            }, 600);
+          },
+          onDuplicateBypass: () => {
+            statHold.innerText = 'Hold (0ms GPU)';
+            statHold.className = 'text-xs font-mono font-bold text-amber-400 mt-1';
+            setTimeout(() => {
+              statHold.innerText = 'Off';
+              statHold.className = 'text-xs font-mono font-bold text-slate-400 mt-1';
+            }, 300);
+          },
+        });
+      } catch (err) {
+        console.error('Error al inicializar RIFE:', err);
+      }
+
+      // Loop de simulación y presentación de fotogramas
+      let lastFrameAData = null;
+      let presentationFrames = 0;
+      let lastFpsTime = performance.now();
+
+      // Buffer fuera de pantalla para renderizar cuadros
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = width;
+      offscreenCanvas.height = height;
+      const offscreenCtx = offscreenCanvas.getContext('2d');
+
+      async function tick() {
+        if (!isPlaying) {
+          requestAnimationFrame(tick);
+          return;
+        }
+
+        const baseFps = currentTarget === '48fps' ? 24 : 30;
+        const targetOutputFps = baseFps * 2;
+        const frameStepSeconds = 1 / baseFps;
+
+        // Renderizar Cuadro A
+        renderProceduralAnimeScene(offscreenCtx, animTime, false);
+        const imgA = offscreenCtx.getImageData(0, 0, width, height);
+
+        // Si se fuerza corte o hold
+        const isCut = forceSceneCut;
+        forceSceneCut = false;
+
+        const isHold = forceDuplicateHold;
+        forceDuplicateHold = false;
+
+        // Avanzar el tiempo para Cuadro B
+        if (!isHold) {
+          animTime += frameStepSeconds;
+        }
+        renderProceduralAnimeScene(offscreenCtx, animTime, isCut);
+        const imgB = offscreenCtx.getImageData(0, 0, width, height);
+
+        // 1. Presentar en canvas original (Nativo)
+        ctxOrig.putImageData(imgA, 0, 0);
+
+        // 2. Interpolar para obtener Cuadro Intermedio (t = 0.5)
+        if (rife && currentMode === 'rife') {
+          const res = await rife.interpolatePair(imgA.data, imgB.data, { forceMode: 'rife' });
+          if (res && res.frame) {
+            const outImg = new ImageData(new Uint8ClampedArray(res.frame.buffer), width, height);
+            ctxOut.putImageData(outImg, 0, 0);
+          }
+        } else if (currentMode === 'blend') {
+          const res = await rife?.interpolatePair(imgA.data, imgB.data, { forceMode: 'blend' });
+          if (res && res.frame) {
+            const outImg = new ImageData(new Uint8ClampedArray(res.frame.buffer), width, height);
+            ctxOut.putImageData(outImg, 0, 0);
+          }
+        } else {
+          // Nativo
+          ctxOut.putImageData(imgA, 0, 0);
+        }
+
+        presentationFrames += 2; // Frame original + Frame intermedio
+        const now = performance.now();
+        if (now - lastFpsTime >= 1000) {
+          statFps.innerText = Math.round((presentationFrames * 1000) / (now - lastFpsTime));
+          presentationFrames = 0;
+          lastFpsTime = now;
+        }
+
+        // Programar siguiente ciclo respetando el intervalo del video base
+        setTimeout(tick, (1000 / baseFps) / 2);
+      }
+
+      tick();
+    }
+
+    // Interacción UI
+    document.getElementById('btn-target-48').onclick = () => {
+      currentTarget = '48fps';
+      document.getElementById('btn-target-48').className = 'px-2.5 py-1.5 text-xs font-bold rounded-lg bg-violet-600 text-white shadow';
+      document.getElementById('btn-target-60').className = 'px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
+      document.getElementById('label-orig-fps').innerText = '24 FPS';
+      document.getElementById('label-output-fps').innerText = '48 FPS';
+    };
+
+    document.getElementById('btn-target-60').onclick = () => {
+      currentTarget = '60fps';
+      document.getElementById('btn-target-60').className = 'px-2.5 py-1.5 text-xs font-bold rounded-lg bg-violet-600 text-white shadow';
+      document.getElementById('btn-target-48').className = 'px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
+      document.getElementById('label-orig-fps').innerText = '30 FPS';
+      document.getElementById('label-output-fps').innerText = '60 FPS';
+    };
+
+    document.getElementById('mode-rife').onclick = () => {
+      currentMode = 'rife';
+      document.getElementById('mode-rife').className = 'px-2 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white';
+      document.getElementById('mode-blend').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300';
+      document.getElementById('mode-native').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300';
+      document.getElementById('label-output-mode').innerText = 'RIFE Neural';
+    };
+
+    document.getElementById('mode-blend').onclick = () => {
+      currentMode = 'blend';
+      document.getElementById('mode-blend').className = 'px-2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-600 text-white';
+      document.getElementById('mode-rife').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300';
+      document.getElementById('mode-native').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300';
+      document.getElementById('label-output-mode').innerText = 'Alpha Blending';
+    };
+
+    document.getElementById('mode-native').onclick = () => {
+      currentMode = 'native';
+      document.getElementById('mode-native').className = 'px-2 py-1.5 text-[11px] font-bold rounded-lg bg-slate-600 text-white';
+      document.getElementById('mode-rife').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300';
+      document.getElementById('mode-blend').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300';
+      document.getElementById('label-output-mode').innerText = 'Nativo';
+    };
+
+    document.getElementById('btn-trigger-cut').onclick = () => { forceSceneCut = true; };
+    document.getElementById('btn-trigger-hold').onclick = () => { forceDuplicateHold = true; };
+    document.getElementById('btn-play-pause').onclick = (e) => {
+      isPlaying = !isPlaying;
+      e.target.innerText = isPlaying ? '▶ Pausar' : '⏸ Reanudar';
+    };
+
+    init();
+  </script>
+</body>
+</html>
