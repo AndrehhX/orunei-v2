@@ -184,6 +184,9 @@ export async function createWebGPUSuperResEngine({
   let frameCount = 0;
   let lastFpsCheckTime = performance.now();
   let lowFpsDuration = 0;
+  let totalInferenceMs = 0;
+  let inferenceCount = 0;
+  let lastMeasuredInferenceMs = 0;
 
   // Aplicar modo de comparación visual A/B mediante CSS clip-path
   function updateSplitView() {
@@ -252,8 +255,13 @@ export async function createWebGPUSuperResEngine({
 
     if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
       try {
-        // Inferencia WebGPU: procesamiento de convolución 2x
+        // Medición real de tiempo de inferencia GPU por fotograma
+        const tStart = performance.now();
         await websrInstance.render(video);
+        const tDuration = performance.now() - tStart;
+        lastMeasuredInferenceMs = tDuration;
+        totalInferenceMs += tDuration;
+        inferenceCount++;
       } catch (err) {
         // En caso de error de seguridad (CORS en la fuente) o fallo WebGPU, salir limpiamente
         onError?.(err);
@@ -268,12 +276,21 @@ export async function createWebGPUSuperResEngine({
     const elapsed = now - lastFpsCheckTime;
     if (elapsed >= 1000) {
       const currentFps = Math.round((frameCount * 1000) / elapsed);
-      onFpsUpdate?.(currentFps);
+      const avgInferenceMs = inferenceCount > 0
+        ? parseFloat((totalInferenceMs / inferenceCount).toFixed(1))
+        : parseFloat(lastMeasuredInferenceMs.toFixed(1));
+
+      // Notificar FPS y tiempo de inferencia GPU medido empíricamente
+      onFpsUpdate?.({
+        fps: currentFps,
+        inferenceMs: avgInferenceMs,
+        samples: inferenceCount,
+      });
 
       if (currentFps < WEBGPU_SUPER_RES_SETTINGS.MIN_ACCEPTABLE_FPS && !video.paused) {
         lowFpsDuration += elapsed;
         if (lowFpsDuration >= WEBGPU_SUPER_RES_SETTINGS.FPS_MONITOR_WINDOW_MS) {
-          onPerformanceDrop?.({ fps: currentFps });
+          onPerformanceDrop?.({ fps: currentFps, inferenceMs: avgInferenceMs });
           destroy();
           return;
         }
@@ -282,6 +299,8 @@ export async function createWebGPUSuperResEngine({
       }
 
       frameCount = 0;
+      totalInferenceMs = 0;
+      inferenceCount = 0;
       lastFpsCheckTime = now;
     }
 

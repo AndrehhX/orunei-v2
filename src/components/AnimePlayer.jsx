@@ -64,6 +64,7 @@ export default function AnimePlayer({
     }
   });
   const [aiFps, setAiFps] = useState(null);
+  const [aiInferenceMs, setAiInferenceMs] = useState(null);
   const [aiAbCompare, setAiAbCompare] = useState(false);
 
   // Anime Enhance (WebGL2 Fallback)
@@ -784,16 +785,21 @@ export default function AnimePlayer({
       mode: aiSuperResMode,
       splitMode: aiAbCompare ? 1 : 0,
       splitPos: 0.5,
-      onFpsUpdate: (fps) => {
-        if (!isCancelled) setAiFps(fps);
+      onFpsUpdate: (stats) => {
+        if (!isCancelled) {
+          const fps = typeof stats === 'object' ? stats.fps : stats;
+          const ms = typeof stats === 'object' ? stats.inferenceMs : null;
+          setAiFps(fps);
+          setAiInferenceMs(ms);
+        }
       },
-      onPerformanceDrop: ({ fps }) => {
+      onPerformanceDrop: ({ fps, inferenceMs }) => {
         if (isCancelled) return;
         setAiSuperResMode('off');
         try { localStorage.setItem('orunei_ai_super_res_mode', 'off'); } catch {}
         showFeedback?.({
           type: 'boost',
-          text: `AI Super Res desactivado por rendimiento (${fps} FPS)`,
+          text: `AI Super Res desactivado por rendimiento (${fps} FPS${inferenceMs ? ` • ${inferenceMs}ms` : ''})`,
         });
       },
       onError: () => {
@@ -824,6 +830,7 @@ export default function AnimePlayer({
         webgpuEngineRef.current = null;
       }
       setAiFps(null);
+      setAiInferenceMs(null);
     };
   }, [aiSuperResMode, episode]);
 
@@ -963,8 +970,8 @@ export default function AnimePlayer({
             <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/30 shadow-[0_0_12px_rgba(139,92,246,0.25)] animate-fade">
               <Cpu size={12} className="text-violet-400" />
               <span>
-                {aiFps ? `${aiFps} FPS • ` : '🧠 '}
-                AI Super Res: {WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}
+                {aiFps ? `${aiFps} FPS` : '🧠'}
+                {aiInferenceMs != null ? ` • ${aiInferenceMs}ms GPU` : ''} • AI Super Res: {WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}
                 {aiAbCompare ? ' (A/B)' : ''}
               </span>
             </span>
@@ -1431,7 +1438,7 @@ export default function AnimePlayer({
                       </span>
                       <span className="text-[10px] text-slate-400">
                         {aiSuperResMode !== 'off'
-                          ? (aiFps ? `${aiFps} FPS • ${WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}` : `Modo ${WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}`)
+                          ? (aiFps ? `${aiFps} FPS • ${aiInferenceMs != null ? `${aiInferenceMs}ms GPU • ` : ''}${WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}` : `Modo ${WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}`)
                           : 'Normal (Desactivado)'}
                       </span>
                     </div>
