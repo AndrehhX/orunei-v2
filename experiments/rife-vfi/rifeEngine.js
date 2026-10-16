@@ -195,14 +195,88 @@ export async function createRifeEngine({
 
   const { weightsBin, weightsManifest } = await loadRifeWeights();
 
+  // Framegen tfact (v7s) exige textureInput: true y textureOutput: true
   const rt = await createRT(device, {
     w,
     h,
     weightsBin,
     weightsManifest,
-    textureInput: false,
-    textureOutput: false,
+    textureInput: true,
+    textureOutput: true,
   });
+
+  // Texturas de entrada y salida residentes en GPU (Zero-Copy)
+  const texA = device.createTexture({
+    size: [w, h],
+    format: 'rgba8unorm',
+    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+  });
+
+  const texB = device.createTexture({
+    size: [w, h],
+    format: 'rgba8unorm',
+    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+  });
+
+  const outTex = device.createTexture({
+    size: [w, h],
+    format: 'rgba8unorm',
+    usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC,
+  });
+
+  const blendTex = device.createTexture({
+    size: [w, h],
+    format: 'rgba8unorm',
+    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+  });
+
+  // Shader para presentar texturas directamente en el canvas WebGPU sin costo de CPU
+  const canvasFormat = navigator.gpu?.getPreferredCanvasFormat?.() || 'bgra8unorm';
+  const blitModule = device.createShaderModule({
+    label: 'blit-to-canvas-shader',
+    code: `
+      @vertex fn vs(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4f {
+        var pos = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+        return vec4f(pos[vi], 0.0, 1.0);
+      }
+      @group(0) @binding(0) var t: texture_2d<f32>;
+      @fragment fn fs(@builtin(position) p: vec4f) -> @location(0) vec4f {
+        return textureLoad(t, vec2i(p.xy), 0);
+      }
+    `,
+  });
+
+  const blitPipeline = device.createRenderPipeline({
+    label: 'blit-pipeline',
+    layout: 'auto',
+    vertex: { module: blitModule, entryPoint: 'vs' },
+    fragment: {
+      module: blitModule,
+      entryPoint: 'fs',
+      targets: [{ format: canvasFormat }],
+    },
+  });
+
+  function presentToCanvas(srcTexture, webgpuContext) {
+    if (!webgpuContext || isDestroyed) return;
+    const encoder = device.createCommandEncoder({ label: 'present-blit-encoder' });
+    const pass = encoder.beginRenderPass({
+      colorAttachments: [{
+        view: webgpuContext.getCurrentTexture().createView(),
+        loadOp: 'clear',
+        storeOp: 'store',
+      }],
+    });
+    pass.setPipeline(blitPipeline);
+    const bindGroup = device.createBindGroup({
+      layout: blitPipeline.getBindGroupLayout(0),
+      entries: [{ binding: 0, resource: srcTexture.createView() }],
+    });
+    pass.setBindGroup(0, bindGroup);
+    pass.draw(3);
+    pass.end();
+    device.queue.submit([encoder.finish()]);
+  }
 
   let isDestroyed = false;
   let activeTarget = INTERPOLATION_TARGETS[targetMode] || INTERPOLATION_TARGETS['48fps'];
@@ -255,6 +329,10 @@ export async function createRifeEngine({
     if (forceMode === 'blend') {
       const blended = generateAlphaBlendFrame(rgbaA, rgbaB, 0.5);
       const duration = performance.now() - t0;
+      if (options.targetWebgpuContext) {
+        device.queue.writeTexture({ texture: blendTex }, blended, { bytesPerRow: w * 4 }, [w, h]);
+        presentToCanvas(blendTex, options.targetWebgpuContext);
+      }
       return {
         frame: blended,
         mode: 'alpha-blend',
@@ -266,6 +344,14 @@ export async function createRifeEngine({
 
     // 3. Modo Nativo directo
     if (forceMode === 'native') {
+      if (options.targetWebgpuContext) {
+        if (options.sourceCanvasA) {
+          device.queue.copyExternalImageToTexture({ source: options.sourceCanvasA }, { texture: texA }, [w, h]);
+        } else if (rgbaA instanceof Uint8Array) {
+          device.queue.writeTexture({ texture: texA }, rgbaA, { bytesPerRow: w * 4 }, [w, h]);
+        }
+        presentToCanvas(texA, options.targetWebgpuContext);
+      }
       return {
         frame: rgbaA,
         mode: 'native',
@@ -277,9 +363,25 @@ export async function createRifeEngine({
 
     // 4. Inferencia Neuronal Real RIFE (Flujo óptico bidireccional + deformación hacia t=0.5)
     try {
-      const intermediate = await rt.run(rgbaA, rgbaB, 0.5);
-      const duration = performance.now() - t0;
+      // Cargar texturas de entrada a GPU (Zero-Copy si es canvas/video)
+      if (options.sourceCanvasA && options.sourceCanvasB) {
+        device.queue.copyExternalImageToTexture({ source: options.sourceCanvasA }, { texture: texA }, [w, h]);
+        device.queue.copyExternalImageToTexture({ source: options.sourceCanvasB }, { texture: texB }, [w, h]);
+      } else {
+        device.queue.writeTexture({ texture: texA }, rgbaA, { bytesPerRow: w * 4 }, [w, h]);
+        device.queue.writeTexture({ texture: texB }, rgbaB, { bytesPerRow: w * 4 }, [w, h]);
+      }
 
+      // Ejecución de inferencia RIFE en GPU: tronco de flujo óptico + cabezal t=0.5
+      rt.prepPair(texA, texB);
+      rt.runT(0.5, outTex);
+
+      // Presentar directamente en WebGPU canvas (Zero-Copy)
+      if (options.targetWebgpuContext) {
+        presentToCanvas(outTex, options.targetWebgpuContext);
+      }
+
+      const duration = performance.now() - t0;
       lastInferenceMs = duration;
       totalInferenceMs += duration;
       inferenceCount++;
@@ -303,7 +405,7 @@ export async function createRifeEngine({
       });
 
       return {
-        frame: intermediate,
+        outTexture: outTex,
         mode: 'rife-neural',
         diff: frameDiff,
         inferenceMs: duration,

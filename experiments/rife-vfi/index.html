@@ -192,7 +192,10 @@
     const canvasOrig = document.getElementById('canvas-original');
     const ctxOrig = canvasOrig.getContext('2d');
     const canvasOut = document.getElementById('canvas-output');
-    const ctxOut = canvasOut.getContext('2d');
+    let webgpuOutCtx = null;
+    try {
+      webgpuOutCtx = canvasOut.getContext('webgpu');
+    } catch {}
 
     const statFps = document.getElementById('stat-fps');
     const statGpuMs = document.getElementById('stat-gpu-ms');
@@ -345,20 +348,32 @@
             }, 300);
           },
         });
+
+        if (rife?.device && webgpuOutCtx) {
+          webgpuOutCtx.configure({
+            device: rife.device,
+            format: navigator.gpu.getPreferredCanvasFormat(),
+            alphaMode: 'opaque',
+          });
+        }
       } catch (err) {
         console.error('Error al inicializar RIFE:', err);
       }
 
       // Loop de simulación y presentación de fotogramas
-      let lastFrameAData = null;
       let presentationFrames = 0;
       let lastFpsTime = performance.now();
 
-      // Buffer fuera de pantalla para renderizar cuadros
-      const offscreenCanvas = document.createElement('canvas');
-      offscreenCanvas.width = width;
-      offscreenCanvas.height = height;
-      const offscreenCtx = offscreenCanvas.getContext('2d');
+      // Buffers fuera de pantalla para Cuadro A y Cuadro B
+      const offscreenA = document.createElement('canvas');
+      offscreenA.width = width;
+      offscreenA.height = height;
+      const offCtxA = offscreenA.getContext('2d');
+
+      const offscreenB = document.createElement('canvas');
+      offscreenB.width = width;
+      offscreenB.height = height;
+      const offCtxB = offscreenB.getContext('2d');
 
       async function tick() {
         if (!isPlaying) {
@@ -367,12 +382,11 @@
         }
 
         const baseFps = currentTarget === '48fps' ? 24 : 30;
-        const targetOutputFps = baseFps * 2;
         const frameStepSeconds = 1 / baseFps;
 
         // Renderizar Cuadro A
-        renderProceduralAnimeScene(offscreenCtx, animTime, false);
-        const imgA = offscreenCtx.getImageData(0, 0, width, height);
+        renderProceduralAnimeScene(offCtxA, animTime, false);
+        const imgA = offCtxA.getImageData(0, 0, width, height);
 
         // Si se fuerza corte o hold
         const isCut = forceSceneCut;
@@ -385,28 +399,20 @@
         if (!isHold) {
           animTime += frameStepSeconds;
         }
-        renderProceduralAnimeScene(offscreenCtx, animTime, isCut);
-        const imgB = offscreenCtx.getImageData(0, 0, width, height);
+        renderProceduralAnimeScene(offCtxB, animTime, isCut);
+        const imgB = offCtxB.getImageData(0, 0, width, height);
 
         // 1. Presentar en canvas original (Nativo)
         ctxOrig.putImageData(imgA, 0, 0);
 
-        // 2. Interpolar para obtener Cuadro Intermedio (t = 0.5)
-        if (rife && currentMode === 'rife') {
-          const res = await rife.interpolatePair(imgA.data, imgB.data, { forceMode: 'rife' });
-          if (res && res.frame) {
-            const outImg = new ImageData(new Uint8ClampedArray(res.frame.buffer), width, height);
-            ctxOut.putImageData(outImg, 0, 0);
-          }
-        } else if (currentMode === 'blend') {
-          const res = await rife?.interpolatePair(imgA.data, imgB.data, { forceMode: 'blend' });
-          if (res && res.frame) {
-            const outImg = new ImageData(new Uint8ClampedArray(res.frame.buffer), width, height);
-            ctxOut.putImageData(outImg, 0, 0);
-          }
-        } else {
-          // Nativo
-          ctxOut.putImageData(imgA, 0, 0);
+        // 2. Interpolar para obtener Cuadro Intermedio (t = 0.5) en GPU
+        if (rife) {
+          await rife.interpolatePair(imgA.data, imgB.data, {
+            forceMode: currentMode,
+            sourceCanvasA: offscreenA,
+            sourceCanvasB: offscreenB,
+            targetWebgpuContext: webgpuOutCtx,
+          });
         }
 
         presentationFrames += 2; // Frame original + Frame intermedio
