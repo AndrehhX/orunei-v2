@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Keyboard, Film, Zap, Sparkles } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Keyboard, Film, Zap, Sparkles, Cpu } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, markEpisodeWatched, formatTime } from '../playback/playbackProgress';
@@ -10,6 +10,7 @@ import { handlePlayerKeydown, PLAYER_SHORTCUTS } from '../playback/keyboardShort
 import { SUPPORTED_SPEEDS, getStoredPlaybackSpeed, setStoredPlaybackSpeed, applyPlaybackSpeed } from '../playback/playbackSpeed';
 import { shouldTriggerCountdown, COUNTDOWN_DURATION } from '../playback/nextEpisodeCountdown';
 import { createAnimeEnhanceEngine, isWebGL2Supported, ANIME_ENHANCE_MODES } from '../playback/animeEnhanceEngine';
+import { createWebGPUSuperResEngine, isWebGPUSupported, WEBGPU_SUPER_RES_MODES } from '../playback/webgpuSuperResEngine';
 
 
 export default function AnimePlayer({
@@ -29,6 +30,7 @@ export default function AnimePlayer({
   const hlsRef = useRef(null);
   const offlineSourceRef = useRef(null);
   const gpuEngineRef = useRef(null);
+  const webgpuEngineRef = useRef(null);
 
   const [episode, setEpisode] = useState(initialEpisode);
   const [loading, setLoading] = useState(true);
@@ -51,6 +53,20 @@ export default function AnimePlayer({
   });
   const [playbackSpeed, setPlaybackSpeed] = useState(() => getStoredPlaybackSpeed());
 
+  // AI Super Resolution (WebGPU CNN 2×)
+  const [aiSuperResMode, setAiSuperResMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('orunei_ai_super_res_mode');
+      if (saved && ['off', 'cnn-s', 'cnn-m'].includes(saved)) return saved;
+      return 'off';
+    } catch {
+      return 'off';
+    }
+  });
+  const [aiFps, setAiFps] = useState(null);
+  const [aiAbCompare, setAiAbCompare] = useState(false);
+
+  // Anime Enhance (WebGL2 Fallback)
   const [animeEnhanceMode, setAnimeEnhanceMode] = useState(() => {
     try {
       const saved = localStorage.getItem('orunei_anime_enhance_mode');
@@ -615,6 +631,56 @@ export default function AnimePlayer({
     });
   };
 
+  // AI Super Resolution (WebGPU CNN 2×)
+  const handleChangeAiSuperResMode = async (modeId) => {
+    if (modeId !== 'off') {
+      const supported = await isWebGPUSupported();
+      if (!supported) {
+        showFeedback?.({ type: 'boost', text: 'WebGPU no soportado en este navegador/dispositivo' });
+        return;
+      }
+      // Desactivar Anime Enhance para evitar contención de recursos de GPU
+      if (animeEnhanceMode !== 'normal') {
+        setAnimeEnhanceMode('normal');
+        try { localStorage.setItem('orunei_anime_enhance_mode', 'normal'); } catch {}
+      }
+    }
+    setAiSuperResMode(modeId);
+    try { localStorage.setItem('orunei_ai_super_res_mode', modeId); } catch {}
+    const modeObj = WEBGPU_SUPER_RES_MODES.find((m) => m.id === modeId);
+    if (webgpuEngineRef.current) {
+      if (modeId === 'off') {
+        webgpuEngineRef.current.destroy();
+        webgpuEngineRef.current = null;
+        setAiFps(null);
+      } else {
+        webgpuEngineRef.current.setMode(modeId);
+      }
+    }
+    showFeedback?.({
+      type: 'boost',
+      text: modeId !== 'off' ? `🧠 AI Super Res: ${modeObj?.label || 'Activo'}` : 'AI Super Res: Normal (Desactivado)',
+    });
+  };
+
+  const handleToggleAiAbCompare = () => {
+    if (aiSuperResMode === 'off') {
+      showFeedback?.({ type: 'boost', text: 'Activa CNN Small o Medium para comparar' });
+      return;
+    }
+    setAiAbCompare((prev) => {
+      const next = !prev;
+      if (webgpuEngineRef.current) {
+        webgpuEngineRef.current.setSplitComparison({ enabled: next, position: 0.5 });
+      }
+      showFeedback?.({
+        type: 'boost',
+        text: next ? 'Comparación A/B activa (Izq: Original | Der: CNN 2×)' : 'Vista completa procesada',
+      });
+      return next;
+    });
+  };
+
   const handleToggleAnimeEnhance = () => {
     if (!isWebGL2Supported()) {
       showFeedback?.({ type: 'boost', text: 'WebGL2 no soportado en este dispositivo' });
@@ -622,6 +688,10 @@ export default function AnimePlayer({
     }
     setAnimeEnhanceMode((prev) => {
       const next = prev === 'normal' ? 'balanced' : 'normal';
+      if (next !== 'normal' && aiSuperResMode !== 'off') {
+        setAiSuperResMode('off');
+        try { localStorage.setItem('orunei_ai_super_res_mode', 'off'); } catch {}
+      }
       try { localStorage.setItem('orunei_anime_enhance_mode', next); } catch {}
       const modeObj = ANIME_ENHANCE_MODES.find((m) => m.id === next) || ANIME_ENHANCE_MODES[0];
       showFeedback?.({
@@ -633,9 +703,15 @@ export default function AnimePlayer({
   };
 
   const handleChangeAnimeEnhanceMode = (modeId) => {
-    if (modeId !== 'normal' && !isWebGL2Supported()) {
-      showFeedback?.({ type: 'boost', text: 'WebGL2 no soportado en este dispositivo' });
-      return;
+    if (modeId !== 'normal') {
+      if (!isWebGL2Supported()) {
+        showFeedback?.({ type: 'boost', text: 'WebGL2 no soportado en este dispositivo' });
+        return;
+      }
+      if (aiSuperResMode !== 'off') {
+        setAiSuperResMode('off');
+        try { localStorage.setItem('orunei_ai_super_res_mode', 'off'); } catch {}
+      }
     }
     setAnimeEnhanceMode(modeId);
     try { localStorage.setItem('orunei_anime_enhance_mode', modeId); } catch {}
@@ -685,9 +761,75 @@ export default function AnimePlayer({
     videoRef,
   });
 
-  // Ciclo de vida y sincronización de Anime Enhance (Anime4K + AMD FidelityFX CAS)
+  // Ciclo de vida de AI Super Resolution (WebGPU CNN 2×)
   useEffect(() => {
-    if (animeEnhanceMode === 'normal') {
+    let isCancelled = false;
+
+    if (aiSuperResMode === 'off') {
+      if (webgpuEngineRef.current) {
+        webgpuEngineRef.current.destroy();
+        webgpuEngineRef.current = null;
+      }
+      setAiFps(null);
+      return;
+    }
+
+    const video = videoRef.current;
+    const wrapper = videoWrapperRef.current;
+    if (!video || !wrapper) return;
+
+    createWebGPUSuperResEngine({
+      video,
+      container: wrapper,
+      mode: aiSuperResMode,
+      splitMode: aiAbCompare ? 1 : 0,
+      splitPos: 0.5,
+      onFpsUpdate: (fps) => {
+        if (!isCancelled) setAiFps(fps);
+      },
+      onPerformanceDrop: ({ fps }) => {
+        if (isCancelled) return;
+        setAiSuperResMode('off');
+        try { localStorage.setItem('orunei_ai_super_res_mode', 'off'); } catch {}
+        showFeedback?.({
+          type: 'boost',
+          text: `AI Super Res desactivado por rendimiento (${fps} FPS)`,
+        });
+      },
+      onError: () => {
+        if (isCancelled) return;
+        setAiSuperResMode('off');
+        try { localStorage.setItem('orunei_ai_super_res_mode', 'off'); } catch {}
+        showFeedback?.({
+          type: 'boost',
+          text: 'AI Super Res no disponible en esta fuente/hardware',
+        });
+      },
+    }).then((engine) => {
+      if (isCancelled) {
+        engine?.destroy();
+        return;
+      }
+      webgpuEngineRef.current = engine;
+    }).catch(() => {
+      if (!isCancelled) {
+        setAiSuperResMode('off');
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+      if (webgpuEngineRef.current) {
+        webgpuEngineRef.current.destroy();
+        webgpuEngineRef.current = null;
+      }
+      setAiFps(null);
+    };
+  }, [aiSuperResMode, episode]);
+
+  // Ciclo de vida y sincronización de Anime Enhance (Anime4K + AMD FidelityFX CAS - Fallback WebGL2)
+  useEffect(() => {
+    if (animeEnhanceMode === 'normal' || aiSuperResMode !== 'off') {
       if (gpuEngineRef.current) {
         gpuEngineRef.current.destroy();
         gpuEngineRef.current = null;
@@ -738,7 +880,7 @@ export default function AnimePlayer({
       }
       setGpuFps(null);
     };
-  }, [animeEnhanceMode, episode]);
+  }, [animeEnhanceMode, aiSuperResMode, episode]);
 
   // Atajos de teclado profesionales (Espacio, F, T, M, Flechas, J/L, N, P, S, B)
   useEffect(() => {
@@ -816,8 +958,20 @@ export default function AnimePlayer({
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Badge Anime Enhance activo */}
-          {animeEnhanceMode !== 'normal' && (
+          {/* Badge AI Super Resolution activo (WebGPU CNN) */}
+          {aiSuperResMode !== 'off' && (
+            <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/30 shadow-[0_0_12px_rgba(139,92,246,0.25)] animate-fade">
+              <Cpu size={12} className="text-violet-400" />
+              <span>
+                {aiFps ? `${aiFps} FPS • ` : '🧠 '}
+                AI Super Res: {WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}
+                {aiAbCompare ? ' (A/B)' : ''}
+              </span>
+            </span>
+          )}
+
+          {/* Badge Anime Enhance activo (Fallback WebGL2) */}
+          {aiSuperResMode === 'off' && animeEnhanceMode !== 'normal' && (
             <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.25)] animate-fade">
               <Sparkles size={12} className="fill-amber-400 text-amber-400" />
               <span>
@@ -1267,7 +1421,77 @@ export default function AnimePlayer({
                   </>
                 )}
 
-                {/* Ajuste de Anime Enhance (Anime4K + AMD FidelityFX CAS) */}
+                {/* Ajuste de AI Super Resolution (WebGPU CNN 2×) */}
+                <div className="mt-2 pt-2 border-t border-white/10 flex flex-col px-2.5 py-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col pr-2">
+                      <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
+                        <Cpu size={13} className={aiSuperResMode !== 'off' ? 'text-violet-400 fill-violet-400' : 'text-slate-400'} />
+                        AI Super Resolution (WebGPU)
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {aiSuperResMode !== 'off'
+                          ? (aiFps ? `${aiFps} FPS • ${WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}` : `Modo ${WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}`)
+                          : 'Normal (Desactivado)'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={aiSuperResMode !== 'off'}
+                      onClick={() => handleChangeAiSuperResMode(aiSuperResMode === 'off' ? 'cnn-s' : 'off')}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${aiSuperResMode !== 'off' ? 'bg-violet-600' : 'bg-white/20'}`}
+                      title={aiSuperResMode !== 'off' ? 'Desactivar AI Super Resolution' : 'Activar AI Super Resolution (WebGPU CNN 2×)'}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${aiSuperResMode !== 'off' ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Selector de los 3 modos: Normal, CNN Small 2×, CNN Medium 2× */}
+                  <div className="mt-2 grid grid-cols-3 gap-1">
+                    {WEBGPU_SUPER_RES_MODES.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => handleChangeAiSuperResMode(m.id)}
+                        className={`py-1.5 px-1 text-[10px] rounded-lg text-center transition ${
+                          aiSuperResMode === m.id
+                            ? 'bg-violet-600 text-white font-extrabold shadow-sm'
+                            : 'text-slate-300 bg-white/5 hover:bg-white/10 font-semibold'
+                        }`}
+                        title={m.description}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Comparación visual A/B para AI Super Resolution */}
+                  {aiSuperResMode !== 'off' && (
+                    <button
+                      type="button"
+                      onClick={handleToggleAiAbCompare}
+                      className={`mt-2 flex items-center justify-between px-2.5 py-1.5 text-[11px] rounded-lg border transition ${
+                        aiAbCompare
+                          ? 'bg-violet-500/20 border-violet-500/50 text-violet-300 font-bold'
+                          : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                      }`}
+                      title="Comparar original vs CNN 2× con pantalla dividida (Split-Screen A/B)"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Cpu size={11} className={aiAbCompare ? 'text-violet-400' : 'text-slate-400'} />
+                        Comparación A/B (Split 50%)
+                      </span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40">
+                        {aiAbCompare ? 'Activo' : 'Off'}
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Ajuste de Anime Enhance (Anime4K + AMD FidelityFX CAS - Fallback WebGL2) */}
                 <div className="mt-2 pt-2 border-t border-white/10 flex flex-col px-2.5 py-1">
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col pr-2">
