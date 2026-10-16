@@ -14,7 +14,7 @@ export const PLAYER_SHORTCUTS = [
   { key: 'N', description: 'Siguiente episodio' },
   { key: 'P', description: 'Picture-in-Picture (PiP)' },
   { key: 'S', description: 'Saltar Intro / Ending' },
-  { key: 'B', description: 'Mejora de imagen (Reescalado 4K - AMD CAS)' },
+  { key: 'B', description: 'Anime Enhance (Anime4K + AMD CAS)' },
 ];
 
 export function handlePlayerKeydown({
@@ -27,6 +27,7 @@ export function handlePlayerKeydown({
   onToggleFullscreen,
   onToggleTheater,
   onTogglePiP,
+  onToggleAnimeEnhance,
   onToggleGpuBoost,
   showFeedback,
 }) {
@@ -165,7 +166,7 @@ export function handlePlayerKeydown({
     case 'b':
     case 'B': {
       event.preventDefault?.();
-      onToggleGpuBoost?.();
+      (onToggleAnimeEnhance || onToggleGpuBoost)?.();
       return true;
     }
 

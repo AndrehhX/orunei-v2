@@ -11,14 +11,13 @@ Orunei es una plataforma social para descubrir anime, organizar un AnimeList y c
 - AnimeList privado con estados, favoritos, listas personalizadas y actividad.
 - Sección **Donde lo dejaste** organizada cronológicamente por última reproducción real con reanudación al segundo exacto y aviso flotante.
 - Reproductor web avanzado con streaming multi-servidor y subtítulos en español.
-- **Mejora de Imagen y Reescalado Ultra Blu-ray 4K (Anime4K + AMD FidelityFX CAS)** exclusivo para la web (opcional, apagada por defecto):
-  - **Super-resolución a nivel de píxel físico**: el canvas renderiza directamente a la resolución nativa de tu pantalla (1080p, 2K o 4K) multiplicada por el `devicePixelRatio`, eliminando por completo el desenfoque por estiramiento bilineal del navegador.
-  - **Reconstrucción de Trazos Anime (Anime4K Line Thinning & Darkening)**: operador Sobel 3x3 que detecta los contornos del dibujo y adelgaza los bordes borrosos de compresión, profundizando las líneas negras para que luzcan afiladas y precisas como un master original de Blu-ray (+69% de definición comprobada).
-  - **AMD FidelityFX CAS Anti-Ringing**: realce adaptativo de contraste local sin sobreimpulso ni halos blancos.
-  - **Micro-contraste y color Blu-ray**: corrección de la curva perceptual de luminancia para eliminar el velo grisáceo y apagado propio del streaming web.
-  - **Protección de fondos planos**: detección de gradiente nulo para no generar grano ni artefactos en cielos o rostros.
-  - **Perfiles ajustables en el reproductor**: `Equilibrado` (0.65x), `Ultra Blu-ray (4K)` (1.0x - por defecto) y `Extremo 4K` (1.35x).
-  - **Seguridad y compatibilidad**: canvas fantasma con `pointer-events: none` y auto-desconexión si la GPU cae por debajo de 45 FPS.
+- **Anime Enhance (Anime4K + AMD FidelityFX CAS)** exclusivo para la web (opcional, apagado por defecto):
+  - **Reconstrucción espacial de trazos (Anime4K)**: combina Difference of Gaussians (DoG 3x3) y gradiente Sobel para aislar contornos y aplicar line darkening moderado y line thinning direccional, devolviendo nitidez a animes 720p/1080p con compresión web sin tocar fondos planos.
+  - **AMD FidelityFX CAS Anti-Ringing**: nitidez adaptativa local calculada independientemente por canal RGB con clamp estricto para evitar halos y ringing.
+  - **Protección de texto y sombras**: filtros de luminancia que protegen subtítulos en pantalla de la erosión y previenen el aplastamiento de negros en escenas oscuras.
+  - **Comparación A/B interactiva**: modo de pantalla dividida (Split-Screen) en tiempo real para contrastar visualmente el fotograma original contra el procesado.
+  - **Tres perfiles claros**: `Normal` (video original sin procesamiento), `Equilibrado` (mejora moderada de contornos y nitidez) y `Alta Definición` (procesamiento más definido para GPUs potentes).
+  - **Rendimiento adaptativo y seguridad**: resolución acotada a la ventana real con límite de `devicePixelRatio` (1.5x), watchdog de desconexión automática si la GPU cae por debajo de 45 FPS y canvas con `pointer-events: none`.
 - **Modo Cine / Teatro** inmersivo para desktop y control profesional por teclado (`Espacio`/`K`, `F`, `T`, `M`, flechas, `J`/`L`, `N`, `P`, `S`, `B`).
 - Salto inteligente de intros y endings con integración AniSkip, fallback automático y opción de Auto-Skip.
 - Perfil privado editable con avatar, banner, biografía, identidad visual y privacidad por sección.
@@ -33,7 +32,7 @@ Orunei es una plataforma social para descubrir anime, organizar un AnimeList y c
 - React 18
 - Vite
 - Tailwind CSS
-- WebGL2 (Shaders de aceleración gráfica para GPU Boost en la web)
+- WebGL2 (Shaders de aceleración gráfica para Anime Enhance en la web)
 - Supabase Auth, Database y Storage
 - AniList GraphQL API
 - RSS2JSON para noticias públicas
@@ -112,7 +111,7 @@ src/
 │   ├── ProfilePage.jsx        # perfil privado y AnimeList
 │   ├── PublicProfileRoute.jsx # perfil público compartible
 │   └── Poster.jsx             # imagen, caché y fallback visual
-├── playback/                  # motor GPU Boost, velocidad, atajos, gestos y skips
+├── playback/                  # motor Anime Enhance (Anime4K + CAS), velocidad, atajos, gestos y skips
 ├── profile/                   # identidad, privacidad, listas y actividad
 ├── rec/                       # pool AniList y motor de recomendaciones
 ├── social/                    # amistades y comentarios
