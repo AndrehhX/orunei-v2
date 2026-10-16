@@ -443,6 +443,67 @@ export async function createRifeEngine({
   let inFlight = false;
 
   /**
+   * Diagnóstico Forense: Reconcilia los ~7.5 ms de GPU Compute Kernels con la latencia end-to-end
+   */
+  async function reconcileTimingBreakdown(sourceCanvasA, sourceCanvasB, webgpuContext) {
+    if (isDestroyed) return null;
+
+    // A. Medición aislada de copyExternalImageToTexture (DMA upload)
+    const tCopy0 = performance.now();
+    device.queue.copyExternalImageToTexture({ source: sourceCanvasA }, { texture: texA }, [w, h]);
+    device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
+    const tCopySubmit = performance.now();
+    await device.queue.onSubmittedWorkDone();
+    const tCopyDone = performance.now();
+    const dmaUploadTotalMs = parseFloat((tCopyDone - tCopy0).toFixed(2));
+    const dmaUploadSubmitMs = parseFloat((tCopySubmit - tCopy0).toFixed(2));
+
+    // B. Medición aislada de GPU Compute Shaders vía Timestamp Queries de hardware
+    let pureGpuComputeMs = 0;
+    let stageReport = null;
+    if (device.features.has('timestamp-query')) {
+      stageReport = await rt.profileT(texA, texB, 0.5, outTex);
+      const matches = stageReport.match(/([\d\.]+)ms/g) || [];
+      pureGpuComputeMs = parseFloat(matches.reduce((sum, m) => sum + parseFloat(m), 0).toFixed(2));
+    }
+
+    // C. Medición aislada de Inferencia de cola (prepPair + runT) sin swapchain blit
+    const tInf0 = performance.now();
+    rt.prepPair(texA, texB);
+    rt.runT(0.5, outTex);
+    const tInfSubmit = performance.now();
+    const cpuEncodeMs = parseFloat((tInfSubmit - tInf0).toFixed(2));
+    await device.queue.onSubmittedWorkDone();
+    const tInfDone = performance.now();
+    const rawGpuExecutionMs = parseFloat((tInfDone - tInf0).toFixed(2));
+    const driverIpcOverheadMs = parseFloat(Math.max(0, rawGpuExecutionMs - pureGpuComputeMs - cpuEncodeMs).toFixed(2));
+
+    // D. Medición aislada de presentación en Swapchain (Compositor VSYNC)
+    let swapchainBlitMs = 0;
+    if (webgpuContext) {
+      const tBlit0 = performance.now();
+      presentFrame('interpolated', webgpuContext);
+      await device.queue.onSubmittedWorkDone();
+      const tBlitDone = performance.now();
+      swapchainBlitMs = parseFloat((tBlitDone - tBlit0).toFixed(2));
+    }
+
+    const calculatedTotalEndToEndMs = parseFloat((dmaUploadTotalMs + rawGpuExecutionMs + swapchainBlitMs).toFixed(2));
+
+    return {
+      dmaUploadTotalMs,
+      dmaUploadSubmitMs,
+      pureGpuComputeMs,
+      cpuEncodeMs,
+      driverIpcOverheadMs,
+      rawGpuExecutionMs,
+      swapchainBlitMs,
+      calculatedTotalEndToEndMs,
+      stageReport,
+    };
+  }
+
+  /**
    * Ejecuta perfilado por etapas mediante GPU Timestamp Queries reales
    */
   async function profilePipelineStages(sourceCanvasA, sourceCanvasB) {
@@ -611,6 +672,7 @@ export async function createRifeEngine({
     presentFrame,
     dispatchInterpolation,
     profilePipelineStages,
+    reconcileTimingBreakdown,
     evaluateAgainstGroundTruth,
     readbackOutputFrame,
     isGpuBusy: () => inFlight,

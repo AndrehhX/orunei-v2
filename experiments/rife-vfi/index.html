@@ -229,6 +229,53 @@
     </div>
   </div>
 
+  <!-- Perfilado Forense: Reconciliación de Tiempos -->
+  <div class="p-4 rounded-xl border border-violet-500/30 bg-violet-950/10 mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <div>
+        <h3 class="text-sm font-bold text-violet-300 flex items-center gap-2">
+          <span>🔍 Reconciliación Forense de Tiempos: GPU Pura vs Latencia End-to-End</span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Descompone exactamente los ~7.5 ms de shaders GPU vs upload DMA de texturas vs overhead de fence / IPC vs presentación swapchain.
+        </p>
+      </div>
+      <button id="btn-reconcile-timing" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-violet-600 hover:bg-violet-500 text-white shadow">
+        Ejecutar Reconciliación Forense
+      </button>
+    </div>
+
+    <div id="reconcile-report-panel" class="hidden p-3 rounded-lg bg-black/70 border border-slate-800 text-xs">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-center mb-3">
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Copia Texturas DMA</div>
+          <div id="rec-dma" class="text-sm font-mono font-bold text-sky-400">-- ms</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Shaders GPU Puros</div>
+          <div id="rec-pure" class="text-sm font-mono font-bold text-emerald-400">-- ms</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">CPU Encode</div>
+          <div id="rec-encode" class="text-sm font-mono font-bold text-slate-300">-- ms</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Fence / IPC Overhead</div>
+          <div id="rec-ipc" class="text-sm font-mono font-bold text-amber-400">-- ms</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Presentación Swapchain</div>
+          <div id="rec-swapchain" class="text-sm font-mono font-bold text-rose-400">-- ms</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Total End-to-End</div>
+          <div id="rec-total" class="text-sm font-mono font-bold text-violet-300">-- ms</div>
+        </div>
+      </div>
+      <div id="rec-verdict" class="text-[11px] font-mono text-slate-300 bg-slate-900/40 p-2.5 rounded border border-slate-800"></div>
+    </div>
+  </div>
+
   <!-- Suite de Validación Matemática contra Ground Truth -->
   <div class="p-4 rounded-xl border border-indigo-500/30 bg-indigo-950/10 mb-6">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -657,6 +704,29 @@
       } else {
         text.innerText = res.message || res.error || 'Error al ejecutar timestamp queries.';
       }
+    };
+
+    // =========================================================================
+    // RECONCILIACIÓN FORENSE DE TIEMPOS
+    // =========================================================================
+    document.getElementById('btn-reconcile-timing').onclick = async () => {
+      const panel = document.getElementById('reconcile-report-panel');
+      const verdict = document.getElementById('rec-verdict');
+      panel.classList.remove('hidden');
+      verdict.innerText = 'Midiendo con cronómetro de alta precisión cada componente del pipeline...';
+
+      if (!rife) return;
+      const r = await rife.reconcileTimingBreakdown(offscreenA, offscreenB, webgpuOutCtx);
+      if (!r) return;
+
+      document.getElementById('rec-dma').innerText = `${r.dmaUploadTotalMs} ms`;
+      document.getElementById('rec-pure').innerText = `${r.pureGpuComputeMs} ms`;
+      document.getElementById('rec-encode').innerText = `${r.cpuEncodeMs} ms`;
+      document.getElementById('rec-ipc').innerText = `${r.driverIpcOverheadMs} ms`;
+      document.getElementById('rec-swapchain').innerText = `${r.swapchainBlitMs} ms`;
+      document.getElementById('rec-total').innerText = `${r.calculatedTotalEndToEndMs} ms`;
+
+      verdict.innerText = `Reconciliación: De los ${r.calculatedTotalEndToEndMs} ms totales medidos de extremo a extremo, los compute kernels consumen ${r.pureGpuComputeMs} ms, la copia DMA de texturas toma ${r.dmaUploadTotalMs} ms, el overhead de IPC/fences es ${r.driverIpcOverheadMs} ms y la presentación en el swapchain del navegador toma ${r.swapchainBlitMs} ms.`;
     };
 
     // =========================================================================
