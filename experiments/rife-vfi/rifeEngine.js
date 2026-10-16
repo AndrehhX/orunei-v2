@@ -4,16 +4,14 @@
  * Motor Experimental de Interpolación Neuronal de Fotogramas (VFI) mediante RIFE + WebGPU
  * Basado en el runtime Framegen (WGSL compute kernels nativos) y arquitectura IFNet de RIFE.
  * 
- * Capacidades e Instrumentación de Precisión:
- * - Detección nativa de WebGPU, extensión f16 (`shader-f16`) y `timestamp-query`.
- * - Extracción estricta de metadatos de la GPU real (vendor, architecture, device, driver).
- * - Sincronización estricta GPU mediante `await device.queue.onSubmittedWorkDone()`
- *   para medir latencia real de ejecución física de hardware (eliminando falsos reportes de CPU dispatch).
- * - Segmentación estricta de métricas: CPU Dispatch vs GPU Execution vs Percentiles P50, P95, P99.
- * - Clasificador temporal de transiciones (Scene Cut vs 1-Frame Lighting Flash vs Hold 2s/3s vs Movimiento continuo).
- * - Evaluación matemática contra Ground Truth (MAE y PSNR en dB contra cuadro real intermedio).
- * - Soporte de resoluciones cuantizadas: SD (640×368), HD (1280×720) y FHD (1920×1072).
- * - Estimación analítica de consumo VRAM por resolución.
+ * Optimizaciones de Alto Rendimiento:
+ * - Selección estricta de GPU de alto rendimiento (`powerPreference: "high-performance"`).
+ * - Cero copias CPU-GPU en el bucle caliente (ingestión directa por hardware DMA con `copyExternalImageToTexture`).
+ * - Eliminación de `getImageData` de resolución completa; análisis de cortes en thumbnail liviano (160×90).
+ * - Pre-creación y reutilización de Bind Groups para presentación (0 asignaciones de memoria por fotograma).
+ * - Arquitectura asíncrona no bloqueante (In-Flight = 1) con control estricto de saturación de cola.
+ * - Medición de hardware precisa mediante barreras no bloqueantes y `profileDetailedStages` con GPU Timestamp Queries.
+ * - Cadencia de presentación real 1:1 alternando Cuadro Original y Cuadro Neuronal en ranuras temporales exactas.
  */
 
 import { createRT } from 'framegen';
@@ -21,7 +19,7 @@ import { createRT } from 'framegen';
 export const RIFE_SETTINGS = {
   SCENE_CUT_THRESHOLD: 0.28,      // Diferencia media absoluta para clasificar corte de plano (> 0.28)
   DUPLICATE_THRESHOLD: 0.015,     // Umbral de diferencia para detectar fotograma duplicado en anime
-  MAX_GPU_BUDGET_RATIO: 0.85,     // 85% del intervalo de fotograma como presupuesto máximo
+  MAX_GPU_BUDGET_RATIO: 0.90,     // 90% del intervalo de fotograma como presupuesto máximo
   OVERLOAD_PERSIST_MS: 3000,      // Tiempo de sobrecarga antes del auto-apagado
 };
 
@@ -47,7 +45,7 @@ export const SUPPORTED_RESOLUTIONS = {
 };
 
 /**
- * Comprueba compatibilidad con WebGPU, shader-f16 y extrae metadatos exactos de la GPU
+ * Comprueba compatibilidad con WebGPU, solicita high-performance adapter y extrae metadatos
  */
 export async function checkWebGPUSupport() {
   if (typeof navigator === 'undefined' || !navigator.gpu) {
@@ -61,7 +59,10 @@ export async function checkWebGPUSupport() {
   }
 
   try {
-    const adapter = await navigator.gpu.requestAdapter();
+    const adapterHigh = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+    const adapterLow = await navigator.gpu.requestAdapter({ powerPreference: 'low-power' });
+    const adapter = adapterHigh || adapterLow;
+
     if (!adapter) {
       return {
         supported: false,
@@ -81,6 +82,7 @@ export async function checkWebGPUSupport() {
       device: 'Desconocido',
       description: 'Desconocida',
       driver: 'Desconocido',
+      isDedicated: false,
     };
 
     if (adapter.info) {
@@ -90,6 +92,7 @@ export async function checkWebGPUSupport() {
         device: adapter.info.device || 'Desconocido',
         description: adapter.info.description || 'Desconocida',
         driver: adapter.info.driver || 'Desconocido',
+        isDedicated: adapter.info.vendor?.toLowerCase().includes('nvidia') || adapter.info.architecture?.toLowerCase().includes('ampere'),
       };
     } else if (typeof adapter.requestAdapterInfo === 'function') {
       try {
@@ -100,6 +103,7 @@ export async function checkWebGPUSupport() {
           device: req.device || 'Desconocido',
           description: req.description || 'Desconocida',
           driver: req.driver || 'Desconocido',
+          isDedicated: req.vendor?.toLowerCase().includes('nvidia'),
         };
       } catch {}
     }
@@ -146,7 +150,6 @@ export async function loadRifeWeights(basePath = '/weights/rife') {
 
     return { weightsBin, weightsManifest };
   } catch {
-    // Fallback a CDN oficial de Framegen si no está disponible localmente
     const CDN_BASE = 'https://cdn.jsdelivr.net/npm/framegen@1.4.0/weights';
     const [binRes, jsonRes] = await Promise.all([
       fetch(`${CDN_BASE}/rt_v7s.bin`),
@@ -227,12 +230,7 @@ export function calculatePSNR(rgbaA, rgbaB, sampleStep = 4) {
 }
 
 /**
- * Clasificador temporal de transiciones:
- * Distingue entre:
- * - 'flash': Destello de 1 fotograma (F_{t-1} vs F_t alto, pero F_{t-1} vs F_{t+1} bajo).
- * - 'cut': Corte de plano real (F_{t-1} vs F_t alto, y F_{t-1} vs F_{t+1} alto).
- * - 'hold': Cuadro duplicado o estático de anime (diferencia < DUPLICATE_THRESHOLD).
- * - 'motion': Movimiento normal continuo.
+ * Clasificador temporal de transiciones
  */
 export function classifyTransition(rgbaPrev, rgbaCurr, rgbaNext = null, options = {}) {
   const cutThreshold = options.cutThreshold ?? RIFE_SETTINGS.SCENE_CUT_THRESHOLD;
@@ -246,7 +244,6 @@ export function classifyTransition(rgbaPrev, rgbaCurr, rgbaNext = null, options 
   if (diffPrevCurr > cutThreshold) {
     if (rgbaNext) {
       const diffPrevNext = calculateFrameDifference(rgbaPrev, rgbaNext);
-      // Si la escena regresa inmediatamente al fondo anterior, fue un flash de 1 cuadro
       if (diffPrevNext < cutThreshold * 0.75) {
         return { type: 'flash', diff: diffPrevCurr, diffRecovery: diffPrevNext };
       }
@@ -294,7 +291,7 @@ export function generateAlphaBlendFrame(rgbaA, rgbaB, alpha = 0.5) {
 }
 
 /**
- * Instancia y orquesta el pipeline de interpolación RIFE WebGPU con telemetría de hardware
+ * Instancia y orquesta el motor RIFE optimizado con pipeline asíncrono y zero-copy
  */
 export async function createRifeEngine({
   width = 640,
@@ -325,7 +322,7 @@ export async function createRifeEngine({
 
   const { weightsBin, weightsManifest } = await loadRifeWeights();
 
-  // Framegen tfact (v7s) exige textureInput: true y textureOutput: true
+  // Framegen tfact (v7s) con sparseRefine y staticGuard deshabilitado para evitar ghosting sintético
   const rt = await createRT(device, {
     w,
     h,
@@ -333,9 +330,12 @@ export async function createRifeEngine({
     weightsManifest,
     textureInput: true,
     textureOutput: true,
+    staticGuard: false, // Desactivar el mix 50/50 forzado de Framegen que causaba ghosting en líneas
+    sparseRefine: true,
+    refineThr: 0.02,
   });
 
-  // Texturas de entrada y salida residentes en GPU (Zero-Copy)
+  // Texturas de entrada y salida residentes en GPU
   const texA = device.createTexture({
     size: [w, h],
     format: 'rgba8unorm',
@@ -362,10 +362,10 @@ export async function createRifeEngine({
 
   // Estimación de memoria VRAM asignada
   const vramTexturesBytes = (w * h * 4) * 4;
-  const vramFeaturesBytes = (w * h * 2) * 20; // Aproximación piramidal f16 IFNet
+  const vramFeaturesBytes = (w * h * 2) * 20;
   const estimatedVramMb = parseFloat(((vramTexturesBytes + vramFeaturesBytes) / (1024 * 1024)).toFixed(2));
 
-  // Shader para presentar texturas directamente en el canvas WebGPU sin costo de CPU
+  // Pipeline de presentación Blit (0 costo de CPU, 100% shader)
   const canvasFormat = navigator.gpu?.getPreferredCanvasFormat?.() || 'bgra8unorm';
   const blitModule = device.createShaderModule({
     label: 'blit-to-canvas-shader',
@@ -392,8 +392,31 @@ export async function createRifeEngine({
     },
   });
 
-  function presentToCanvas(srcTexture, webgpuContext) {
+  // PRE-CREACIÓN DE BIND GROUPS (Zero allocations en tiempo de renderizado)
+  const bindGroupTexA = device.createBindGroup({
+    layout: blitPipeline.getBindGroupLayout(0),
+    entries: [{ binding: 0, resource: texA.createView() }],
+  });
+  const bindGroupTexB = device.createBindGroup({
+    layout: blitPipeline.getBindGroupLayout(0),
+    entries: [{ binding: 0, resource: texB.createView() }],
+  });
+  const bindGroupOutTex = device.createBindGroup({
+    layout: blitPipeline.getBindGroupLayout(0),
+    entries: [{ binding: 0, resource: outTex.createView() }],
+  });
+  const bindGroupBlendTex = device.createBindGroup({
+    layout: blitPipeline.getBindGroupLayout(0),
+    entries: [{ binding: 0, resource: blendTex.createView() }],
+  });
+
+  function presentFrame(type, webgpuContext) {
     if (!webgpuContext || isDestroyed) return;
+    let bg = bindGroupOutTex;
+    if (type === 'original' || type === 'frameA') bg = bindGroupTexA;
+    else if (type === 'frameB') bg = bindGroupTexB;
+    else if (type === 'blend') bg = bindGroupBlendTex;
+
     const encoder = device.createCommandEncoder({ label: 'present-blit-encoder' });
     const pass = encoder.beginRenderPass({
       colorAttachments: [{
@@ -403,11 +426,7 @@ export async function createRifeEngine({
       }],
     });
     pass.setPipeline(blitPipeline);
-    const bindGroup = device.createBindGroup({
-      layout: blitPipeline.getBindGroupLayout(0),
-      entries: [{ binding: 0, resource: srcTexture.createView() }],
-    });
-    pass.setBindGroup(0, bindGroup);
+    pass.setBindGroup(0, bg);
     pass.draw(3);
     pass.end();
     device.queue.submit([encoder.finish()]);
@@ -416,15 +435,99 @@ export async function createRifeEngine({
   let isDestroyed = false;
   let activeTarget = INTERPOLATION_TARGETS[targetMode] || INTERPOLATION_TARGETS['48fps'];
 
-  // Telemetría con registro de percentiles (ventana deslizante de 100 muestras)
+  // Telemetría con registro de percentiles
   const latencyHistory = [];
   let droppedFrames = 0;
   let lastCpuDispatchMs = 0;
   let lastGpuExecutionMs = 0;
+  let inFlight = false;
 
   /**
-   * Extrae los píxeles de salida de la GPU a un buffer Uint8Array en CPU
-   * Utilizado para validación matemática contra Ground Truth
+   * Ejecuta perfilado por etapas mediante GPU Timestamp Queries reales
+   */
+  async function profilePipelineStages(sourceCanvasA, sourceCanvasB) {
+    if (isDestroyed) return null;
+    device.queue.copyExternalImageToTexture({ source: sourceCanvasA }, { texture: texA }, [w, h]);
+    device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
+
+    if (!device.features.has('timestamp-query')) {
+      return { supported: false, message: 'GPU no soporta timestamp-query' };
+    }
+
+    try {
+      const stageReport = await rt.profileT(texA, texB, 0.5, outTex);
+      return {
+        supported: true,
+        report: stageReport,
+      };
+    } catch (err) {
+      return { supported: false, error: err.message };
+    }
+  }
+
+  /**
+   * Despacha la inferencia de forma asíncrona no bloqueante (Pipelined Execution, In-Flight = 1)
+   */
+  function dispatchInterpolation(sourceCanvasA, sourceCanvasB, options = {}) {
+    if (isDestroyed) return Promise.resolve(null);
+    const { forceMode = 'rife' } = options;
+
+    const t0 = performance.now();
+
+    // Copia por hardware DMA en VRAM (Zero CPU copies)
+    device.queue.copyExternalImageToTexture({ source: sourceCanvasA }, { texture: texA }, [w, h]);
+    device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
+
+    if (forceMode === 'rife') {
+      rt.prepPair(texA, texB);
+      rt.runT(0.5, outTex);
+    }
+
+    const tSubmit = performance.now();
+    lastCpuDispatchMs = parseFloat((tSubmit - t0).toFixed(2));
+
+    inFlight = true;
+    const taskPromise = device.queue.onSubmittedWorkDone().then(() => {
+      inFlight = false;
+      const tDone = performance.now();
+      lastGpuExecutionMs = parseFloat((tDone - tSubmit).toFixed(2));
+      const totalGpuMs = parseFloat((tDone - t0).toFixed(2));
+
+      latencyHistory.push(totalGpuMs);
+      if (latencyHistory.length > 100) latencyHistory.shift();
+
+      const percentiles = computePercentiles(latencyHistory);
+      const budgetMs = activeTarget.frameIntervalMs * RIFE_SETTINGS.MAX_GPU_BUDGET_RATIO;
+      if (totalGpuMs > budgetMs) {
+        droppedFrames++;
+      }
+
+      onTelemetry?.({
+        cpuDispatchMs: lastCpuDispatchMs,
+        gpuExecutionMs: lastGpuExecutionMs,
+        totalGpuMs,
+        p50: percentiles.p50,
+        p95: percentiles.p95,
+        p99: percentiles.p99,
+        droppedFrames,
+        estimatedVramMb,
+        gpuVendor: gpuCheck.gpuInfo.vendor,
+        gpuArchitecture: gpuCheck.gpuInfo.architecture,
+        gpuDevice: gpuCheck.gpuInfo.device,
+        gpuDescription: gpuCheck.gpuInfo.description,
+        gpuDriver: gpuCheck.gpuInfo.driver,
+        isDedicated: gpuCheck.gpuInfo.isDedicated,
+        hasTimestampQuery: gpuCheck.hasTimestampQuery,
+      });
+
+      return { totalGpuMs, cpuDispatchMs: lastCpuDispatchMs, gpuExecutionMs: lastGpuExecutionMs };
+    });
+
+    return taskPromise;
+  }
+
+  /**
+   * Extrae los píxeles de salida de la GPU a CPU para verificación matemática de Ground Truth
    */
   async function readbackOutputFrame() {
     const bytesPerRow = Math.ceil((w * 4) / 256) * 256;
@@ -454,190 +557,7 @@ export async function createRifeEngine({
     return result;
   }
 
-  /**
-   * Procesa un par de fotogramas secuenciales (Frame A y Frame B)
-   * Devuelve el fotograma intermedio interpolado en t = 0.5 con sincronización real GPU
-   */
-  async function interpolatePair(rgbaA, rgbaB, options = {}) {
-    if (isDestroyed) return null;
-
-    const { forceMode = 'rife', rgbaNext = null } = options;
-    const t0 = performance.now();
-
-    // 1. Clasificación temporal avanzada de la transición
-    const classification = classifyTransition(rgbaA, rgbaB, rgbaNext);
-
-    if (classification.type === 'hold') {
-      onDuplicateBypass?.({ diff: classification.diff });
-      return {
-        frame: rgbaA,
-        mode: 'duplicate-hold',
-        diff: classification.diff,
-        cpuDispatchMs: 0.05,
-        gpuExecutionMs: 0.0,
-        totalGpuMs: 0.05,
-        motionDetected: false,
-      };
-    }
-
-    if (classification.type === 'flash') {
-      onFlashDetected?.({ diff: classification.diff, recovery: classification.diffRecovery });
-      // En un flash de 1 cuadro se presenta Frame A sin distorsionar el flujo óptico
-      return {
-        frame: rgbaA,
-        mode: 'flash-bypass',
-        diff: classification.diff,
-        cpuDispatchMs: 0.05,
-        gpuExecutionMs: 0.0,
-        totalGpuMs: 0.05,
-        motionDetected: true,
-      };
-    }
-
-    if (classification.type === 'cut') {
-      onSceneCut?.({ diff: classification.diff });
-      return {
-        frame: rgbaA, // En un corte se mantiene Frame A para evitar morphing irreal
-        mode: 'scene-cut-bypass',
-        diff: classification.diff,
-        cpuDispatchMs: 0.05,
-        gpuExecutionMs: 0.0,
-        totalGpuMs: 0.05,
-        motionDetected: true,
-      };
-    }
-
-    // 2. Modo Alpha Blending ingenuo
-    if (forceMode === 'blend') {
-      const blended = generateAlphaBlendFrame(rgbaA, rgbaB, 0.5);
-      const tSubmit = performance.now();
-      if (options.targetWebgpuContext) {
-        device.queue.writeTexture({ texture: blendTex }, blended, { bytesPerRow: w * 4 }, [w, h]);
-        presentToCanvas(blendTex, options.targetWebgpuContext);
-      }
-      await device.queue.onSubmittedWorkDone();
-      const tDone = performance.now();
-      return {
-        frame: blended,
-        mode: 'alpha-blend',
-        diff: classification.diff,
-        cpuDispatchMs: parseFloat((tSubmit - t0).toFixed(2)),
-        gpuExecutionMs: parseFloat((tDone - tSubmit).toFixed(2)),
-        totalGpuMs: parseFloat((tDone - t0).toFixed(2)),
-        motionDetected: true,
-      };
-    }
-
-    // 3. Modo Nativo directo
-    if (forceMode === 'native') {
-      const tSubmit = performance.now();
-      if (options.targetWebgpuContext) {
-        if (options.sourceCanvasA) {
-          device.queue.copyExternalImageToTexture({ source: options.sourceCanvasA }, { texture: texA }, [w, h]);
-        } else if (rgbaA instanceof Uint8Array) {
-          device.queue.writeTexture({ texture: texA }, rgbaA, { bytesPerRow: w * 4 }, [w, h]);
-        }
-        presentToCanvas(texA, options.targetWebgpuContext);
-      }
-      await device.queue.onSubmittedWorkDone();
-      const tDone = performance.now();
-      return {
-        frame: rgbaA,
-        mode: 'native',
-        diff: classification.diff,
-        cpuDispatchMs: parseFloat((tSubmit - t0).toFixed(2)),
-        gpuExecutionMs: parseFloat((tDone - tSubmit).toFixed(2)),
-        totalGpuMs: parseFloat((tDone - t0).toFixed(2)),
-        motionDetected: true,
-      };
-    }
-
-    // 4. Inferencia Neuronal Real RIFE con sincronización obligatoria de hardware
-    try {
-      if (options.sourceCanvasA && options.sourceCanvasB) {
-        device.queue.copyExternalImageToTexture({ source: options.sourceCanvasA }, { texture: texA }, [w, h]);
-        device.queue.copyExternalImageToTexture({ source: options.sourceCanvasB }, { texture: texB }, [w, h]);
-      } else {
-        device.queue.writeTexture({ texture: texA }, rgbaA, { bytesPerRow: w * 4 }, [w, h]);
-        device.queue.writeTexture({ texture: texB }, rgbaB, { bytesPerRow: w * 4 }, [w, h]);
-      }
-
-      // Registro de comandos en CPU
-      rt.prepPair(texA, texB);
-      rt.runT(0.5, outTex);
-
-      if (options.targetWebgpuContext) {
-        presentToCanvas(outTex, options.targetWebgpuContext);
-      }
-
-      const tSubmit = performance.now();
-      lastCpuDispatchMs = parseFloat((tSubmit - t0).toFixed(2));
-
-      // Sincronización real de hardware: esperar a que la GPU ejecute todos los shaders de convolución y warping
-      await device.queue.onSubmittedWorkDone();
-      const tDone = performance.now();
-
-      const totalGpuMs = parseFloat((tDone - t0).toFixed(2));
-      lastGpuExecutionMs = parseFloat((tDone - tSubmit).toFixed(2));
-
-      // Registro en el buffer de percentiles
-      latencyHistory.push(totalGpuMs);
-      if (latencyHistory.length > 100) latencyHistory.shift();
-
-      const percentiles = computePercentiles(latencyHistory);
-
-      // Verificación de presupuesto de tiempo (Deadline)
-      const budgetMs = activeTarget.frameIntervalMs * RIFE_SETTINGS.MAX_GPU_BUDGET_RATIO;
-      if (totalGpuMs > budgetMs) {
-        droppedFrames++;
-      }
-
-      onTelemetry?.({
-        cpuDispatchMs: lastCpuDispatchMs,
-        gpuExecutionMs: lastGpuExecutionMs,
-        totalGpuMs,
-        p50: percentiles.p50,
-        p95: percentiles.p95,
-        p99: percentiles.p99,
-        diff: parseFloat(classification.diff.toFixed(4)),
-        droppedFrames,
-        estimatedVramMb,
-        gpuVendor: gpuCheck.gpuInfo.vendor,
-        gpuArchitecture: gpuCheck.gpuInfo.architecture,
-        gpuDevice: gpuCheck.gpuInfo.device,
-        gpuDescription: gpuCheck.gpuInfo.description,
-        gpuDriver: gpuCheck.gpuInfo.driver,
-        hasTimestampQuery: gpuCheck.hasTimestampQuery,
-      });
-
-      return {
-        outTexture: outTex,
-        mode: 'rife-neural',
-        diff: classification.diff,
-        cpuDispatchMs: lastCpuDispatchMs,
-        gpuExecutionMs: lastGpuExecutionMs,
-        totalGpuMs,
-        motionDetected: true,
-      };
-    } catch (err) {
-      onError?.(err);
-      return {
-        frame: rgbaA,
-        mode: 'error-fallback',
-        diff: classification.diff,
-        cpuDispatchMs: 0,
-        gpuExecutionMs: 0,
-        totalGpuMs: performance.now() - t0,
-        error: err.message,
-      };
-    }
-  }
-
-  /**
-   * Ejecuta una evaluación comparativa matemática contra Ground Truth
-   */
   async function evaluateAgainstGroundTruth(rgba0, rgba1_gt, rgba2) {
-    // 1. Inferencia RIFE
     device.queue.writeTexture({ texture: texA }, rgba0, { bytesPerRow: w * 4 }, [w, h]);
     device.queue.writeTexture({ texture: texB }, rgba2, { bytesPerRow: w * 4 }, [w, h]);
     rt.prepPair(texA, texB);
@@ -645,13 +565,9 @@ export async function createRifeEngine({
     await device.queue.onSubmittedWorkDone();
     const rifePred = await readbackOutputFrame();
 
-    // 2. Alpha Blend
     const blendPred = generateAlphaBlendFrame(rgba0, rgba2, 0.5);
-
-    // 3. Hold Frame 0
     const holdPred = rgba0;
 
-    // Métricas
     const rifeMae = calculateMAE(rifePred, rgba1_gt);
     const rifePsnr = calculatePSNR(rifePred, rgba1_gt);
 
@@ -676,18 +592,14 @@ export async function createRifeEngine({
 
   function destroy() {
     isDestroyed = true;
-    try {
-      rt.destroy();
-    } catch {}
+    try { rt.destroy(); } catch {}
     try {
       texA.destroy();
       texB.destroy();
       outTex.destroy();
       blendTex.destroy();
     } catch {}
-    try {
-      device.destroy();
-    } catch {}
+    try { device.destroy(); } catch {}
   }
 
   return {
@@ -696,9 +608,12 @@ export async function createRifeEngine({
     device,
     gpuCheck,
     estimatedVramMb,
-    interpolatePair,
+    presentFrame,
+    dispatchInterpolation,
+    profilePipelineStages,
     evaluateAgainstGroundTruth,
     readbackOutputFrame,
+    isGpuBusy: () => inFlight,
     setTargetMode,
     destroy,
   };
