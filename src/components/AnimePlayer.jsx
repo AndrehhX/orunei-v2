@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Keyboard, Film, Zap, Sparkles, Cpu } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ChevronDown, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Keyboard, Film, Zap, Sparkles, Cpu, FlaskConical } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, markEpisodeWatched, formatTime } from '../playback/playbackProgress';
@@ -79,6 +79,15 @@ export default function AnimePlayer({
   });
   const [gpuFps, setGpuFps] = useState(null);
   const [abCompareMode, setAbCompareMode] = useState(false);
+  const [showLabs, setShowLabs] = useState(() => {
+    try {
+      const savedAi = localStorage.getItem('orunei_ai_super_res_mode');
+      const savedGpu = localStorage.getItem('orunei_anime_enhance_mode');
+      return (savedAi && savedAi !== 'off') || (savedGpu && savedGpu !== 'normal');
+    } catch {
+      return false;
+    }
+  });
 
 
   // Subtítulos
@@ -1428,143 +1437,177 @@ export default function AnimePlayer({
                   </>
                 )}
 
-                {/* Ajuste de AI Super Resolution (WebGPU CNN 2×) */}
-                <div className="mt-2 pt-2 border-t border-white/10 flex flex-col px-2.5 py-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col pr-2">
-                      <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
-                        <Cpu size={13} className={aiSuperResMode !== 'off' ? 'text-violet-400 fill-violet-400' : 'text-slate-400'} />
-                        AI Super Resolution (WebGPU)
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {aiSuperResMode !== 'off'
-                          ? (aiFps ? `${aiFps} FPS • ${aiInferenceMs != null ? `${aiInferenceMs}ms GPU • ` : ''}${WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}` : `Modo ${WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}`)
-                          : 'Normal (Desactivado)'}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={aiSuperResMode !== 'off'}
-                      onClick={() => handleChangeAiSuperResMode(aiSuperResMode === 'off' ? 'cnn-s' : 'off')}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${aiSuperResMode !== 'off' ? 'bg-violet-600' : 'bg-white/20'}`}
-                      title={aiSuperResMode !== 'off' ? 'Desactivar AI Super Resolution' : 'Activar AI Super Resolution (WebGPU CNN 2×)'}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${aiSuperResMode !== 'off' ? 'translate-x-4' : 'translate-x-0'}`}
+                {/* Sección colapsable: Orunei Labs (Experimental) */}
+                <div className="mt-2 pt-2 border-t border-white/10 flex flex-col">
+                  <button
+                    type="button"
+                    onClick={() => setShowLabs((prev) => !prev)}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white rounded-lg hover:bg-white/5 transition"
+                  >
+                    <span className="flex items-center gap-1.5 text-violet-400">
+                      <FlaskConical size={14} className="text-violet-400" />
+                      <span>Orunei Labs (Experimental)</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {(aiSuperResMode !== 'off' || animeEnhanceMode !== 'normal') && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/40">
+                          Activo
+                        </span>
+                      )}
+                      <ChevronDown
+                        size={14}
+                        className={`text-slate-400 transition-transform duration-200 ${showLabs ? 'rotate-180' : ''}`}
                       />
-                    </button>
-                  </div>
-
-                  {/* Selector de los 3 modos: Normal, CNN Small 2×, CNN Medium 2× */}
-                  <div className="mt-2 grid grid-cols-3 gap-1">
-                    {WEBGPU_SUPER_RES_MODES.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => handleChangeAiSuperResMode(m.id)}
-                        className={`py-1.5 px-1 text-[10px] rounded-lg text-center transition ${
-                          aiSuperResMode === m.id
-                            ? 'bg-violet-600 text-white font-extrabold shadow-sm'
-                            : 'text-slate-300 bg-white/5 hover:bg-white/10 font-semibold'
-                        }`}
-                        title={m.description}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Comparación visual A/B para AI Super Resolution */}
-                  {aiSuperResMode !== 'off' && (
-                    <button
-                      type="button"
-                      onClick={handleToggleAiAbCompare}
-                      className={`mt-2 flex items-center justify-between px-2.5 py-1.5 text-[11px] rounded-lg border transition ${
-                        aiAbCompare
-                          ? 'bg-violet-500/20 border-violet-500/50 text-violet-300 font-bold'
-                          : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-                      }`}
-                      title="Comparar original vs CNN 2× con pantalla dividida (Split-Screen A/B)"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <Cpu size={11} className={aiAbCompare ? 'text-violet-400' : 'text-slate-400'} />
-                        Comparación A/B (Split 50%)
-                      </span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40">
-                        {aiAbCompare ? 'Activo' : 'Off'}
-                      </span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Ajuste de Anime Enhance (Anime4K + AMD FidelityFX CAS - Fallback WebGL2) */}
-                <div className="mt-2 pt-2 border-t border-white/10 flex flex-col px-2.5 py-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col pr-2">
-                      <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
-                        <Sparkles size={13} className={animeEnhanceMode !== 'normal' ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
-                        Anime Enhance
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {animeEnhanceMode !== 'normal'
-                          ? (gpuFps ? `${gpuFps} FPS • ${ANIME_ENHANCE_MODES.find((m) => m.id === animeEnhanceMode)?.label}` : `Modo ${ANIME_ENHANCE_MODES.find((m) => m.id === animeEnhanceMode)?.label}`)
-                          : 'Normal (Original sin filtro)'}
-                      </span>
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={animeEnhanceMode !== 'normal'}
-                      onClick={handleToggleAnimeEnhance}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${animeEnhanceMode !== 'normal' ? 'bg-amber-500' : 'bg-white/20'}`}
-                      title={animeEnhanceMode !== 'normal' ? 'Desactivar Anime Enhance' : 'Activar Anime Enhance (Anime4K + AMD CAS)'}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${animeEnhanceMode !== 'normal' ? 'translate-x-4' : 'translate-x-0'}`}
-                      />
-                    </button>
-                  </div>
+                  </button>
 
-                  {/* Selector de los 3 modos: Normal, Equilibrado, Alta definición */}
-                  <div className="mt-2 grid grid-cols-3 gap-1">
-                    {ANIME_ENHANCE_MODES.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => handleChangeAnimeEnhanceMode(m.id)}
-                        className={`py-1.5 px-1 text-[10px] rounded-lg text-center transition ${
-                          animeEnhanceMode === m.id
-                            ? 'bg-amber-500 text-black font-extrabold shadow-sm'
-                            : 'text-slate-300 bg-white/5 hover:bg-white/10 font-semibold'
-                        }`}
-                        title={m.description}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
+                  {showLabs && (
+                    <div className="mt-2 p-2 rounded-xl bg-violet-950/20 border border-violet-500/20 flex flex-col gap-3 animate-fade">
+                      {/* Advertencia transparente */}
+                      <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[10px] text-amber-200/90 leading-relaxed">
+                        ⚠️ <strong>Modo experimental de GPU:</strong> Diseñado para pruebas en equipos con GPU dedicada y WebGPU. Puede aumentar el uso de batería o generar tirones en hardware estándar.
+                      </div>
 
-                  {/* Comparación visual A/B */}
-                  {animeEnhanceMode !== 'normal' && (
-                    <button
-                      type="button"
-                      onClick={handleToggleABCompare}
-                      className={`mt-2 flex items-center justify-between px-2.5 py-1.5 text-[11px] rounded-lg border transition ${
-                        abCompareMode
-                          ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold'
-                          : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-                      }`}
-                      title="Comparar original vs mejorado con pantalla dividida (Split-Screen A/B)"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <Sparkles size={11} className={abCompareMode ? 'text-amber-400' : 'text-slate-400'} />
-                        Comparación A/B (Split)
-                      </span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40">
-                        {abCompareMode ? 'Activo' : 'Off'}
-                      </span>
-                    </button>
+                      {/* Control: AI Super Resolution (WebGPU CNN 2×) */}
+                      <div className="flex flex-col">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col pr-2">
+                            <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
+                              <Cpu size={13} className={aiSuperResMode !== 'off' ? 'text-violet-400 fill-violet-400' : 'text-slate-400'} />
+                              AI Super Resolution (WebGPU)
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {aiSuperResMode !== 'off'
+                                ? (aiFps ? `${aiFps} FPS • ${aiInferenceMs != null ? `${aiInferenceMs}ms GPU • ` : ''}${WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}` : `Modo ${WEBGPU_SUPER_RES_MODES.find((m) => m.id === aiSuperResMode)?.label}`)
+                                : 'Normal (Desactivado)'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={aiSuperResMode !== 'off'}
+                            onClick={() => handleChangeAiSuperResMode(aiSuperResMode === 'off' ? 'cnn-s' : 'off')}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${aiSuperResMode !== 'off' ? 'bg-violet-600' : 'bg-white/20'}`}
+                            title={aiSuperResMode !== 'off' ? 'Desactivar AI Super Resolution' : 'Activar AI Super Resolution (WebGPU CNN 2×)'}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${aiSuperResMode !== 'off' ? 'translate-x-4' : 'translate-x-0'}`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Selector de los 3 modos: Normal, CNN Small 2×, CNN Medium 2× */}
+                        <div className="mt-2 grid grid-cols-3 gap-1">
+                          {WEBGPU_SUPER_RES_MODES.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => handleChangeAiSuperResMode(m.id)}
+                              className={`py-1.5 px-1 text-[10px] rounded-lg text-center transition ${
+                                aiSuperResMode === m.id
+                                  ? 'bg-violet-600 text-white font-extrabold shadow-sm'
+                                  : 'text-slate-300 bg-white/5 hover:bg-white/10 font-semibold'
+                              }`}
+                              title={m.description}
+                            >
+                              {m.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Comparación visual A/B para AI Super Resolution */}
+                        {aiSuperResMode !== 'off' && (
+                          <button
+                            type="button"
+                            onClick={handleToggleAiAbCompare}
+                            className={`mt-2 flex items-center justify-between px-2.5 py-1.5 text-[11px] rounded-lg border transition ${
+                              aiAbCompare
+                                ? 'bg-violet-500/20 border-violet-500/50 text-violet-300 font-bold'
+                                : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                            }`}
+                            title="Comparar original vs CNN 2× con pantalla dividida (Split-Screen A/B)"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Cpu size={11} className={aiAbCompare ? 'text-violet-400' : 'text-slate-400'} />
+                              Comparación A/B (Split 50%)
+                            </span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40">
+                              {aiAbCompare ? 'Activo' : 'Off'}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Control: Anime Enhance (WebGL2 Shader Fallback) */}
+                      <div className="pt-2 border-t border-white/10 flex flex-col">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col pr-2">
+                            <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
+                              <Sparkles size={13} className={animeEnhanceMode !== 'normal' ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
+                              Anime Enhance (WebGL2)
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {animeEnhanceMode !== 'normal'
+                                ? (gpuFps ? `${gpuFps} FPS • ${ANIME_ENHANCE_MODES.find((m) => m.id === animeEnhanceMode)?.label}` : `Modo ${ANIME_ENHANCE_MODES.find((m) => m.id === animeEnhanceMode)?.label}`)
+                                : 'Normal (Desactivado)'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={animeEnhanceMode !== 'normal'}
+                            onClick={handleToggleAnimeEnhance}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${animeEnhanceMode !== 'normal' ? 'bg-amber-500' : 'bg-white/20'}`}
+                            title={animeEnhanceMode !== 'normal' ? 'Desactivar Anime Enhance' : 'Activar Anime Enhance (Anime4K + AMD CAS)'}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${animeEnhanceMode !== 'normal' ? 'translate-x-4' : 'translate-x-0'}`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Selector de los 3 modos */}
+                        <div className="mt-2 grid grid-cols-3 gap-1">
+                          {ANIME_ENHANCE_MODES.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => handleChangeAnimeEnhanceMode(m.id)}
+                              className={`py-1.5 px-1 text-[10px] rounded-lg text-center transition ${
+                                animeEnhanceMode === m.id
+                                  ? 'bg-amber-500 text-black font-extrabold shadow-sm'
+                                  : 'text-slate-300 bg-white/5 hover:bg-white/10 font-semibold'
+                              }`}
+                              title={m.description}
+                            >
+                              {m.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Comparación visual A/B */}
+                        {animeEnhanceMode !== 'normal' && (
+                          <button
+                            type="button"
+                            onClick={handleToggleABCompare}
+                            className={`mt-2 flex items-center justify-between px-2.5 py-1.5 text-[11px] rounded-lg border transition ${
+                              abCompareMode
+                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold'
+                                : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                            }`}
+                            title="Comparar original vs mejorado con pantalla dividida (Split-Screen A/B)"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Sparkles size={11} className={abCompareMode ? 'text-amber-400' : 'text-slate-400'} />
+                              Comparación A/B (Split)
+                            </span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40">
+                              {abCompareMode ? 'Activo' : 'Off'}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
 
