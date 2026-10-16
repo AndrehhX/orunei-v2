@@ -4,14 +4,16 @@
  * Motor Experimental de Interpolación Neuronal de Fotogramas (VFI) mediante RIFE + WebGPU
  * Basado en el runtime Framegen (WGSL compute kernels nativos) y arquitectura IFNet de RIFE.
  * 
- * Capacidades:
- * - Detección nativa de WebGPU y soporte de f16 (`shader-f16`).
- * - Inferencia de flujo óptico bidireccional y deformación hacia adelante/atrás (Warping).
- * - Modos de interpolación: 24 FPS -> 48 FPS y 30 FPS -> 60 FPS (t = 0.5).
- * - Detección de cortes de escena (Scene Cut Detection) para evitar artefactos de metamorfosis.
- * - Detección de fotogramas estáticos / animación en 2s (Duplicate frame bypass).
- * - Comparativa visual directa contra Alpha Blending ingenuo y reproducción nativa.
- * - Telemetría empírica de milisegundos GPU por fotograma y guardián de sobrecarga.
+ * Capacidades e Instrumentación de Precisión:
+ * - Detección nativa de WebGPU, extensión f16 (`shader-f16`) y `timestamp-query`.
+ * - Extracción estricta de metadatos de la GPU real (vendor, architecture, device, driver).
+ * - Sincronización estricta GPU mediante `await device.queue.onSubmittedWorkDone()`
+ *   para medir latencia real de ejecución física de hardware (eliminando falsos reportes de CPU dispatch).
+ * - Segmentación estricta de métricas: CPU Dispatch vs GPU Execution vs Percentiles P50, P95, P99.
+ * - Clasificador temporal de transiciones (Scene Cut vs 1-Frame Lighting Flash vs Hold 2s/3s vs Movimiento continuo).
+ * - Evaluación matemática contra Ground Truth (MAE y PSNR en dB contra cuadro real intermedio).
+ * - Soporte de resoluciones cuantizadas: SD (640×368), HD (1280×720) y FHD (1920×1072).
+ * - Estimación analítica de consumo VRAM por resolución.
  */
 
 import { createRT } from 'framegen';
@@ -28,18 +30,24 @@ export const INTERPOLATION_TARGETS = {
     label: '24 → 48 FPS',
     baseFps: 24,
     targetFps: 48,
-    frameIntervalMs: 1000 / 48, // 20.83 ms
+    frameIntervalMs: 1000 / 48, // 20.833 ms
   },
   '60fps': {
     label: '30 → 60 FPS',
     baseFps: 30,
     targetFps: 60,
-    frameIntervalMs: 1000 / 60, // 16.66 ms
+    frameIntervalMs: 1000 / 60, // 16.666 ms
   },
 };
 
+export const SUPPORTED_RESOLUTIONS = {
+  'sd': { label: '640 × 368 (SD)', width: 640, height: 368 },
+  '720p': { label: '1280 × 720 (HD 720p)', width: 1280, height: 720 },
+  '1080p': { label: '1920 × 1072 (FHD 1080p)', width: 1920, height: 1072 },
+};
+
 /**
- * Comprueba compatibilidad con WebGPU y la extensión obligatoria shader-f16
+ * Comprueba compatibilidad con WebGPU, shader-f16 y extrae metadatos exactos de la GPU
  */
 export async function checkWebGPUSupport() {
   if (typeof navigator === 'undefined' || !navigator.gpu) {
@@ -47,6 +55,7 @@ export async function checkWebGPUSupport() {
       supported: false,
       reason: 'El navegador no tiene soporte para WebGPU (navigator.gpu ausente).',
       hasF16: false,
+      hasTimestampQuery: false,
       gpuInfo: null,
     };
   }
@@ -58,19 +67,47 @@ export async function checkWebGPUSupport() {
         supported: false,
         reason: 'No se encontró un adaptador GPU compatible.',
         hasF16: false,
+        hasTimestampQuery: false,
         gpuInfo: null,
       };
     }
 
     const hasF16 = adapter.features.has('shader-f16');
-    let gpuInfo = null;
-    try {
-      gpuInfo = adapter.info || (await adapter.requestAdapterInfo?.()) || null;
-    } catch {}
+    const hasTimestampQuery = adapter.features.has('timestamp-query');
+
+    let gpuInfo = {
+      vendor: 'Desconocido',
+      architecture: 'Desconocida',
+      device: 'Desconocido',
+      description: 'Desconocida',
+      driver: 'Desconocido',
+    };
+
+    if (adapter.info) {
+      gpuInfo = {
+        vendor: adapter.info.vendor || 'Desconocido',
+        architecture: adapter.info.architecture || 'Desconocida',
+        device: adapter.info.device || 'Desconocido',
+        description: adapter.info.description || 'Desconocida',
+        driver: adapter.info.driver || 'Desconocido',
+      };
+    } else if (typeof adapter.requestAdapterInfo === 'function') {
+      try {
+        const req = await adapter.requestAdapterInfo();
+        gpuInfo = {
+          vendor: req.vendor || 'Desconocido',
+          architecture: req.architecture || 'Desconocida',
+          device: req.device || 'Desconocido',
+          description: req.description || 'Desconocida',
+          driver: req.driver || 'Desconocido',
+        };
+      } catch {}
+    }
 
     return {
       supported: true,
       hasF16,
+      hasTimestampQuery,
       adapter,
       gpuInfo,
       reason: hasF16
@@ -82,6 +119,7 @@ export async function checkWebGPUSupport() {
       supported: false,
       reason: err.message || 'Error al consultar WebGPU.',
       hasF16: false,
+      hasTimestampQuery: false,
       gpuInfo: null,
     };
   }
@@ -107,7 +145,7 @@ export async function loadRifeWeights(basePath = '/weights/rife') {
     ]);
 
     return { weightsBin, weightsManifest };
-  } catch (localErr) {
+  } catch {
     // Fallback a CDN oficial de Framegen si no está disponible localmente
     const CDN_BASE = 'https://cdn.jsdelivr.net/npm/framegen@1.4.0/weights';
     const [binRes, jsonRes] = await Promise.all([
@@ -133,7 +171,6 @@ export function quantizeToMultipleOf16(width, height) {
 
 /**
  * Calcula la diferencia media absoluta (MAD) normalizada entre dos buffers RGBA
- * Utilizado para Detección de Cortes de Plano y Detección de Cuadros Duplicados
  */
 export function calculateFrameDifference(rgbaA, rgbaB, sampleStep = 8) {
   if (!rgbaA || !rgbaB || rgbaA.length !== rgbaB.length) return 1.0;
@@ -150,6 +187,93 @@ export function calculateFrameDifference(rgbaA, rgbaB, sampleStep = 8) {
   }
 
   return count > 0 ? sumDiff / count : 0;
+}
+
+/**
+ * Calcula el error absoluto medio (MAE) entre dos buffers RGBA en rango [0, 255]
+ */
+export function calculateMAE(rgbaA, rgbaB, sampleStep = 4) {
+  if (!rgbaA || !rgbaB || rgbaA.length !== rgbaB.length) return 255;
+  let sum = 0;
+  let count = 0;
+  const len = rgbaA.length;
+  for (let i = 0; i < len; i += 4 * sampleStep) {
+    sum += Math.abs(rgbaA[i] - rgbaB[i]) +
+           Math.abs(rgbaA[i + 1] - rgbaB[i + 1]) +
+           Math.abs(rgbaA[i + 2] - rgbaB[i + 2]);
+    count += 3;
+  }
+  return count > 0 ? parseFloat((sum / count).toFixed(2)) : 255;
+}
+
+/**
+ * Calcula el PSNR (Peak Signal-to-Noise Ratio en dB) entre dos buffers RGBA
+ */
+export function calculatePSNR(rgbaA, rgbaB, sampleStep = 4) {
+  if (!rgbaA || !rgbaB || rgbaA.length !== rgbaB.length) return 0;
+  let sumSq = 0;
+  let count = 0;
+  const len = rgbaA.length;
+  for (let i = 0; i < len; i += 4 * sampleStep) {
+    const dR = rgbaA[i] - rgbaB[i];
+    const dG = rgbaA[i + 1] - rgbaB[i + 1];
+    const dB = rgbaA[i + 2] - rgbaB[i + 2];
+    sumSq += dR * dR + dG * dG + dB * dB;
+    count += 3;
+  }
+  const mse = count > 0 ? sumSq / count : 0;
+  if (mse === 0) return 99.0;
+  return parseFloat((10 * Math.log10((255 * 255) / mse)).toFixed(2));
+}
+
+/**
+ * Clasificador temporal de transiciones:
+ * Distingue entre:
+ * - 'flash': Destello de 1 fotograma (F_{t-1} vs F_t alto, pero F_{t-1} vs F_{t+1} bajo).
+ * - 'cut': Corte de plano real (F_{t-1} vs F_t alto, y F_{t-1} vs F_{t+1} alto).
+ * - 'hold': Cuadro duplicado o estático de anime (diferencia < DUPLICATE_THRESHOLD).
+ * - 'motion': Movimiento normal continuo.
+ */
+export function classifyTransition(rgbaPrev, rgbaCurr, rgbaNext = null, options = {}) {
+  const cutThreshold = options.cutThreshold ?? RIFE_SETTINGS.SCENE_CUT_THRESHOLD;
+  const duplicateThreshold = options.duplicateThreshold ?? RIFE_SETTINGS.DUPLICATE_THRESHOLD;
+
+  const diffPrevCurr = calculateFrameDifference(rgbaPrev, rgbaCurr);
+  if (diffPrevCurr < duplicateThreshold) {
+    return { type: 'hold', diff: diffPrevCurr };
+  }
+
+  if (diffPrevCurr > cutThreshold) {
+    if (rgbaNext) {
+      const diffPrevNext = calculateFrameDifference(rgbaPrev, rgbaNext);
+      // Si la escena regresa inmediatamente al fondo anterior, fue un flash de 1 cuadro
+      if (diffPrevNext < cutThreshold * 0.75) {
+        return { type: 'flash', diff: diffPrevCurr, diffRecovery: diffPrevNext };
+      }
+    }
+    return { type: 'cut', diff: diffPrevCurr };
+  }
+
+  return { type: 'motion', diff: diffPrevCurr };
+}
+
+/**
+ * Calcula percentiles (P50, P95, P99, min, max, avg) de una muestra de latencias
+ */
+export function computePercentiles(samples) {
+  if (!samples || samples.length === 0) {
+    return { p50: 0, p95: 0, p99: 0, min: 0, max: 0, avg: 0, count: 0 };
+  }
+  const sorted = [...samples].sort((a, b) => a - b);
+  const count = sorted.length;
+  const p50 = sorted[Math.floor(count * 0.50)];
+  const p95 = sorted[Math.floor(count * 0.95)];
+  const p99 = sorted[Math.floor(count * 0.99)];
+  const min = sorted[0];
+  const max = sorted[count - 1];
+  const sum = sorted.reduce((acc, v) => acc + v, 0);
+  const avg = parseFloat((sum / count).toFixed(2));
+  return { p50, p95, p99, min, max, avg, count };
 }
 
 /**
@@ -170,15 +294,16 @@ export function generateAlphaBlendFrame(rgbaA, rgbaB, alpha = 0.5) {
 }
 
 /**
- * Instancia y orquesta el pipeline de interpolación RIFE WebGPU
+ * Instancia y orquesta el pipeline de interpolación RIFE WebGPU con telemetría de hardware
  */
 export async function createRifeEngine({
   width = 640,
-  height = 360,
+  height = 368,
   targetMode = '48fps',
   onTelemetry,
   onSceneCut,
   onDuplicateBypass,
+  onFlashDetected,
   onError,
 }) {
   const gpuCheck = await checkWebGPUSupport();
@@ -189,8 +314,13 @@ export async function createRifeEngine({
   }
 
   const { w, h } = quantizeToMultipleOf16(width, height);
+  const requiredFeatures = ['shader-f16'];
+  if (gpuCheck.hasTimestampQuery) {
+    requiredFeatures.push('timestamp-query');
+  }
+
   const device = await gpuCheck.adapter.requestDevice({
-    requiredFeatures: ['shader-f16'],
+    requiredFeatures,
   });
 
   const { weightsBin, weightsManifest } = await loadRifeWeights();
@@ -229,6 +359,11 @@ export async function createRifeEngine({
     format: 'rgba8unorm',
     usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
   });
+
+  // Estimación de memoria VRAM asignada
+  const vramTexturesBytes = (w * h * 4) * 4;
+  const vramFeaturesBytes = (w * h * 2) * 20; // Aproximación piramidal f16 IFNet
+  const estimatedVramMb = parseFloat(((vramTexturesBytes + vramFeaturesBytes) / (1024 * 1024)).toFixed(2));
 
   // Shader para presentar texturas directamente en el canvas WebGPU sin costo de CPU
   const canvasFormat = navigator.gpu?.getPreferredCanvasFormat?.() || 'bgra8unorm';
@@ -281,69 +416,121 @@ export async function createRifeEngine({
   let isDestroyed = false;
   let activeTarget = INTERPOLATION_TARGETS[targetMode] || INTERPOLATION_TARGETS['48fps'];
 
-  // Estados de telemetría
-  let totalInferenceMs = 0;
-  let inferenceCount = 0;
+  // Telemetría con registro de percentiles (ventana deslizante de 100 muestras)
+  const latencyHistory = [];
   let droppedFrames = 0;
-  let lastInferenceMs = 0;
-  let overloadDuration = 0;
+  let lastCpuDispatchMs = 0;
+  let lastGpuExecutionMs = 0;
+
+  /**
+   * Extrae los píxeles de salida de la GPU a un buffer Uint8Array en CPU
+   * Utilizado para validación matemática contra Ground Truth
+   */
+  async function readbackOutputFrame() {
+    const bytesPerRow = Math.ceil((w * 4) / 256) * 256;
+    const bufferSize = bytesPerRow * h;
+    const readbackBuffer = device.createBuffer({
+      size: bufferSize,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+    const encoder = device.createCommandEncoder();
+    encoder.copyTextureToBuffer(
+      { texture: outTex },
+      { buffer: readbackBuffer, bytesPerRow, rowsPerImage: h },
+      [w, h]
+    );
+    device.queue.submit([encoder.finish()]);
+    await device.queue.onSubmittedWorkDone();
+    await readbackBuffer.mapAsync(GPUMapMode.READ);
+    const mapped = new Uint8Array(readbackBuffer.getMappedRange());
+    const result = new Uint8Array(w * h * 4);
+    for (let row = 0; row < h; row++) {
+      const srcOffset = row * bytesPerRow;
+      const dstOffset = row * w * 4;
+      result.set(mapped.subarray(srcOffset, srcOffset + w * 4), dstOffset);
+    }
+    readbackBuffer.unmap();
+    readbackBuffer.destroy();
+    return result;
+  }
 
   /**
    * Procesa un par de fotogramas secuenciales (Frame A y Frame B)
-   * Devuelve el fotograma intermedio interpolado en t = 0.5
+   * Devuelve el fotograma intermedio interpolado en t = 0.5 con sincronización real GPU
    */
   async function interpolatePair(rgbaA, rgbaB, options = {}) {
     if (isDestroyed) return null;
 
-    const { forceMode = 'rife' } = options; // 'rife' | 'blend' | 'native'
+    const { forceMode = 'rife', rgbaNext = null } = options;
     const t0 = performance.now();
 
-    // 1. Análisis de continuidad temporal entre A y B
-    const frameDiff = calculateFrameDifference(rgbaA, rgbaB);
+    // 1. Clasificación temporal avanzada de la transición
+    const classification = classifyTransition(rgbaA, rgbaB, rgbaNext);
 
-    // Detección de fotogramas estáticos / anime en 2s
-    if (frameDiff < RIFE_SETTINGS.DUPLICATE_THRESHOLD) {
-      onDuplicateBypass?.({ diff: frameDiff });
+    if (classification.type === 'hold') {
+      onDuplicateBypass?.({ diff: classification.diff });
       return {
         frame: rgbaA,
         mode: 'duplicate-hold',
-        diff: frameDiff,
-        inferenceMs: 0.1,
+        diff: classification.diff,
+        cpuDispatchMs: 0.05,
+        gpuExecutionMs: 0.0,
+        totalGpuMs: 0.05,
         motionDetected: false,
       };
     }
 
-    // Detección de cortes de plano (Scene Cut)
-    if (frameDiff > RIFE_SETTINGS.SCENE_CUT_THRESHOLD) {
-      onSceneCut?.({ diff: frameDiff });
+    if (classification.type === 'flash') {
+      onFlashDetected?.({ diff: classification.diff, recovery: classification.diffRecovery });
+      // En un flash de 1 cuadro se presenta Frame A sin distorsionar el flujo óptico
       return {
-        frame: rgbaA, // En un corte se mantiene Frame A para evitar morphing irreal
-        mode: 'scene-cut-bypass',
-        diff: frameDiff,
-        inferenceMs: 0.1,
+        frame: rgbaA,
+        mode: 'flash-bypass',
+        diff: classification.diff,
+        cpuDispatchMs: 0.05,
+        gpuExecutionMs: 0.0,
+        totalGpuMs: 0.05,
         motionDetected: true,
       };
     }
 
-    // 2. Modo Alpha Blending ingenuo (Línea base comparativa)
+    if (classification.type === 'cut') {
+      onSceneCut?.({ diff: classification.diff });
+      return {
+        frame: rgbaA, // En un corte se mantiene Frame A para evitar morphing irreal
+        mode: 'scene-cut-bypass',
+        diff: classification.diff,
+        cpuDispatchMs: 0.05,
+        gpuExecutionMs: 0.0,
+        totalGpuMs: 0.05,
+        motionDetected: true,
+      };
+    }
+
+    // 2. Modo Alpha Blending ingenuo
     if (forceMode === 'blend') {
       const blended = generateAlphaBlendFrame(rgbaA, rgbaB, 0.5);
-      const duration = performance.now() - t0;
+      const tSubmit = performance.now();
       if (options.targetWebgpuContext) {
         device.queue.writeTexture({ texture: blendTex }, blended, { bytesPerRow: w * 4 }, [w, h]);
         presentToCanvas(blendTex, options.targetWebgpuContext);
       }
+      await device.queue.onSubmittedWorkDone();
+      const tDone = performance.now();
       return {
         frame: blended,
         mode: 'alpha-blend',
-        diff: frameDiff,
-        inferenceMs: duration,
+        diff: classification.diff,
+        cpuDispatchMs: parseFloat((tSubmit - t0).toFixed(2)),
+        gpuExecutionMs: parseFloat((tDone - tSubmit).toFixed(2)),
+        totalGpuMs: parseFloat((tDone - t0).toFixed(2)),
         motionDetected: true,
       };
     }
 
     // 3. Modo Nativo directo
     if (forceMode === 'native') {
+      const tSubmit = performance.now();
       if (options.targetWebgpuContext) {
         if (options.sourceCanvasA) {
           device.queue.copyExternalImageToTexture({ source: options.sourceCanvasA }, { texture: texA }, [w, h]);
@@ -352,18 +539,21 @@ export async function createRifeEngine({
         }
         presentToCanvas(texA, options.targetWebgpuContext);
       }
+      await device.queue.onSubmittedWorkDone();
+      const tDone = performance.now();
       return {
         frame: rgbaA,
         mode: 'native',
-        diff: frameDiff,
-        inferenceMs: 0,
+        diff: classification.diff,
+        cpuDispatchMs: parseFloat((tSubmit - t0).toFixed(2)),
+        gpuExecutionMs: parseFloat((tDone - tSubmit).toFixed(2)),
+        totalGpuMs: parseFloat((tDone - t0).toFixed(2)),
         motionDetected: true,
       };
     }
 
-    // 4. Inferencia Neuronal Real RIFE (Flujo óptico bidireccional + deformación hacia t=0.5)
+    // 4. Inferencia Neuronal Real RIFE con sincronización obligatoria de hardware
     try {
-      // Cargar texturas de entrada a GPU (Zero-Copy si es canvas/video)
       if (options.sourceCanvasA && options.sourceCanvasB) {
         device.queue.copyExternalImageToTexture({ source: options.sourceCanvasA }, { texture: texA }, [w, h]);
         device.queue.copyExternalImageToTexture({ source: options.sourceCanvasB }, { texture: texB }, [w, h]);
@@ -372,43 +562,61 @@ export async function createRifeEngine({
         device.queue.writeTexture({ texture: texB }, rgbaB, { bytesPerRow: w * 4 }, [w, h]);
       }
 
-      // Ejecución de inferencia RIFE en GPU: tronco de flujo óptico + cabezal t=0.5
+      // Registro de comandos en CPU
       rt.prepPair(texA, texB);
       rt.runT(0.5, outTex);
 
-      // Presentar directamente en WebGPU canvas (Zero-Copy)
       if (options.targetWebgpuContext) {
         presentToCanvas(outTex, options.targetWebgpuContext);
       }
 
-      const duration = performance.now() - t0;
-      lastInferenceMs = duration;
-      totalInferenceMs += duration;
-      inferenceCount++;
+      const tSubmit = performance.now();
+      lastCpuDispatchMs = parseFloat((tSubmit - t0).toFixed(2));
 
-      // Verificación de presupuesto de tiempo
+      // Sincronización real de hardware: esperar a que la GPU ejecute todos los shaders de convolución y warping
+      await device.queue.onSubmittedWorkDone();
+      const tDone = performance.now();
+
+      const totalGpuMs = parseFloat((tDone - t0).toFixed(2));
+      lastGpuExecutionMs = parseFloat((tDone - tSubmit).toFixed(2));
+
+      // Registro en el buffer de percentiles
+      latencyHistory.push(totalGpuMs);
+      if (latencyHistory.length > 100) latencyHistory.shift();
+
+      const percentiles = computePercentiles(latencyHistory);
+
+      // Verificación de presupuesto de tiempo (Deadline)
       const budgetMs = activeTarget.frameIntervalMs * RIFE_SETTINGS.MAX_GPU_BUDGET_RATIO;
-      if (duration > budgetMs) {
-        overloadDuration += duration;
+      if (totalGpuMs > budgetMs) {
         droppedFrames++;
-      } else {
-        overloadDuration = 0;
       }
 
       onTelemetry?.({
-        lastInferenceMs: parseFloat(duration.toFixed(2)),
-        avgInferenceMs: parseFloat((totalInferenceMs / inferenceCount).toFixed(2)),
-        diff: parseFloat(frameDiff.toFixed(4)),
+        cpuDispatchMs: lastCpuDispatchMs,
+        gpuExecutionMs: lastGpuExecutionMs,
+        totalGpuMs,
+        p50: percentiles.p50,
+        p95: percentiles.p95,
+        p99: percentiles.p99,
+        diff: parseFloat(classification.diff.toFixed(4)),
         droppedFrames,
-        gpuVendor: gpuCheck.gpuInfo?.vendor || 'WebGPU',
-        gpuDevice: gpuCheck.gpuInfo?.device || gpuCheck.gpuInfo?.architecture || 'Device',
+        estimatedVramMb,
+        gpuVendor: gpuCheck.gpuInfo.vendor,
+        gpuArchitecture: gpuCheck.gpuInfo.architecture,
+        gpuDevice: gpuCheck.gpuInfo.device,
+        gpuDescription: gpuCheck.gpuInfo.description,
+        gpuDriver: gpuCheck.gpuInfo.driver,
+        hasTimestampQuery: gpuCheck.hasTimestampQuery,
       });
 
       return {
         outTexture: outTex,
         mode: 'rife-neural',
-        diff: frameDiff,
-        inferenceMs: duration,
+        diff: classification.diff,
+        cpuDispatchMs: lastCpuDispatchMs,
+        gpuExecutionMs: lastGpuExecutionMs,
+        totalGpuMs,
         motionDetected: true,
       };
     } catch (err) {
@@ -416,11 +624,48 @@ export async function createRifeEngine({
       return {
         frame: rgbaA,
         mode: 'error-fallback',
-        diff: frameDiff,
-        inferenceMs: performance.now() - t0,
+        diff: classification.diff,
+        cpuDispatchMs: 0,
+        gpuExecutionMs: 0,
+        totalGpuMs: performance.now() - t0,
         error: err.message,
       };
     }
+  }
+
+  /**
+   * Ejecuta una evaluación comparativa matemática contra Ground Truth
+   */
+  async function evaluateAgainstGroundTruth(rgba0, rgba1_gt, rgba2) {
+    // 1. Inferencia RIFE
+    device.queue.writeTexture({ texture: texA }, rgba0, { bytesPerRow: w * 4 }, [w, h]);
+    device.queue.writeTexture({ texture: texB }, rgba2, { bytesPerRow: w * 4 }, [w, h]);
+    rt.prepPair(texA, texB);
+    rt.runT(0.5, outTex);
+    await device.queue.onSubmittedWorkDone();
+    const rifePred = await readbackOutputFrame();
+
+    // 2. Alpha Blend
+    const blendPred = generateAlphaBlendFrame(rgba0, rgba2, 0.5);
+
+    // 3. Hold Frame 0
+    const holdPred = rgba0;
+
+    // Métricas
+    const rifeMae = calculateMAE(rifePred, rgba1_gt);
+    const rifePsnr = calculatePSNR(rifePred, rgba1_gt);
+
+    const blendMae = calculateMAE(blendPred, rgba1_gt);
+    const blendPsnr = calculatePSNR(blendPred, rgba1_gt);
+
+    const holdMae = calculateMAE(holdPred, rgba1_gt);
+    const holdPsnr = calculatePSNR(holdPred, rgba1_gt);
+
+    return {
+      rife: { mae: rifeMae, psnr: rifePsnr },
+      blend: { mae: blendMae, psnr: blendPsnr },
+      hold: { mae: holdMae, psnr: holdPsnr },
+    };
   }
 
   function setTargetMode(newMode) {
@@ -435,6 +680,12 @@ export async function createRifeEngine({
       rt.destroy();
     } catch {}
     try {
+      texA.destroy();
+      texB.destroy();
+      outTex.destroy();
+      blendTex.destroy();
+    } catch {}
+    try {
       device.destroy();
     } catch {}
   }
@@ -444,7 +695,10 @@ export async function createRifeEngine({
     h,
     device,
     gpuCheck,
+    estimatedVramMb,
     interpolatePair,
+    evaluateAgainstGroundTruth,
+    readbackOutputFrame,
     setTargetMode,
     destroy,
   };
