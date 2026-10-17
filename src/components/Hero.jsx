@@ -6,6 +6,7 @@ import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
 import { createLibraryEntry } from '../profile/model.js'
 import { formatHeroTitle, truncateWithEllipsis } from '../ui/text.js'
+import { isMalIdDubbedInSpanish } from '../playback/dubSeasonManager.js'
 
 export default function Hero({ onOpenDetail }) {
   const rec = useRec()
@@ -13,6 +14,7 @@ export default function Hero({ onOpenDetail }) {
   const latest = rec.latest || []
   const currentSlides = useMemo(() => latest.length >= 3 ? latest.map((item) => ({
     id: item.id,
+    idMal: item.idMal,
     title: item.title,
     q: item.title,
     img: item.img,
@@ -23,6 +25,7 @@ export default function Hero({ onOpenDetail }) {
   })) : slides.map((slide) => ({ ...slide, desc: truncateWithEllipsis(slide.desc) })), [latest])
   const currentTrending = useMemo(() => latest[0] ? {
     id: latest[0].id,
+    idMal: latest[0].idMal,
     title: latest[0].title,
     q: latest[0].title,
     img: latest[0].img,
@@ -61,7 +64,14 @@ export default function Hero({ onOpenDetail }) {
               className={`absolute inset-0 transition-all duration-[900ms] ease-out ${on ? 'opacity-100 scale-100' : 'pointer-events-none opacity-0 scale-[1.04]'}`}>
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
               <div className={`relative flex h-full max-w-[430px] flex-col justify-start gap-2 px-6 pb-12 pt-6 text-white transition-all duration-700 delay-150 ${on ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
-                <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur"><Sparkles size={13} className="text-yellow-300" />{heroLabel}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur"><Sparkles size={13} className="text-yellow-300" />{heroLabel}</span>
+                  {isMalIdDubbedInSpanish(s.idMal || s.id) && (
+                    <span className="flex w-fit items-center gap-1 rounded-full bg-emerald-600/90 border border-emerald-400/30 px-2.5 py-1 text-xs font-bold text-white backdrop-blur shadow-md animate-fade">
+                      🇲🇽 DUB Latino
+                    </span>
+                  )}
+                </div>
                 <h2 className="line-clamp-2 h-[80px] shrink-0 overflow-hidden text-4xl font-extrabold leading-[1.05] tracking-tight">{formatHeroTitle(s.title)}</h2>
                 <p className="text-xs text-white/80">{s.meta}</p>
                 <p className="line-clamp-2 h-12 shrink-0 overflow-hidden text-sm leading-6 text-white/85">{s.desc}</p>
@@ -88,6 +98,11 @@ export default function Hero({ onOpenDetail }) {
       <Poster {...currentTrending} onClick={() => onOpenDetail?.(currentTrending)} className="group hidden h-[360px] cursor-pointer rounded-2xl shadow-sm md:h-[340px] xl:h-[320px] md:block border border-white/5 hover:border-brand/30 transition-all duration-300">
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/20" />
         <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1 text-xs text-white backdrop-blur-md border border-white/10"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
+        {isMalIdDubbedInSpanish(currentTrending.idMal || currentTrending.id) && (
+          <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-emerald-600/90 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-extrabold text-white backdrop-blur-md shadow-md z-10 animate-fade">
+            🇲🇽 DUB
+          </span>
+        )}
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
           <h3 className="line-clamp-2 h-[48px] overflow-hidden text-lg font-bold leading-6 transition-colors duration-200 group-hover:text-brand">{formatHeroTitle(currentTrending.title, 34)}</h3>
           <p className="text-[11px] text-white/80">{currentTrending.meta}</p>

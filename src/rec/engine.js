@@ -111,7 +111,7 @@ export function toItem(m) {
   if (m.format) f['f:' + m.format] = 0.3
   if (m.seasonYear) f['d:' + Math.floor(m.seasonYear / 10) * 10] = 0.25
   const title = m.title.english || m.title.romaji
-  return { id: m.id, title, alts: [m.title.romaji, m.title.english].filter(Boolean).map((x) => x.toLowerCase()), description: m.description || '', genres: m.genres || [],
+  return { id: m.id, idMal: m.idMal || null, title, alts: [m.title.romaji, m.title.english].filter(Boolean).map((x) => x.toLowerCase()), description: m.description || '', genres: m.genres || [],
     img: m.coverImage?.extraLarge, banner: m.bannerImage, year: m.seasonYear, score: m.averageScore || 0,
     pop: m.popularity || 0, trend: m.trending || 0, f }
 }

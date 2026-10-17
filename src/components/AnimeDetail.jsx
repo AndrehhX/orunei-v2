@@ -501,7 +501,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
         .catch(() => setMiruroId(null))
 
       verifySeasonDubAvailability({
-        malId: m.idMal,
+        malId: m.idMal || m.id,
         animeTitle: title(m),
         expectedEpisodes: m.episodes || 1
       })
@@ -629,10 +629,11 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
     }
 
     let currentDub = dubAvailability
-    if (!currentDub && isMalIdDubbedInSpanish(m.idMal || m.id)) {
+    const hasDubCataloged = isMalIdDubbedInSpanish(m.idMal || m.id)
+    if (!currentDub && hasDubCataloged) {
       try {
         currentDub = await verifySeasonDubAvailability({
-          malId: m.idMal,
+          malId: m.idMal || m.id,
           animeTitle: title(m),
           expectedEpisodes: m.episodes || 1
         })
@@ -640,7 +641,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
       } catch (_) {}
     }
 
-    if (currentDub?.available && currentDub?.hasLatino) {
+    if (currentDub?.hasLatino || hasDubCataloged) {
       setPendingPlayEpisode(ep)
       setShowSeasonAudioModal(true)
     } else {
@@ -741,7 +742,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
                 <p className="text-sm text-slate-500">{m.title?.native || ''}{m.title?.native && m.title?.romaji ? ' · ' : ''}{m.title?.romaji && m.title?.romaji !== title(m) ? m.title.romaji : ''}</p>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {(m.genres || []).map((g) => <span key={g} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: accent }}>{g}</span>)}
-                  {dubAvailability?.hasLatino && (
+                  {(dubAvailability?.hasLatino || isMalIdDubbedInSpanish(m.idMal || m.id)) && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm animate-fade">
                       <span>🇲🇽</span>
                       <span>Doblaje Latino (1080p)</span>

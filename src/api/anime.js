@@ -67,7 +67,7 @@ export async function searchAnime(f, page = 1, signal) {
 const DETAIL = `query($id:Int){ Media(id:$id,type:ANIME){ id idMal title{romaji english native} description(asHtml:false) bannerImage coverImage{extraLarge color}
   genres tags{name rank isGeneralSpoiler isMediaSpoiler} averageScore popularity favourites episodes duration status season seasonYear format source
   studios(isMain:true){nodes{name}} trailer{id site} streamingEpisodes{title thumbnail url site} externalLinks{site url} nextAiringEpisode{episode airingAt}
-  recommendations(sort:RATING_DESC,perPage:6){nodes{mediaRecommendation{id title{romaji english} coverImage{extraLarge color} averageScore genres seasonYear format status episodes bannerImage}}}
+  recommendations(sort:RATING_DESC,perPage:6){nodes{mediaRecommendation{id idMal title{romaji english} coverImage{extraLarge color} averageScore genres seasonYear format status episodes bannerImage}}}
   reviews(limit:5,sort:RATING_DESC){nodes{id summary score rating ratingAmount createdAt user{name avatar{medium}}}} } }`
 export const getAnime = async (id) => (await gql(DETAIL, { id })).Media
 

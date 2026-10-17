@@ -108,14 +108,65 @@ export function markDubAsUnavailable(malId) {
 }
 
 /**
+ * Mapeo rápido de AniList ID a MyAnimeList (MAL) ID.
+ * Permite resolución instantánea (0ms) incluso cuando solo se dispone del identificador de AniList.
+ */
+export const ANILIST_TO_MAL_MAP = {
+  '113415': '40748', // Jujutsu Kaisen S1
+  '145064': '51009', // Jujutsu Kaisen S2
+  '108465': '39535', // Mushoku Tensei S1
+  '127230': '44511', // Chainsaw Man
+  '154587': '52991', // Sousou no Frieren
+  '11061': '16498',  // Shingeki no Kyojin S1
+  '20958': '25777',  // Shingeki no Kyojin S2
+  '99147': '35760',  // Shingeki no Kyojin S3
+  '104578': '38524', // Shingeki no Kyojin S3 Part 2
+  '110277': '40028', // Shingeki no Kyojin The Final Season
+  '131681': '48583', // Shingeki no Kyojin The Final Season Part 2
+  '101922': '38000', // Kimetsu no Yaiba S1
+  '129874': '47778', // Kimetsu no Yaiba Yuukaku-hen
+  '20': '20',        // Naruto
+  '269': '269',      // Bleach
+  '1535': '1535',    // Death Note
+  '21459': '31964',  // Boku no Hero Academia S1
+  '21856': '35247',  // Boku no Hero Academia S2
+  '10087': '30694',  // Dragon Ball Super
+  '103223': '36946', // Dragon Ball Super Broly
+  '101348': '37521', // Vinland Saga S1
+  '136430': '49387', // Vinland Saga S2
+  '102066': '37999', // Kaguya-sama S1
+  '112641': '40356', // Kaguya-sama S2
+  '125367': '43608', // Kaguya-sama S3
+  '105333': '38691', // Dr. Stone S1
+  '108632': '39587', // Re:Zero S2
+  '126791': '42310', // Cyberpunk Edgerunners
+  '124080': '42897', // Horimiya
+  '140960': '50273', // Spy x Family S1
+  '142838': '50602', // Spy x Family S1 Part 2
+  '151801': '52211', // Mashle
+  '151807': '52299', // Solo Leveling
+  '21699': '29803',  // Overlord S1
+  '133844': '48895', // Overlord S4
+  '21087': '30276',  // One Punch Man S1
+};
+
+export function resolveMalId(idOrMalId) {
+  if (!idOrMalId) return null;
+  const str = String(idOrMalId);
+  return ANILIST_TO_MAL_MAP[str] || str;
+}
+
+/**
  * Consulta si un anime está indexado en la base de datos de doblajes en español (MyDubList).
  */
 export function isMalIdDubbedInSpanish(malId) {
   if (!malId) return false;
   const str = String(malId);
-  if (EXCLUDED_DUB_MAL_IDS.has(str) || unstreamableDubSet.has(str)) return false;
-  if (VERIFIED_LATINO_DUB_MAP[str]) return true;
-  return Boolean(dubbedSpanishList[str]);
+  const resolved = ANILIST_TO_MAL_MAP[str] || str;
+  if (EXCLUDED_DUB_MAL_IDS.has(resolved)) return false;
+  if (VERIFIED_LATINO_DUB_MAP[resolved]) return true;
+  if (unstreamableDubSet.has(resolved)) return false;
+  return Boolean(dubbedSpanishList[resolved]);
 }
 
 /**
@@ -133,15 +184,17 @@ function cleanTitle(str) {
  * Resuelve el slug de AnimeAV1 a partir del malId y el título de AniList.
  */
 export async function resolveAnimeAV1Slug(malId, animeTitle) {
-  const cacheKey = `${malId || ''}:${animeTitle || ''}`;
+  const resolvedId = resolveMalId(malId);
+  const cacheKey = `${resolvedId || malId || ''}:${animeTitle || ''}`;
   if (slugCache.has(cacheKey)) {
     return slugCache.get(cacheKey);
   }
 
   // 1. Detección instantánea por catálogo pre-verificado
-  if (malId && VERIFIED_LATINO_DUB_MAP[String(malId)]) {
-    const verified = VERIFIED_LATINO_DUB_MAP[String(malId)];
-    const res = { slug: verified.slug, episodesCount: verified.episodes, malId: Number(malId) };
+  const targetId = resolvedId || malId;
+  if (targetId && VERIFIED_LATINO_DUB_MAP[String(targetId)]) {
+    const verified = VERIFIED_LATINO_DUB_MAP[String(targetId)];
+    const res = { slug: verified.slug, episodesCount: verified.episodes, malId: Number(targetId) };
     slugCache.set(cacheKey, res);
     return res;
   }
@@ -232,21 +285,23 @@ export async function resolveAnimeAV1Slug(malId, animeTitle) {
  * Cumple estrictamente con el requisito de no aceptar temporadas incompletas.
  */
 export async function verifySeasonDubAvailability({ malId, animeTitle, expectedEpisodes = 1 }) {
-  const cacheKey = `${malId || ''}:${animeTitle || ''}:${expectedEpisodes}`;
+  const resolvedId = resolveMalId(malId);
+  const targetId = resolvedId || malId;
+  const cacheKey = `${targetId || ''}:${animeTitle || ''}:${expectedEpisodes}`;
   if (seasonVerificationCache.has(cacheKey)) {
     return seasonVerificationCache.get(cacheKey);
   }
 
-  // 0. Comprobar si el título está marcado como excluido o sin servidor disponible
-  if (malId && (EXCLUDED_DUB_MAL_IDS.has(String(malId)) || unstreamableDubSet.has(String(malId)))) {
+  // 0. Comprobar si el título está marcado como excluido
+  if (targetId && EXCLUDED_DUB_MAL_IDS.has(String(targetId))) {
     const res = { available: false, hasLatino: false, hasCastellano: false, reason: 'No disponible en servidores de streaming' };
     seasonVerificationCache.set(cacheKey, res);
     return res;
   }
 
   // 1. Verificación instantánea si el título está en el catálogo oficial verificado
-  if (malId && VERIFIED_LATINO_DUB_MAP[String(malId)]) {
-    const verified = VERIFIED_LATINO_DUB_MAP[String(malId)];
+  if (targetId && VERIFIED_LATINO_DUB_MAP[String(targetId)]) {
+    const verified = VERIFIED_LATINO_DUB_MAP[String(targetId)];
     const result = {
       available: true,
       hasLatino: true,
@@ -258,16 +313,23 @@ export async function verifySeasonDubAvailability({ malId, animeTitle, expectedE
     return result;
   }
 
+  // Si no está en catálogo verificado y fue marcado como no disponible en sesión
+  if (targetId && unstreamableDubSet.has(String(targetId))) {
+    const res = { available: false, hasLatino: false, hasCastellano: false, reason: 'No disponible en servidores de streaming' };
+    seasonVerificationCache.set(cacheKey, res);
+    return res;
+  }
+
   // 2. Pre-filtro rápido con MyDubList: si MAL ID no está registrado con doblaje en español
-  const isDubbedInMal = isMalIdDubbedInSpanish(malId);
-  if (malId && !isDubbedInMal) {
+  const isDubbedInMal = isMalIdDubbedInSpanish(targetId);
+  if (targetId && !isDubbedInMal) {
     const res = { available: false, hasLatino: false, hasCastellano: false, reason: 'No catalogado con doblaje español' };
     seasonVerificationCache.set(cacheKey, res);
     return res;
   }
 
   // 3. Resolver slug en AnimeAV1 mediante proxy CORS
-  const slugInfo = await resolveAnimeAV1Slug(malId, animeTitle);
+  const slugInfo = await resolveAnimeAV1Slug(targetId, animeTitle);
   if (!slugInfo || !slugInfo.slug) {
     const res = { available: false, hasLatino: false, hasCastellano: false, reason: 'Fuente DUB no encontrada' };
     seasonVerificationCache.set(cacheKey, res);

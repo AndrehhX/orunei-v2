@@ -2,7 +2,7 @@ export const FORMATS = { '': null, Serie: ['TV', 'TV_SHORT'], Película: ['MOVIE
 export const STATUS = { '': null, 'En emisión': 'RELEASING', Finalizado: 'FINISHED', Próximamente: 'NOT_YET_RELEASED' }
 export const SORTS = { Popular: 'POPULARITY_DESC', Tendencia: 'TRENDING_DESC', 'Mejor valorado': 'SCORE_DESC', Recientes: 'START_DATE_DESC' }
 
-const MEDIA_FIELDS = 'id title{romaji english} coverImage{extraLarge color} bannerImage genres averageScore seasonYear format status episodes'
+const MEDIA_FIELDS = 'id idMal title{romaji english} coverImage{extraLarge color} bannerImage genres averageScore seasonYear format status episodes'
 
 export function buildCatalogRequest(f, page = 1) {
   const definitions = ['$page:Int', '$sort:[MediaSort]']

@@ -3,7 +3,7 @@ import { toItem, vectorize } from './engine.js'
 export const CANDIDATE_CACHE_KEY = 'orunei-recommendation-pool-v4'
 const CACHE_TTL = 10 * 60e3
 const ENDPOINT = 'https://graphql.anilist.co'
-const FIELDS = 'id title{romaji english} coverImage{extraLarge} bannerImage description(asHtml:false) genres tags{name rank isGeneralSpoiler} studios(isMain:true){nodes{name}} averageScore popularity trending seasonYear format'
+const FIELDS = 'id idMal title{romaji english} coverImage{extraLarge} bannerImage description(asHtml:false) genres tags{name rank isGeneralSpoiler} studios(isMain:true){nodes{name}} averageScore popularity trending seasonYear format'
 
 const page = (name, sort, perPage = 50) => `${name}: Page(page:1, perPage:${perPage}){ media(type:ANIME, sort:${sort}, isAdult:false){ ${FIELDS} } }`
 const queryFor = (genres) => {
