@@ -9,9 +9,29 @@ import { enrichContinueWatchingItem, sortContinueWatchingList, filterContinueWat
 import { isMalIdDubbedInSpanish } from '../playback/dubSeasonManager.js'
 
 export const Title = ({ children, onClick }) => (
-  <div className="mb-3 flex items-center justify-between"><h3 onClick={onClick} className={`flex items-center gap-1 text-[17px] font-bold transition-colors ${onClick ? 'cursor-pointer hover:text-brand' : ''}`}>{children}<ChevronRight size={17} /></h3><ChevronRight size={15} className="text-slate-400" /></div>
+  <div className="mb-3.5 flex items-center justify-between">
+    <h3
+      onClick={onClick}
+      className={`group/title flex items-center gap-1.5 text-base sm:text-[17px] font-extrabold tracking-tight transition-colors ${
+        onClick ? 'cursor-pointer hover:text-brand' : ''
+      }`}
+    >
+      <span>{children}</span>
+      {onClick && (
+        <ChevronRight size={16} className="text-slate-400 group-hover/title:text-brand group-hover/title:translate-x-0.5 transition-all" />
+      )}
+    </h3>
+  </div>
 )
-const Dots = ({ onClick }) => <button onClick={(event) => { event.stopPropagation(); onClick?.() }} aria-label="Abrir biblioteca" className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/45 text-white opacity-80 transition hover:opacity-100"><MoreHorizontal size={14} /></button>
+const Dots = ({ onClick }) => (
+  <button
+    onClick={(event) => { event.stopPropagation(); onClick?.() }}
+    aria-label="Abrir biblioteca"
+    className="absolute right-1.5 top-1.5 z-10 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-white/10 hover:bg-black/80"
+  >
+    <MoreHorizontal size={14} />
+  </button>
+)
 
 const Empty = ({ q, message }) => <div className="col-span-full rounded-2xl border border-dashed border-slate-300/80 px-5 py-7 text-center text-sm leading-6 text-slate-500 dark:border-white/10">{message || `Sin resultados para “${q}”`}</div>
 const ok = (t = '', q) => String(t).toLowerCase().includes((q || '').toLowerCase())
@@ -63,16 +83,17 @@ export function Library({ query, onMore, onOpenAnime }) {
                     <Play size={18} className="fill-white ml-0.5" />
                   </span>
                 </div>
-                {/* Badge de episodio que corresponde ver */}
-                <div className="absolute left-2 top-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[10px] font-extrabold text-white shadow border border-white/10">
-                  Ep. {a.nextEpisode}
+                {/* Badges de episodio y doblaje integrados en top-left sin colisiones */}
+                <div className="absolute left-2 top-2 flex items-center gap-1 z-10 pointer-events-none">
+                  <span className="px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[10px] font-extrabold text-white shadow border border-white/10">
+                    Ep. {a.nextEpisode}
+                  </span>
+                  {isMalIdDubbedInSpanish(a.idMal || a.id) && (
+                    <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-[9px] font-extrabold backdrop-blur-md shadow-sm">
+                      DUB
+                    </span>
+                  )}
                 </div>
-                {/* Badge de audio español confirmado */}
-                {isMalIdDubbedInSpanish(a.idMal || a.id) && (
-                  <div className="absolute right-2 top-2 px-1.5 py-0.5 rounded-md bg-emerald-600/90 backdrop-blur-md text-[9px] font-extrabold text-white shadow border border-emerald-400/30">
-                    🇲🇽 DUB
-                  </div>
-                )}
                 {/* Barra de progreso de reproducción del episodio */}
                 <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/60 overflow-hidden">
                   <div
@@ -145,8 +166,8 @@ function RecCard({ i, rec, onOpenAnime }) {
         <Poster img={i.banner || i.img} grad="linear-gradient(135deg,#241f4d,#423584)" title={i.title} className="aspect-[3/2.1] rounded-xl shadow-sm border border-white/5 group-hover:border-brand/40 group-hover:shadow-[0_12px_30px_-8px_rgba(109,92,255,0.35)] transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           {isMalIdDubbedInSpanish(i.idMal || i.id) && (
-            <div className="absolute left-2 top-2 px-1.5 py-0.5 rounded-md bg-emerald-600/90 backdrop-blur-md text-[9px] font-extrabold text-white shadow border border-emerald-400/30 z-10 animate-fade">
-              🇲🇽 DUB
+            <div className="absolute left-2 top-2 px-1.5 py-0.5 rounded-md bg-emerald-950/70 border border-emerald-400/30 text-[9px] font-extrabold text-emerald-300 backdrop-blur-md shadow-sm z-10 animate-fade">
+              DUB
             </div>
           )}
           <div className="absolute right-1.5 top-1.5 flex translate-y-1 gap-1 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">

@@ -42,28 +42,30 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
           </div>
           <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">{metrics.calibrationPct}% Peak</span>
         </div>
-        {tasteGenres.length ? tasteGenres.map((g) => (
-          <div key={g.name} className="mb-2.5 last:mb-0"><div className="mb-1 flex justify-between text-[11px]"><span className="font-medium">{g.name}</span><span className="text-slate-500">{g.count}/{g.total}</span></div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-slate-200/70 dark:bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-brand to-pink-400 transition-all duration-700 ease-smooth" style={{ width: g.pct + '%' }} /></div></div>
+        {tasteGenres.length ? tasteGenres.slice(0, 3).map((g) => (
+          <div key={g.name} className="mb-2 last:mb-0">
+            <div className="mb-1 flex justify-between text-[11px]">
+              <span className="font-medium text-slate-700 dark:text-slate-200">{g.name}</span>
+              <span className="text-slate-400 font-semibold">{g.pct}%</span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-full bg-slate-200/70 dark:bg-white/10">
+              <div className="h-full rounded-full bg-gradient-to-r from-brand via-purple-400 to-pink-400 transition-all duration-700 ease-smooth" style={{ width: g.pct + '%' }} />
+            </div>
+          </div>
         )) : <p className="text-xs leading-5 text-slate-500">{profile.animeList?.length ? 'Reproduce un anime o marca favoritos para calibrar tus gustos.' : 'Añade obras a tu AnimeList y este resumen se actualizará con sus géneros.'}</p>}
       </div>
       <div className="card p-4">
         <Head onAll={onSeeFriends}><span className="inline-flex items-center gap-2"><Users size={16} className="text-brand" />Amigos</span></Head>
-        {friends.length ? friends.slice(0, 4).map((friendship) => <button key={friendship.id} onClick={() => friendship.profile?.username && onOpenProfile?.(friendship.profile.username)} className="flex w-full items-center gap-2.5 py-2 text-left"><Avatar profile={friendship.profile} /><div className="min-w-0 leading-tight"><p className="truncate text-sm font-semibold">{friendship.profile?.displayName || 'Perfil de Orunei'}</p><p className="truncate text-[11px] text-slate-500">@{friendship.profile?.username || 'usuario'}</p></div></button>) : <div className="space-y-2"><p className="text-xs leading-5 text-slate-500">Busca perfiles y conecta con personas reales.</p><button onClick={onSeeFriends} className="text-xs font-semibold text-brand transition hover:translate-x-0.5">Buscar perfiles <ArrowRight size={12} className="inline" /></button></div>}
+        {friends.length ? friends.slice(0, 3).map((friendship) => <button key={friendship.id} onClick={() => friendship.profile?.username && onOpenProfile?.(friendship.profile.username)} className="flex w-full items-center gap-2.5 py-1.5 text-left transition-transform duration-200 hover:translate-x-1"><Avatar profile={friendship.profile} /><div className="min-w-0 leading-tight"><p className="truncate text-sm font-semibold">{friendship.profile?.displayName || 'Perfil de Orunei'}</p><p className="truncate text-[11px] text-slate-500">@{friendship.profile?.username || 'usuario'}</p></div></button>) : <div className="space-y-2"><p className="text-xs leading-5 text-slate-500">Busca perfiles y conecta con personas reales.</p><button onClick={onSeeFriends} className="text-xs font-semibold text-brand transition hover:translate-x-0.5">Buscar perfiles <ArrowRight size={12} className="inline" /></button></div>}
       </div>
       <div className="card p-4">
         <Head>Tendencias hoy</Head>
-        {!recReady && Array.from({ length: 5 }, (_, i) => <div key={i} className="my-2 flex h-[46px] animate-pulse items-center gap-3 rounded-lg bg-slate-200/60 dark:bg-white/5" />)}
-        {recReady && trendRows.length ? trendRows.map((t, i) => (
+        {!recReady && Array.from({ length: 4 }, (_, i) => <div key={i} className="my-2 flex h-[46px] animate-pulse items-center gap-3 rounded-lg bg-slate-200/60 dark:bg-white/5" />)}
+        {recReady && trendRows.length ? trendRows.slice(0, 4).map((t, i) => (
           <button key={t.t} type="button" onClick={() => onOpenAnime?.(t)} className="group flex w-full items-center gap-3 rounded-lg py-1.5 text-left transition-transform duration-300 hover:translate-x-1">
-            <span className="w-3 text-sm font-bold">{i + 1}</span><Poster {...t} title="" className="h-[46px] w-[46px] shrink-0 rounded-lg" /><div className="min-w-0 leading-tight"><p className="truncate text-sm font-semibold">{t.t}</p><p className="text-[11px] text-slate-500">Anime · {t.y}</p></div><span className="ml-auto flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300"><Flame size={14} className="text-orange-500" />{t.v}</span>
+            <span className="w-3 text-sm font-bold text-slate-400 group-hover:text-brand transition-colors">{i + 1}</span><Poster {...t} title="" className="h-[44px] w-[44px] shrink-0 rounded-lg" /><div className="min-w-0 leading-tight"><p className="truncate text-sm font-semibold group-hover:text-brand transition-colors">{t.t}</p><p className="text-[11px] text-slate-500">Anime · {t.y}</p></div><span className="ml-auto flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300"><Flame size={14} className="text-orange-500" />{t.v}</span>
           </button>
         )) : recReady && <p className="py-2 text-xs text-slate-500">No hay tendencias disponibles ahora.</p>}
-      </div>
-      <div className="card p-4">
-        <Head onAll={onSeeNews} href="#noticias">Noticias destacadas</Head>
-        {!newsItems.length && newsStatus === 'error' && <p className="py-2 text-xs text-slate-500">Las fuentes no están disponibles ahora.</p>}
-        {newsItems.map((f, i) => f === i ? <div key={i} className="my-2 h-[62px] animate-pulse rounded-lg bg-slate-200/60 dark:bg-white/5" /> : <NewsLink key={f.id} n={f} className="group flex cursor-pointer gap-3 rounded-lg py-2 transition-transform duration-300 hover:translate-x-1"><Poster img={f.img} q={f.q} grad={f.grad} wide title="" className="h-[62px] w-[98px] shrink-0 rounded-lg" /><div className="min-w-0 leading-snug"><p className="line-clamp-2 text-[13px] font-bold">{f.t}</p><p className="text-[11px] text-slate-500">{f.s} · {f.h}</p></div></NewsLink>)}
       </div>
     </aside>
   )

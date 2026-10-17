@@ -65,9 +65,9 @@ export default function Hero({ onOpenDetail }) {
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
               <div className={`relative flex h-full max-w-[430px] flex-col justify-start gap-2 px-6 pb-12 pt-6 text-white transition-all duration-700 delay-150 ${on ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur"><Sparkles size={13} className="text-yellow-300" />{heroLabel}</span>
+                  <span className="flex w-fit items-center gap-1.5 rounded-full bg-black/45 border border-white/15 px-3 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm"><Sparkles size={13} className="text-yellow-300" />{heroLabel}</span>
                   {isMalIdDubbedInSpanish(s.idMal || s.id) && (
-                    <span className="flex w-fit items-center gap-1 rounded-full bg-emerald-600/90 border border-emerald-400/30 px-2.5 py-1 text-xs font-bold text-white backdrop-blur shadow-md animate-fade">
+                    <span className="flex w-fit items-center gap-1.5 rounded-full bg-emerald-950/70 border border-emerald-400/35 px-2.5 py-1 text-xs font-bold text-emerald-300 backdrop-blur-md shadow-sm animate-fade">
                       🇲🇽 DUB Latino
                     </span>
                   )}
@@ -76,11 +76,11 @@ export default function Hero({ onOpenDetail }) {
                 <p className="text-xs text-white/80">{s.meta}</p>
                 <p className="line-clamp-2 h-12 shrink-0 overflow-hidden text-sm leading-6 text-white/85">{s.desc}</p>
                 <div className="mt-auto flex gap-2">
+                  <button onClick={() => onOpenDetail?.(s)} className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand via-[#7968ff] to-[#9d8eff] shadow-[0_4px_20px_rgba(109,92,255,0.45)] hover:shadow-[0_6px_30px_rgba(109,92,255,0.7)] hover:brightness-110 px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 text-white"><Info size={15} />Ver detalles</button>
                   <button onClick={() => toggleLibrary(s)}
-                    className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${inLibrary(s) ? 'bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.35)]' : 'bg-gradient-to-r from-brand via-[#7968ff] to-[#9d8eff] shadow-[0_4px_20px_rgba(109,92,255,0.45)] hover:shadow-[0_6px_30px_rgba(109,92,255,0.7)] hover:brightness-110'}`}>
-                    {inLibrary(s) ? <Check size={16} /> : <Plus size={16} />}{inLibrary(s) ? 'En tu biblioteca' : 'Agregar a mi biblioteca'}</button>
-                  <button onClick={() => onOpenDetail?.(s)} className="flex items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-md transition-all duration-300 hover:bg-white/20 hover:border-white/40 active:scale-95"><Info size={15} />Ver detalles</button>
-                  <button onClick={() => setSaved((a) => ({ ...a, [n]: !a[n] }))} aria-label="Guardar" className="grid w-10 place-items-center rounded-xl border border-white/25 bg-white/10 backdrop-blur-md transition-all duration-300 hover:bg-white/20 hover:border-white/40 active:scale-90"><Bookmark size={16} className={`transition-all ${saved[n] ? 'fill-white' : ''}`} /></button>
+                    className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-medium backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${inLibrary(s) ? 'bg-emerald-500/25 border-emerald-400/40 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]' : 'border-white/20 bg-white/10 hover:bg-white/20 text-white'}`}>
+                    {inLibrary(s) ? <Check size={16} /> : <Plus size={16} />}{inLibrary(s) ? 'En mi lista' : 'Agregar'}</button>
+                  <button onClick={() => setSaved((a) => ({ ...a, [n]: !a[n] }))} aria-label="Guardar" className="grid w-10 place-items-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-md transition-all duration-300 hover:bg-white/20 hover:border-white/40 active:scale-90"><Bookmark size={16} className={`transition-all ${saved[n] ? 'fill-white' : ''}`} /></button>
                 </div>
               </div>
             </Poster>
@@ -99,8 +99,8 @@ export default function Hero({ onOpenDetail }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/20" />
         <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1 text-xs text-white backdrop-blur-md border border-white/10"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
         {isMalIdDubbedInSpanish(currentTrending.idMal || currentTrending.id) && (
-          <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-emerald-600/90 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-extrabold text-white backdrop-blur-md shadow-md z-10 animate-fade">
-            🇲🇽 DUB
+          <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-emerald-950/70 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-extrabold text-emerald-300 backdrop-blur-md shadow-md z-10 animate-fade">
+            DUB
           </span>
         )}
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
