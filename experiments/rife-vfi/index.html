@@ -583,9 +583,6 @@
       const baseFps = currentTarget === '48fps' ? 24 : 30;
       const stepSec = 1 / baseFps;
 
-      // Render Frame A
-      renderProceduralAnimeScene(offCtxA, animTime, false);
-
       const isCut = forceSceneCut;
       forceSceneCut = false;
       const isHold = forceDuplicateHold;
@@ -593,12 +590,24 @@
       const isFlash = forceFlash;
       forceFlash = false;
 
-      if (!isHold) {
-        animTime += stepSec;
+      if (isCut) {
+        rife?.resetTextureHistory();
       }
 
-      // Render Frame B
-      renderProceduralAnimeScene(offCtxB, animTime, { isCut, isFlash });
+      // Reutilización F1 -> F0: offscreenB ya contiene el fotograma anterior
+      if (!isCut && inputFramesGenerated > 0) {
+        offCtxA.drawImage(offscreenB, 0, 0);
+        if (!isHold) {
+          animTime += stepSec;
+        }
+        renderProceduralAnimeScene(offCtxB, animTime, { isCut, isFlash });
+      } else {
+        renderProceduralAnimeScene(offCtxA, animTime, false);
+        if (!isHold) {
+          animTime += stepSec;
+        }
+        renderProceduralAnimeScene(offCtxB, animTime, { isCut, isFlash });
+      }
 
       // Análisis ultra-liviano de diferencias en thumbnail (0.05 ms, 0 heap churn)
       thumbCtxA.drawImage(offscreenA, 0, 0, 160, 90);
@@ -609,10 +618,11 @@
 
       inputFramesGenerated++;
 
-      // Despachar inferencia asíncrona a la GPU (In-Flight = 1)
+      // Despachar inferencia asíncrona a la GPU con reutilización inteligente F1->F0
       if (rife && isPlaying) {
         rife.dispatchInterpolation(offscreenA, offscreenB, {
           forceMode: currentMode,
+          reuseF1AsF0: !isCut && inputFramesGenerated > 1,
         });
       }
 
