@@ -464,7 +464,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
   )
 }
 
-export default function AnimeDetail({ id, initialPlayEpisode = null, initialPartySession = null, onClose, onOpen }) {
+export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, onOpen }) {
   const [m, setM] = useState(null)
   const [err, setErr] = useState(false)
   const [tab, setTab] = useState(0)
@@ -604,6 +604,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, initialPart
   }
 
   const executePlayEpisode = (ep) => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
     setPlayingEpisode(ep)
     if (m) {
       const existing = profile.animeList.find((item) => item.id === String(m.id) || item.q === title(m))
@@ -642,6 +643,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, initialPart
     }
 
     if (currentDub?.hasLatino || currentDub?.hasCastellano || (hasDubCataloged && !EXCLUDED_DUB_MAL_IDS.has(String(m.idMal || m.id)))) {
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
       setPendingPlayEpisode(ep)
       setShowSeasonAudioModal(true)
     } else {
@@ -651,6 +653,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, initialPart
   }
 
   const handleConfirmSeasonAudio = ({ preference, remember }) => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
     if (m && remember) {
       const seasonId = m.season ? `${m.season}_${m.seasonYear || ''}` : 's1'
       setSeasonAudioPreference(m.id, seasonId, preference, profile?.id)
@@ -719,7 +722,6 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, initialPart
             dubAvailability={dubAvailability}
             seasonId={m.season ? `${m.season}_${m.seasonYear || ''}` : 's1'}
             userId={profile?.id}
-            partySession={initialPartySession}
             onClose={() => setPlayingEpisode(null)}
             onEpisodeChange={executePlayEpisode}
             onComplete={handleCompleteSeries}

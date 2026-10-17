@@ -83,6 +83,24 @@ body { @apply bg-[#f4f4fb] text-slate-900 antialiased transition-colors duration
   animation: pulse-glow 2.5s ease-in-out infinite;
 }
 
+/* Animación sutil y minimalista para el botón Ko-fi */
+@keyframes kofiGentlyFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  30% {
+    transform: translateY(-2px) rotate(-6deg);
+  }
+  70% {
+    transform: translateY(0.5px) rotate(4deg);
+  }
+}
+.animate-kofi-cup {
+  display: inline-block;
+  animation: kofiGentlyFloat 4s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
 /* Entrada cinematográfica del reproductor Theater */
 #player-theater {
   will-change: transform, opacity;

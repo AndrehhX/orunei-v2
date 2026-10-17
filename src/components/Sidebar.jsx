@@ -33,22 +33,6 @@ export default function Sidebar({ dark, setDark, theme = (dark ? 'dark' : 'light
           <Sparkles size={19} />
           <span>Anime</span>
         </a>
-
-        {/* ORUNEI PARTY: Una sala. Un anime. Todos sincronizados. */}
-        <a
-          href="#"
-          onClick={(e) => { e.preventDefault(); setPage('party') }}
-          className={`relative flex items-center justify-between rounded-xl px-4 py-2.5 text-sm transition hover:bg-white/70 dark:hover:bg-white/5 ${page === 'party' ? 'bg-brand-soft font-bold text-brand dark:bg-brand/20 shadow-sm' : ''}`}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-base select-none">🍿</span>
-            <span>Party</span>
-          </div>
-          <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider animate-pulse">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            En vivo
-          </span>
-        </a>
       </nav>
       <div className="mt-auto space-y-3">
         {onOpenDownloadApp && !isNativeApp() && (

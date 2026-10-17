@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Volume2, Check, X, Sparkles, AlertCircle } from 'lucide-react';
 
 export default function SeasonAudioModal({
@@ -21,8 +22,8 @@ export default function SeasonAudioModal({
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 overflow-y-auto bg-black/85 backdrop-blur-md animate-fadeIn">
       <div
         className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-900/95 p-4 sm:p-6 shadow-2xl shadow-brand/20 text-slate-100"
         role="dialog"
@@ -201,4 +202,9 @@ export default function SeasonAudioModal({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined' && document.body) {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 }

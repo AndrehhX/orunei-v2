@@ -41,7 +41,7 @@ export function AnimeCard({ m, onOpen }) {
   )
 }
 
-export default function AnimePage({ query, initialOpenId = null, initialPlayEpisode = null, initialPartySession = null, onCloseDetail }) {
+export default function AnimePage({ query, initialOpenId = null, initialPlayEpisode = null, onCloseDetail }) {
   const [f, setF] = useState(init)
   const [onlyDub, setOnlyDub] = useState(false)
   const [showExtra, setShowExtra] = useState(false)
@@ -73,7 +73,7 @@ export default function AnimePage({ query, initialOpenId = null, initialPlayEpis
     return onlyDub ? items.filter((m) => isMalIdDubbedInSpanish(m.idMal || m.id)) : items
   }, [items, onlyDub])
 
-  if (open) return <AnimeDetail id={open} initialPlayEpisode={open === initialOpenId ? initialPlayEpisode : null} initialPartySession={open === initialOpenId ? initialPartySession : null} onClose={() => { setOpen(null); onCloseDetail?.() }} onOpen={setOpen} />
+  if (open) return <AnimeDetail id={open} initialPlayEpisode={open === initialOpenId ? initialPlayEpisode : null} onClose={() => { setOpen(null); onCloseDetail?.() }} onOpen={setOpen} />
 
   return (
     <section className="space-y-5 pb-10">

@@ -36,7 +36,6 @@ const ProfilePage = lazy(() => import('./components/ProfilePage'))
 const ProfileEditor = lazy(() => import('./components/ProfileEditor'))
 const FriendsPage = lazy(() => import('./components/FriendsPage'))
 const PublicProfileRoute = lazy(() => import('./components/PublicProfileRoute'))
-const PartyPage = lazy(() => import('./party/PartyPage'))
 
 function PageLoading() {
   return <div className="grid min-h-[18rem] place-items-center text-sm text-slate-500">Cargando…</div>
@@ -78,14 +77,17 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, theme = (dar
             onClick={onOpenDonation}
             title="Apoyar a Orunei en Ko-fi (Kofy)"
             aria-label="Apoyar a Orunei en Ko-fi"
-            className={`group relative inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-black transition-all duration-300 active:scale-95 shrink-0 hover:-translate-y-0.5 ${donationStyle.container}`}
+            className={`group relative inline-flex h-9 sm:h-9 items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all duration-300 active:scale-95 shrink-0 hover:-translate-y-0.5 ${donationStyle.container}`}
           >
-            <span className="text-sm select-none transition-transform duration-300 group-hover:scale-125 group-hover:-rotate-12">
+            <span className="animate-kofi-cup text-sm sm:text-base select-none transition-transform duration-300 group-hover:scale-125 group-hover:-rotate-12">
               {donationStyle.icon}
             </span>
-            <span className="tracking-tight">Donar</span>
-            <span className={`hidden sm:inline-block px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider ${donationStyle.pill}`}>
-              Kofi
+            <span className="hidden sm:inline text-[11px] font-bold tracking-tight">
+              Ko-fi
+            </span>
+            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-60 ${donationStyle.ping || 'bg-amber-400'}`} />
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${donationStyle.dot || 'bg-amber-500'}`} />
             </span>
           </button>
         );
@@ -152,7 +154,6 @@ export default function App() {
   const [selectedUsername, setSelectedUsername] = useState(initialProfileUsername)
   const [selectedAnimeId, setSelectedAnimeId] = useState(null)
   const [selectedPlayEpisode, setSelectedPlayEpisode] = useState(null)
-  const [selectedPartySession, setSelectedPartySession] = useState(null)
   const [developmentNotice, setDevelopmentNotice] = useState(null)
   const [showDownloadApp, setShowDownloadApp] = useState(false)
   const [showDonationModal, setShowDonationModal] = useState(false)
@@ -208,26 +209,23 @@ export default function App() {
     if (nextPage !== 'anime') {
       setSelectedAnimeId(null)
       setSelectedPlayEpisode(null)
-      setSelectedPartySession(null)
     }
     if (nextPage !== 'public-profile') {
       setSelectedUsername('')
       if (typeof window !== 'undefined' && getPublicProfileUsername(window.location.hash)) window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
     }
   }
-  const openAnime = (media, playEpisode = null, partySession = null) => {
+  const openAnime = (media, playEpisode = null) => {
     const id = typeof media === 'object' ? media?.id : media
     const queryValue = typeof media === 'object' ? media?.q : ''
     setSelectedAnimeId(id ? String(id) : null)
     setSelectedPlayEpisode(playEpisode ? Number(playEpisode) : null)
-    setSelectedPartySession(partySession || null)
     setQuery(id ? '' : queryValue || '')
     setPage('anime')
   }
   const closeAnime = () => {
     setSelectedAnimeId(null)
     setSelectedPlayEpisode(null)
-    setSelectedPartySession(null)
   }
   const openPublicProfile = (username) => {
     const hash = getPublicProfileHash(username)
@@ -305,17 +303,7 @@ export default function App() {
                 query={query}
                 initialOpenId={selectedAnimeId}
                 initialPlayEpisode={selectedPlayEpisode}
-                initialPartySession={selectedPartySession}
                 onCloseDetail={closeAnime}
-              />
-            ) : page === 'party' ? (
-              <PartyPage
-                onOpenAnime={openAnime}
-                onStartParty={(partyData) => {
-                  const targetId = partyData.animeId || '25777';
-                  const ep = partyData.episode || 1;
-                  openAnime(targetId, ep, partyData);
-                }}
               />
             ) : page === 'library' ? (
               <LibraryPage query={query} onDiscover={() => navigatePage('anime')} />
