@@ -7,6 +7,9 @@ import { useProfile } from '../profile/ProfileProvider'
 import { createLibraryEntry, markAnimeWatched } from '../profile/model.js'
 import { buildEpisodeCards } from '../api/episodeData.js'
 import AnimePlayer from './AnimePlayer'
+import SeasonAudioModal from './SeasonAudioModal'
+import { getSeasonAudioPreference, setSeasonAudioPreference } from '../playback/audioPreference.js'
+import { verifySeasonDubAvailability } from '../playback/dubSeasonManager.js'
 import { getMiruroId, getEpisodePlayback } from '../api/streamAdapter'
 import { startEpisodeDownload, getDownload, cancelDownload, deleteDownload, subscribeDownloads, isNativeApp } from '../offline/downloadEngine'
 import { hasAiringAlert, toggleAiringAlert } from '../offline/airingAlerts'
@@ -456,6 +459,10 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
   const [descriptionState, setDescriptionState] = useState('idle')
   const [miruroId, setMiruroId] = useState(null)
   const [playingEpisode, setPlayingEpisode] = useState(initialPlayEpisode ? Number(initialPlayEpisode) : null)
+  const [audioLanguage, setAudioLanguage] = useState('sub_es')
+  const [dubAvailability, setDubAvailability] = useState(null)
+  const [showSeasonAudioModal, setShowSeasonAudioModal] = useState(false)
+  const [pendingPlayEpisode, setPendingPlayEpisode] = useState(null)
   const rec = useRec()
   const { profile, updateAnimeList, recordActivity } = useProfile()
   const close = () => onClose()
@@ -466,6 +473,9 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
     setTab(0)
     setPlayingEpisode(initialPlayEpisode ? Number(initialPlayEpisode) : null)
     setMiruroId(null)
+    setDubAvailability(null)
+    setShowSeasonAudioModal(false)
+    setPendingPlayEpisode(null)
     getAnime(id).then(setM).catch(() => setErr(true))
   }, [id, initialPlayEpisode])
 
@@ -474,6 +484,14 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
       getMiruroId(m.id, title(m))
         .then((resId) => setMiruroId(resId))
         .catch(() => setMiruroId(null))
+
+      verifySeasonDubAvailability({
+        malId: m.idMal,
+        animeTitle: title(m),
+        expectedEpisodes: m.episodes || 1
+      })
+        .then(setDubAvailability)
+        .catch(() => setDubAvailability(null))
     }
   }, [m])
   useEffect(() => {
@@ -560,7 +578,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
     if (result?.ok) recordActivity('library', `${inLibrary ? 'Quitó' : 'Añadió'} “${title(m)}” ${inLibrary ? 'de' : 'a'} su biblioteca`)
   }
 
-  const handlePlayEpisode = (ep) => {
+  const executePlayEpisode = (ep) => {
     setPlayingEpisode(ep)
     if (m) {
       const existing = profile.animeList.find((item) => item.id === String(m.id) || item.q === title(m))
@@ -572,6 +590,35 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
       updateAnimeList((items) => existing ? items.map((i) => i.id === existing.id ? updatedEntry : i) : [...items, updatedEntry])
       recordActivity('watch', `Viendo “${title(m)}” (Ep. ${ep})`)
     }
+  }
+
+  const handlePlayEpisode = (ep) => {
+    if (!m) return
+    const seasonId = m.season ? `${m.season}_${m.seasonYear || ''}` : 's1'
+    const savedPref = getSeasonAudioPreference(m.id, seasonId, profile?.id)
+
+    if (savedPref) {
+      setAudioLanguage(savedPref)
+      executePlayEpisode(ep)
+    } else if (dubAvailability?.available && dubAvailability?.hasLatino) {
+      setPendingPlayEpisode(ep)
+      setShowSeasonAudioModal(true)
+    } else {
+      setAudioLanguage('sub_es')
+      executePlayEpisode(ep)
+    }
+  }
+
+  const handleConfirmSeasonAudio = ({ preference, remember }) => {
+    if (m && remember) {
+      const seasonId = m.season ? `${m.season}_${m.seasonYear || ''}` : 's1'
+      setSeasonAudioPreference(m.id, seasonId, preference, profile?.id)
+    }
+    setAudioLanguage(preference)
+    setShowSeasonAudioModal(false)
+    const ep = pendingPlayEpisode || 1
+    setPendingPlayEpisode(null)
+    executePlayEpisode(ep)
   }
 
   const handleCompleteSeries = async () => {
@@ -626,8 +673,12 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
             miruroId={miruroId}
             initialEpisode={playingEpisode}
             totalEpisodes={m.episodes || 0}
+            audioLanguage={audioLanguage}
+            dubAvailability={dubAvailability}
+            seasonId={m.season ? `${m.season}_${m.seasonYear || ''}` : 's1'}
+            userId={profile?.id}
             onClose={() => setPlayingEpisode(null)}
-            onEpisodeChange={handlePlayEpisode}
+            onEpisodeChange={executePlayEpisode}
             onComplete={handleCompleteSeries}
           />
         </div>
@@ -730,6 +781,19 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
           </div>
         </>)}
       </div>
+
+      {showSeasonAudioModal && m && (
+        <SeasonAudioModal
+          animeTitle={title(m)}
+          availability={dubAvailability || { hasLatino: true, hasCastellano: false }}
+          defaultPreference={audioLanguage}
+          onConfirm={handleConfirmSeasonAudio}
+          onClose={() => {
+            setShowSeasonAudioModal(false)
+            setPendingPlayEpisode(null)
+          }}
+        />
+      )}
     </div>
   )
 }

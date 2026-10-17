@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Film } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
+import { getDubEpisodePlayback } from '../playback/dubStreamAdapter.js';
+import { setSeasonAudioPreference } from '../playback/audioPreference.js';
 import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, markEpisodeWatched, formatTime } from '../playback/playbackProgress';
 import { fetchSkipTimes, resolveActiveSkip, isAutoSkipEnabled, setAutoSkipEnabled } from '../playback/skipTimes';
@@ -17,6 +19,10 @@ export default function AnimePlayer({
   miruroId,
   initialEpisode = 1,
   totalEpisodes = 1,
+  audioLanguage = 'sub_es',
+  dubAvailability = null,
+  seasonId = 's1',
+  userId = null,
   onClose,
   onEpisodeChange,
   onComplete,
@@ -31,6 +37,17 @@ export default function AnimePlayer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [playbackData, setPlaybackData] = useState(null);
+
+  // Idioma de audio (Latino DUB / Japonés SUB)
+  const [currentAudioLanguage, setCurrentAudioLanguage] = useState(audioLanguage || 'sub_es');
+  const [showAudioMenu, setShowAudioMenu] = useState(false);
+  const pendingSeekTimeRef = useRef(null);
+
+  useEffect(() => {
+    if (audioLanguage && audioLanguage !== currentAudioLanguage) {
+      setCurrentAudioLanguage(audioLanguage);
+    }
+  }, [audioLanguage]);
 
   // Servidores múltiples
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
@@ -166,6 +183,31 @@ export default function AnimePlayer({
         return;
       }
 
+      // Reproducción en audio doblado al español latino
+      if (currentAudioLanguage === 'latino') {
+        getDubEpisodePlayback({
+          animeId,
+          malId,
+          animeTitle,
+          episode,
+          language: 'latino'
+        })
+          .then((data) => {
+            if (isCancelled) return;
+            setPlaybackData(data);
+            setLoading(false);
+            setSubTracks([]);
+            setSelectedSub('off');
+          })
+          .catch((err) => {
+            if (isCancelled) return;
+            console.warn('[AnimePlayer] Error cargando audio latino:', err.message);
+            setError(`Audio Latino: ${err.message || 'No se pudo reproducir este episodio en audio latino.'}`);
+            setLoading(false);
+          });
+        return;
+      }
+
       if (miruroId === undefined || miruroId === null) {
         const timer = setTimeout(() => {
           if (!isCancelled && !miruroId) {
@@ -230,7 +272,7 @@ export default function AnimePlayer({
         hlsRef.current = null;
       }
     };
-  }, [animeId, miruroId, episode, retryCount]);
+  }, [animeId, malId, animeTitle, miruroId, episode, retryCount, currentAudioLanguage]);
 
   // Monitoreo de buffering prolongado (aviso al usuario para cambiar de servidor)
   useEffect(() => {
@@ -484,9 +526,13 @@ export default function AnimePlayer({
     syncSubtitles();
     if (videoRef.current) {
       applyPlaybackSpeed(videoRef.current, playbackSpeed);
+      if (pendingSeekTimeRef.current !== null) {
+        videoRef.current.currentTime = pendingSeekTimeRef.current;
+        pendingSeekTimeRef.current = null;
+      }
     }
     const progress = getPlaybackProgress(animeId || miruroId, episode);
-    if (progress && progress.currentTime > 8) {
+    if (progress && progress.currentTime > 8 && pendingSeekTimeRef.current === null) {
       setResumePrompt({
         time: progress.currentTime,
         formatted: formatTime(progress.currentTime),
@@ -494,6 +540,20 @@ export default function AnimePlayer({
     } else {
       setResumePrompt(null);
     }
+  };
+
+  const handleSwitchAudioLanguage = (newLang) => {
+    if (newLang === currentAudioLanguage) {
+      setShowAudioMenu(false);
+      return;
+    }
+    if (videoRef.current && videoRef.current.currentTime > 0) {
+      pendingSeekTimeRef.current = videoRef.current.currentTime;
+    }
+    setCurrentAudioLanguage(newLang);
+    setSeasonAudioPreference(animeId, seasonId, newLang, userId);
+    setShowAudioMenu(false);
+    setLoading(true);
   };
 
   const handleResume = () => {
@@ -685,15 +745,22 @@ export default function AnimePlayer({
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Badge de subtítulos en español */}
-          {playbackData && playbackData.hasSpanishSubtitles && (
+          {/* Badge de idioma de audio / subtítulos */}
+          {currentAudioLanguage === 'latino' && (
+            <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+              <span>🇲🇽</span>
+              <span>Español Latino (1080p)</span>
+            </span>
+          )}
+
+          {currentAudioLanguage !== 'latino' && playbackData && playbackData.hasSpanishSubtitles && (
             <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
               <Check size={12} className="text-emerald-400" />
               Sub Español Disponible
             </span>
           )}
 
-          {playbackData && !playbackData.hasSpanishSubtitles && (
+          {currentAudioLanguage !== 'latino' && playbackData && !playbackData.hasSpanishSubtitles && (
             <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
               <AlertCircle size={13} />
               Subtítulos en español no disponibles
@@ -724,7 +791,7 @@ export default function AnimePlayer({
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/75 z-10 text-white">
             <Loader2 size={36} className="animate-spin text-brand" />
-            <p className="text-sm font-medium">Cargando transmisión y subtítulos…</p>
+            <p className="text-sm font-medium">Cargando transmisión y audio…</p>
           </div>
         )}
 
@@ -732,7 +799,7 @@ export default function AnimePlayer({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/90 p-6 text-center z-10 text-white">
             <AlertCircle size={40} className="text-rose-500" />
             <p className="text-sm max-w-md text-slate-300">{error}</p>
-            <div className="flex gap-2 mt-2">
+            <div className="flex flex-wrap gap-2 mt-2 justify-center">
               <button
                 onClick={() => setRetryCount((c) => c + 1)}
                 className="px-4 py-2 text-xs font-bold rounded-xl bg-brand text-white shadow-md hover:brightness-110 active:scale-95 transition"
@@ -745,6 +812,14 @@ export default function AnimePlayer({
                   className="px-4 py-2 text-xs font-bold rounded-xl bg-white/10 text-slate-200 hover:bg-white/20 active:scale-95 transition"
                 >
                   Probar otro servidor
+                </button>
+              )}
+              {currentAudioLanguage === 'latino' && (
+                <button
+                  onClick={() => handleSwitchAudioLanguage('sub_es')}
+                  className="px-4 py-2 text-xs font-bold rounded-xl bg-purple-600/30 border border-purple-500/40 text-purple-200 hover:bg-purple-600/50 active:scale-95 transition"
+                >
+                  Ver en Japonés (Subtitulado)
                 </button>
               )}
             </div>
@@ -935,13 +1010,14 @@ export default function AnimePlayer({
       </div>
 
       {/* Backdrop para cerrar menús desplegables al hacer clic en cualquier parte fuera o sobre el video */}
-      {(showSettings || showServerMenu || showSubMenu) && (
+      {(showSettings || showServerMenu || showSubMenu || showAudioMenu) && (
         <div
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity"
           onClick={() => {
             setShowSettings(false);
             setShowServerMenu(false);
             setShowSubMenu(false);
+            setShowAudioMenu(false);
           }}
         />
       )}
@@ -978,13 +1054,68 @@ export default function AnimePlayer({
 
         {/* GRUPOS 2 Y 3: Transmisión y Ajustes */}
         <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap">
-          {/* GRUPO 2: Fuente y Pistas (Servidor y Subtítulos) */}
+          {/* GRUPO 2: Fuente y Pistas (Audio, Servidor y Subtítulos) */}
           <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/[0.04] border border-white/10">
+          {/* Selector de Idioma de Audio (Latino / Japonés) */}
+          {(dubAvailability?.hasLatino || currentAudioLanguage === 'latino') && (
+            <div className="relative">
+              <button
+                onClick={() => { setShowAudioMenu(!showAudioMenu); setShowServerMenu(false); setShowSubMenu(false); setShowSettings(false); }}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${
+                  currentAudioLanguage === 'latino'
+                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                    : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                }`}
+                title="Cambiar idioma de audio de la temporada"
+              >
+                <Volume2 size={14} className={currentAudioLanguage === 'latino' ? 'text-emerald-400' : 'text-slate-400'} />
+                <span className="truncate">{currentAudioLanguage === 'latino' ? '🇲🇽 Latino' : '🇯🇵 Japonés'}</span>
+              </button>
+
+              {showAudioMenu && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
+                >
+                  <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+                    Idioma de Audio
+                  </div>
+                  <div className="mt-1 flex flex-col gap-0.5">
+                    <button
+                      onClick={() => handleSwitchAudioLanguage('latino')}
+                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all ${
+                        currentAudioLanguage === 'latino' ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>🇲🇽</span>
+                        <span>Español Latino (1080p)</span>
+                      </span>
+                      {currentAudioLanguage === 'latino' && <Check size={14} />}
+                    </button>
+                    <button
+                      onClick={() => handleSwitchAudioLanguage('sub_es')}
+                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all ${
+                        currentAudioLanguage === 'sub_es' ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>🇯🇵</span>
+                        <span>Japonés (Subtitulado)</span>
+                      </span>
+                      {currentAudioLanguage === 'sub_es' && <Check size={14} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Selector de Servidor (cuando hay múltiples disponibles) */}
           {servers.length > 1 && (
             <div className="relative">
               <button
-                onClick={() => { setShowServerMenu(!showServerMenu); setShowSubMenu(false); setShowSettings(false); }}
+                onClick={() => { setShowServerMenu(!showServerMenu); setShowAudioMenu(false); setShowSubMenu(false); setShowSettings(false); }}
                 className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 text-slate-200 transition active:scale-95 shadow-sm"
                 title="Cambiar servidor de transmisión"
               >
@@ -1020,7 +1151,7 @@ export default function AnimePlayer({
           {/* Selector de Subtítulos */}
           <div className="relative">
             <button
-              onClick={() => { setShowSubMenu(!showSubMenu); setShowServerMenu(false); setShowSettings(false); }}
+              onClick={() => { setShowSubMenu(!showSubMenu); setShowServerMenu(false); setShowSettings(false); setShowAudioMenu(false); }}
               className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${selectedSub !== 'off' ? 'bg-brand text-white border-brand shadow-[0_0_15px_rgba(109,92,255,0.4)]' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
               title="Seleccionar subtítulos"
             >
@@ -1071,7 +1202,7 @@ export default function AnimePlayer({
             {/* Menú de Configuración: Velocidad de reproducción y Calidad */}
             <div className="relative">
             <button
-              onClick={() => { setShowSettings(!showSettings); setShowServerMenu(false); setShowSubMenu(false); }}
+              onClick={() => { setShowSettings(!showSettings); setShowServerMenu(false); setShowSubMenu(false); setShowAudioMenu(false); }}
               className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${showSettings || playbackSpeed !== 1 ? 'bg-brand/20 border-brand/50 text-white shadow-[0_0_12px_rgba(109,92,255,0.3)]' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
               title="Ajustes de reproducción (Velocidad y Calidad)"
             >
