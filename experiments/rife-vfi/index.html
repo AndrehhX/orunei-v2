@@ -440,6 +440,8 @@
     let offCtxA = offscreenA.getContext('2d');
     let offscreenB = document.createElement('canvas');
     let offCtxB = offscreenB.getContext('2d');
+    let offscreenInter = document.createElement('canvas');
+    let offCtxInter = offscreenInter.getContext('2d');
 
     // Canvas miniatura de análisis rápido (160×90 = 14KB, zero overhead)
     const thumbA = document.createElement('canvas');
@@ -751,9 +753,6 @@
         rafTicks = 0;
         secondAnchorTime = now;
       }
-
-      requestAnimationFrame(schedulerLoop);
-    }
 
       requestAnimationFrame(schedulerLoop);
     }
