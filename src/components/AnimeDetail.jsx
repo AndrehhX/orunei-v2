@@ -9,7 +9,7 @@ import { buildEpisodeCards } from '../api/episodeData.js'
 import AnimePlayer from './AnimePlayer'
 import SeasonAudioModal from './SeasonAudioModal'
 import { getSeasonAudioPreference, setSeasonAudioPreference } from '../playback/audioPreference.js'
-import { verifySeasonDubAvailability } from '../playback/dubSeasonManager.js'
+import { verifySeasonDubAvailability, isMalIdDubbedInSpanish } from '../playback/dubSeasonManager.js'
 import { getMiruroId, getEpisodePlayback } from '../api/streamAdapter'
 import { startEpisodeDownload, getDownload, cancelDownload, deleteDownload, subscribeDownloads, isNativeApp } from '../offline/downloadEngine'
 import { hasAiringAlert, toggleAiringAlert } from '../offline/airingAlerts'
@@ -617,7 +617,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
     }
   }
 
-  const handlePlayEpisode = (ep) => {
+  const handlePlayEpisode = async (ep) => {
     if (!m) return
     const seasonId = m.season ? `${m.season}_${m.seasonYear || ''}` : 's1'
     const savedPref = getSeasonAudioPreference(m.id, seasonId, profile?.id)
@@ -625,7 +625,22 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
     if (savedPref) {
       setAudioLanguage(savedPref)
       executePlayEpisode(ep)
-    } else if (dubAvailability?.available && dubAvailability?.hasLatino) {
+      return
+    }
+
+    let currentDub = dubAvailability
+    if (!currentDub && isMalIdDubbedInSpanish(m.idMal || m.id)) {
+      try {
+        currentDub = await verifySeasonDubAvailability({
+          malId: m.idMal,
+          animeTitle: title(m),
+          expectedEpisodes: m.episodes || 1
+        })
+        setDubAvailability(currentDub)
+      } catch (_) {}
+    }
+
+    if (currentDub?.available && currentDub?.hasLatino) {
       setPendingPlayEpisode(ep)
       setShowSeasonAudioModal(true)
     } else {
@@ -699,6 +714,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
             initialEpisode={playingEpisode}
             totalEpisodes={m.episodes || 0}
             audioLanguage={audioLanguage}
+            onAudioLanguageChange={setAudioLanguage}
             dubAvailability={dubAvailability}
             seasonId={m.season ? `${m.season}_${m.seasonYear || ''}` : 's1'}
             userId={profile?.id}

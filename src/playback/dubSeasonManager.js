@@ -22,36 +22,100 @@ function getProxiedUrl(targetUrl, referer = 'https://animeav1.com/') {
  * Proporciona detección instantánea (0ms) en la interfaz sin depender de latencia de red.
  */
 export const VERIFIED_LATINO_DUB_MAP = {
+  '20': { slug: 'naruto', episodes: 220 },
+  '269': { slug: 'bleach', episodes: 366 },
+  '1535': { slug: 'death-note', episodes: 37 },
   '16498': { slug: 'shingeki-no-kyojin', episodes: 25 },
   '25777': { slug: 'shingeki-no-kyojin-season-2', episodes: 12 },
-  '35760': { slug: 'shingeki-no-kyojin-season-3', episodes: 12 },
-  '38524': { slug: 'shingeki-no-kyojin-season-3-part-2', episodes: 10 },
-  '40028': { slug: 'shingeki-no-kyojin-the-final-season', episodes: 16 },
-  '48583': { slug: 'shingeki-no-kyojin-the-final-season-part-2', episodes: 12 },
-  '44511': { slug: 'chainsaw-man', episodes: 12 },
-  '40748': { slug: 'jujutsu-kaisen-tv', episodes: 24 },
-  '51009': { slug: 'jujutsu-kaisen-2nd-season', episodes: 23 },
-  '38000': { slug: 'kimetsu-no-yaiba', episodes: 26 },
-  '47778': { slug: 'kimetsu-no-yaiba-yuukaku-hen', episodes: 11 },
-  '50273': { slug: 'spy-x-family', episodes: 12 },
-  '50602': { slug: 'spy-x-family-part-2', episodes: 13 },
+  '29803': { slug: 'overlord', episodes: 13 },
+  '30276': { slug: 'one-punch-man', episodes: 12 },
+  '30694': { slug: 'dragon-ball-super', episodes: 131 },
   '31964': { slug: 'boku-no-hero-academia', episodes: 13 },
   '35247': { slug: 'boku-no-hero-academia-2nd-season', episodes: 25 },
-  '1535': { slug: 'death-note', episodes: 37 },
-  '20': { slug: 'naruto', episodes: 220 },
-  '30276': { slug: 'one-punch-man', episodes: 12 },
-  '22319': { slug: 'tokyo-ghoul', episodes: 12 },
-  '37999': { slug: 'kaguya-sama-wa-kokurasetai-tensai-tachi-no-renai-zunousen', episodes: 12 },
-  '52299': { slug: 'ore-dake-level-up-na-ken', episodes: 12 }
+  '35760': { slug: 'shingeki-no-kyojin-season-3', episodes: 12 },
+  '36946': { slug: 'dragon-ball-super-broly', episodes: 1 },
+  '37521': { slug: 'vinland-saga', episodes: 24 },
+  '37999': { slug: 'kaguya-sama-season-1', episodes: 12 },
+  '38000': { slug: 'kimetsu-no-yaiba', episodes: 26 },
+  '38524': { slug: 'shingeki-no-kyojin-season-3-part-2', episodes: 10 },
+  '38691': { slug: 'dr-stone', episodes: 24 },
+  '39535': { slug: 'mushoku-tensei-isekai-ittara-honki-dasu', episodes: 23 },
+  '39587': { slug: 'rezero-kara-hajimeru-isekai-seikatsu-2nd-season', episodes: 25 },
+  '40028': { slug: 'shingeki-no-kyojin-the-final-season', episodes: 16 },
+  '40356': { slug: 'kaguya-sama-season-2', episodes: 12 },
+  '40748': { slug: 'jujutsu-kaisen', episodes: 24 },
+  '42310': { slug: 'cyberpunk-edgerunners', episodes: 10 },
+  '42897': { slug: 'horimiya', episodes: 13 },
+  '43608': { slug: 'kaguya-sama-season-3', episodes: 13 },
+  '44511': { slug: 'chainsaw-man', episodes: 12 },
+  '47778': { slug: 'kimetsu-no-yaiba-yuukaku-hen', episodes: 11 },
+  '48583': { slug: 'shingeki-no-kyojin-the-final-season-part-2', episodes: 12 },
+  '48895': { slug: 'overlord-iv', episodes: 13 },
+  '49387': { slug: 'vinland-saga-season-2', episodes: 24 },
+  '50273': { slug: 'spy-x-family', episodes: 12 },
+  '50602': { slug: 'spy-x-family-part-2', episodes: 13 },
+  '51009': { slug: 'jujutsu-kaisen-2nd-season', episodes: 23 },
+  '52211': { slug: 'mashle', episodes: 12 },
+  '52299': { slug: 'ore-dake-level-up-na-ken', episodes: 12 },
+  '52991': { slug: 'sousou-no-frieren', episodes: 28 },
 };
+
+/**
+ * Títulos que poseen doblaje oficial físico/cine pero no cuentan con servidores de transmisión.
+ * Se descartan proactivamente para no inducir a error ni mostrar falsos positivos de doblaje.
+ */
+export const EXCLUDED_DUB_MAL_IDS = new Set([
+  '431',   // Howl no Ugoku Shiro (El castillo ambulante)
+  '199',   // Sen to Chihiro no Kamikakushi (El viaje de Chihiro)
+  '164',   // Mononoke Hime (La princesa Mononoke)
+  '523',   // Tonari no Totoro (Mi vecino Totoro)
+  '512',   // Majo no Takkyuubin (Kiki: Entregas a domicilio)
+  '578',   // Hotaru no Haka (La tumba de las luciérnagas)
+  '2890',  // Gake no Ue no Ponyo (Ponyo)
+  '10029', // Kokuriko-zaka kara (La colina de las amapolas)
+  '16662', // Kaze Tachinu (Se levanta el viento)
+  '32281', // Kimi no Na wa. (Your Name)
+  '28851', // Koe no Katachi (A Silent Voice)
+  '22319', // Tokyo Ghoul (sin servidores DUB en streaming)
+]);
+
+const unstreamableDubSet = new Set();
+try {
+  if (typeof sessionStorage !== 'undefined') {
+    const raw = sessionStorage.getItem('orunei_unstreamable_dub');
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) arr.forEach((id) => unstreamableDubSet.add(String(id)));
+    }
+  }
+} catch (_) {}
+
+/**
+ * Registra un anime cuyos servidores de doblaje no respondieron para descartarlo
+ * de la interfaz y evitar bucles o pantallas de error.
+ */
+export function markDubAsUnavailable(malId) {
+  if (!malId) return;
+  const strId = String(malId);
+  unstreamableDubSet.add(strId);
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      const stored = JSON.parse(sessionStorage.getItem('orunei_unstreamable_dub') || '[]');
+      stored.push(strId);
+      sessionStorage.setItem('orunei_unstreamable_dub', JSON.stringify([...new Set(stored)]));
+    }
+  } catch (_) {}
+}
 
 /**
  * Consulta si un anime está indexado en la base de datos de doblajes en español (MyDubList).
  */
 export function isMalIdDubbedInSpanish(malId) {
   if (!malId) return false;
-  if (VERIFIED_LATINO_DUB_MAP[String(malId)]) return true;
-  return Boolean(dubbedSpanishList[String(malId)]);
+  const str = String(malId);
+  if (EXCLUDED_DUB_MAL_IDS.has(str) || unstreamableDubSet.has(str)) return false;
+  if (VERIFIED_LATINO_DUB_MAP[str]) return true;
+  return Boolean(dubbedSpanishList[str]);
 }
 
 /**
@@ -96,12 +160,34 @@ export async function resolveAnimeAV1Slug(malId, animeTitle) {
   const candidateSlugs = new Set();
   for (const query of searchCandidates) {
     try {
+      // 1. Endpoint SvelteKit __data.json
+      const dataUrl = `${ANIMEAV1_BASE}/catalogo/__data.json?search=${encodeURIComponent(query)}`;
+      const res = await fetch(getProxiedUrl(dataUrl));
+      if (res.ok) {
+        const json = await res.json();
+        const d = json.nodes?.[2]?.data;
+        if (Array.isArray(d)) {
+          for (const it of d) {
+            if (it && typeof it === 'object' && typeof it.slug === 'number') {
+              const slugStr = d[it.slug];
+              if (typeof slugStr === 'string' && slugStr.length > 2) {
+                candidateSlugs.add(slugStr);
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    try {
+      // 2. HTML fallback
       const url = `${ANIMEAV1_BASE}/catalogo?search=${encodeURIComponent(query)}`;
       const res = await fetch(getProxiedUrl(url));
-      if (!res.ok) continue;
-      const html = await res.text();
-      const matches = [...html.matchAll(/\/media\/([a-z0-9-]+)/g)].map((m) => m[1]);
-      for (const s of matches) candidateSlugs.add(s);
+      if (res.ok) {
+        const html = await res.text();
+        const matches = [...html.matchAll(/\/(?:media|anime)\/([a-z0-9-]+)/g)].map((m) => m[1]);
+        for (const s of matches) candidateSlugs.add(s);
+      }
     } catch (err) {
       console.warn('[dubSeasonManager] Error buscando candidatos en AnimeAV1:', err.message);
     }
@@ -149,6 +235,13 @@ export async function verifySeasonDubAvailability({ malId, animeTitle, expectedE
   const cacheKey = `${malId || ''}:${animeTitle || ''}:${expectedEpisodes}`;
   if (seasonVerificationCache.has(cacheKey)) {
     return seasonVerificationCache.get(cacheKey);
+  }
+
+  // 0. Comprobar si el título está marcado como excluido o sin servidor disponible
+  if (malId && (EXCLUDED_DUB_MAL_IDS.has(String(malId)) || unstreamableDubSet.has(String(malId)))) {
+    const res = { available: false, hasLatino: false, hasCastellano: false, reason: 'No disponible en servidores de streaming' };
+    seasonVerificationCache.set(cacheKey, res);
+    return res;
   }
 
   // 1. Verificación instantánea si el título está en el catálogo oficial verificado

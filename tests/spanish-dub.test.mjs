@@ -58,10 +58,15 @@ test('audioPreference: gestiona almacenamiento por usuario, anime y temporada', 
   assert.equal(getSeasonAudioPreference('16498', 's1', 'user-123'), null);
 });
 
-test('dubSeasonManager: identifica títulos doblados con MyDubList', () => {
-  // MAL 16498 (Attack on Titan) y MAL 25777 (Attack on Titan S2) deben tener doblaje
+test('dubSeasonManager: identifica títulos doblados con MyDubList y descarta títulos sin servidor (ej. Ghibli)', () => {
+  // MAL 16498 (Attack on Titan), MAL 25777 (Attack on Titan S2) y MAL 40748 (Jujutsu Kaisen) deben tener doblaje
   assert.equal(isMalIdDubbedInSpanish(16498), true);
   assert.equal(isMalIdDubbedInSpanish(25777), true);
+  assert.equal(isMalIdDubbedInSpanish(40748), true);
+
+  // Ghibli / Howl no Ugoku Shiro (431) debe ser descartado porque no tiene fuentes en streaming
+  assert.equal(isMalIdDubbedInSpanish(431), false);
+  assert.equal(isMalIdDubbedInSpanish(199), false);
 
   // ID inexistente o no doblado retorna false
   assert.equal(isMalIdDubbedInSpanish(99999999), false);

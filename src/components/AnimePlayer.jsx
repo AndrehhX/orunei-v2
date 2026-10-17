@@ -4,6 +4,7 @@ import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, 
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getDubEpisodePlayback } from '../playback/dubStreamAdapter.js';
 import { setSeasonAudioPreference } from '../playback/audioPreference.js';
+import { markDubAsUnavailable } from '../playback/dubSeasonManager.js';
 import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, markEpisodeWatched, formatTime } from '../playback/playbackProgress';
 import { fetchSkipTimes, resolveActiveSkip, isAutoSkipEnabled, setAutoSkipEnabled } from '../playback/skipTimes';
@@ -20,6 +21,7 @@ export default function AnimePlayer({
   initialEpisode = 1,
   totalEpisodes = 1,
   audioLanguage = 'sub_es',
+  onAudioLanguageChange,
   dubAvailability = null,
   seasonId = 's1',
   userId = null,
@@ -42,9 +44,11 @@ export default function AnimePlayer({
   const [currentAudioLanguage, setCurrentAudioLanguage] = useState(audioLanguage || 'sub_es');
   const [showAudioMenu, setShowAudioMenu] = useState(false);
   const pendingSeekTimeRef = useRef(null);
+  const prevPropAudioLangRef = useRef(audioLanguage);
 
   useEffect(() => {
-    if (audioLanguage && audioLanguage !== currentAudioLanguage) {
+    if (audioLanguage && audioLanguage !== prevPropAudioLangRef.current) {
+      prevPropAudioLangRef.current = audioLanguage;
       setCurrentAudioLanguage(audioLanguage);
     }
   }, [audioLanguage]);
@@ -201,9 +205,13 @@ export default function AnimePlayer({
           })
           .catch((err) => {
             if (isCancelled) return;
-            console.warn('[AnimePlayer] Error cargando audio latino:', err.message);
-            setError(`Audio Latino: ${err.message || 'No se pudo reproducir este episodio en audio latino.'}`);
-            setLoading(false);
+            console.warn('[AnimePlayer] Error cargando audio latino, conmutando a japonés subtitulado:', err.message);
+            markDubAsUnavailable(malId || animeId);
+            setSkipNotice('Doblaje no disponible en servidor. Conmutando a versión original subtitulada...');
+            setTimeout(() => setSkipNotice(null), 4000);
+            prevPropAudioLangRef.current = 'sub_es';
+            setCurrentAudioLanguage('sub_es');
+            onAudioLanguageChange?.('sub_es');
           });
         return;
       }
@@ -309,6 +317,17 @@ export default function AnimePlayer({
 
   // Inicializar Hls.js una vez cargada la fuente o cambiado el servidor
   useEffect(() => {
+    if (activeServer?.isEmbed) {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+      setIsBuffering(false);
+      setBufferNotice(false);
+      setQualities([]);
+      return;
+    }
+
     const video = videoRef.current;
     if (!video || !activeStreamUrl) return;
 
@@ -365,7 +384,8 @@ export default function AnimePlayer({
                 console.warn('[AnimePlayer] Fallo de red en el servidor actual, conmutando al siguiente...');
                 setSelectedServerIndex((prev) => prev + 1);
               } else {
-                hls.startLoad();
+                hls.destroy();
+                setError('Error de red al cargar el flujo de video. Pulsa "Reintentar" o selecciona otro servidor.');
               }
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
@@ -394,7 +414,7 @@ export default function AnimePlayer({
         hlsRef.current = null;
       }
     };
-  }, [activeStreamUrl]);
+  }, [activeStreamUrl, activeServer?.isEmbed]);
 
   // Actualizar y forzar el modo de pistas de subtítulos nativas de manera estrictamente unívoca
   const syncSubtitles = () => {
@@ -562,8 +582,10 @@ export default function AnimePlayer({
     if (videoRef.current && videoRef.current.currentTime > 0) {
       pendingSeekTimeRef.current = videoRef.current.currentTime;
     }
+    prevPropAudioLangRef.current = newLang;
     setCurrentAudioLanguage(newLang);
     setSeasonAudioPreference(animeId, seasonId, newLang, userId);
+    onAudioLanguageChange?.(newLang);
     setShowAudioMenu(false);
     setLoading(true);
   };
@@ -994,33 +1016,45 @@ export default function AnimePlayer({
           </button>
         )}
 
-        <video
-          ref={videoRef}
-          style={brightness !== 1 ? { filter: `brightness(${brightness})` } : undefined}
-          className="w-full h-full object-contain"
-          controls
-          playsInline
-          crossOrigin="anonymous"
-          onLoadedMetadata={handleLoadedMetadata}
-          onTimeUpdate={handleTimeUpdate}
-          onPause={handlePause}
-          onWaiting={() => setIsBuffering(true)}
-          onPlaying={() => { setIsBuffering(false); setBufferNotice(false); }}
-          onCanPlay={() => setIsBuffering(false)}
-          onError={handleVideoError}
-          onEnded={handleEnded}
-        >
-          {subTracks.map((tr) => (
-            <track
-              key={tr.id || (tr.lang + tr.src)}
-              data-sub-id={tr.id}
-              kind="subtitles"
-              label={tr.label}
-              srcLang={tr.lang}
-              src={tr.src}
-            />
-          ))}
-        </video>
+        {activeServer?.isEmbed ? (
+          <iframe
+            src={activeServer.embedUrl || activeStreamUrl}
+            title={animeTitle || 'Reproductor de Video'}
+            className="w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            allowFullScreen
+          />
+        ) : (
+          <video
+            ref={videoRef}
+            style={brightness !== 1 ? { filter: `brightness(${brightness})` } : undefined}
+            className="w-full h-full object-contain"
+            controls
+            playsInline
+            webkit-playsinline="true"
+            x-webkit-airplay="allow"
+            crossOrigin={subTracks.length > 0 ? 'anonymous' : undefined}
+            onLoadedMetadata={handleLoadedMetadata}
+            onTimeUpdate={handleTimeUpdate}
+            onPause={handlePause}
+            onWaiting={() => setIsBuffering(true)}
+            onPlaying={() => { setIsBuffering(false); setBufferNotice(false); }}
+            onCanPlay={() => setIsBuffering(false)}
+            onError={handleVideoError}
+            onEnded={handleEnded}
+          >
+            {subTracks.map((tr) => (
+              <track
+                key={tr.id || (tr.lang + tr.src)}
+                data-sub-id={tr.id}
+                kind="subtitles"
+                label={tr.label}
+                srcLang={tr.lang}
+                src={tr.src}
+              />
+            ))}
+          </video>
+        )}
       </div>
 
       {/* Backdrop para cerrar menús desplegables al hacer clic en cualquier parte fuera o sobre el video */}
