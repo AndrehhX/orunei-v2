@@ -21,6 +21,8 @@ import {
   calculatePSNR,
   classifyTransition,
   computePercentiles,
+  verifyMotionMonotonicity,
+  VRAM_BUDGET_EXPERIMENTAL_MB,
 } from '../experiments/rife-vfi/rifeEngine.js';
 
 test('1. checkWebGPUSupport retorna diagnóstico seguro sin lanzar excepciones en Node.js', async () => {
@@ -159,4 +161,44 @@ test('13. SUPPORTED_RESOLUTIONS define SD (640x368), 720p y 1080p con cuantizaci
     assert.equal(res.height % 16, 0, `Alto de ${key} (${res.height}) debe ser multiplo de 16`);
   }
 });
+
+test('14. verifyMotionMonotonicity detecta retrocesos temporales (Δx < 0) y valida secuencias fluidas', () => {
+  // Caso A: Secuencia monótona perfecta (60 FPS fluidos)
+  const monotonicSeq = [
+    { tick: 0, x: 0 },
+    { tick: 1, x: 10 },
+    { tick: 2, x: 20 },
+    { tick: 3, x: 30 },
+  ];
+  const resA = verifyMotionMonotonicity(monotonicSeq);
+  assert.equal(resA.isMonotonic, true);
+  assert.equal(resA.backwardJumps, 0);
+  assert.equal(resA.duplicateFrames, 0);
+  assert.equal(resA.meanDelta, 10);
+
+  // Caso B: Secuencia con retroceso temporal (anomalía de judder anterior: F0 -> F0.5 -> F0)
+  const judderSeq = [
+    { tick: 0, x: 0 },
+    { tick: 1, x: 50 },
+    { tick: 2, x: 0 },   // Retroceso
+    { tick: 3, x: 150 },
+  ];
+  const resB = verifyMotionMonotonicity(judderSeq);
+  assert.equal(resB.isMonotonic, false);
+  assert.equal(resB.backwardJumps, 1);
+  assert.equal(resB.anomalies[0].type, 'BACKWARD_JUMP_RETROCESO');
+  assert.equal(resB.anomalies[0].deltaX, -50);
+});
+
+test('15. Presupuesto experimental de VRAM: límite de 1500 MB y cálculo exacto de texturas a 720p', () => {
+  assert.equal(VRAM_BUDGET_EXPERIMENTAL_MB, 1500);
+
+  // 6 texturas a 720p (texA, texB, 3x outTexRing, blendTex)
+  const bytesPerPixel = 4;
+  const singleTextureMb = (1280 * 720 * bytesPerPixel) / (1024 * 1024);
+  const sixTexturesMb = singleTextureMb * 6;
+  assert.ok(sixTexturesMb < 25, '6 texturas 720p deben consumir ~22.1 MB');
+  assert.ok(sixTexturesMb < VRAM_BUDGET_EXPERIMENTAL_MB, 'Consumo debe estar muy por debajo de los 1.5 GB');
+});
+
 

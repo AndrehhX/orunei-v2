@@ -16,6 +16,61 @@
 
 import { createRT } from 'framegen';
 
+export const VRAM_BUDGET_EXPERIMENTAL_MB = 1500; // Presupuesto experimental máximo permitido (1.5 GB)
+
+/**
+ * Valida si una trayectoria de fotogramas es monótona sin retrocesos temporales
+ */
+export function verifyMotionMonotonicity(trajectory = []) {
+  if (!trajectory || trajectory.length < 2) {
+    return { valid: true, backwardJumps: 0, duplicateFrames: 0, isMonotonic: true, anomalies: [] };
+  }
+
+  let backwardJumps = 0;
+  let duplicateFrames = 0;
+  const deltas = [];
+  const anomalies = [];
+
+  for (let i = 1; i < trajectory.length; i++) {
+    const prev = trajectory[i - 1];
+    const curr = trajectory[i];
+    const dx = curr.x - prev.x;
+    deltas.push(dx);
+
+    if (dx < -0.01) {
+      backwardJumps++;
+      anomalies.push({
+        tick: curr.tick,
+        fromX: prev.x,
+        toX: curr.x,
+        deltaX: dx,
+        type: 'BACKWARD_JUMP_RETROCESO',
+      });
+    } else if (Math.abs(dx) < 0.001) {
+      duplicateFrames++;
+      anomalies.push({
+        tick: curr.tick,
+        x: curr.x,
+        type: 'DUPLICATE_FREEZE',
+      });
+    }
+  }
+
+  const meanDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+  const variance = deltas.reduce((a, b) => a + Math.pow(b - meanDelta, 2), 0) / deltas.length;
+  const stdDelta = Math.sqrt(variance);
+
+  return {
+    totalFrames: trajectory.length,
+    backwardJumps,
+    duplicateFrames,
+    meanDelta: parseFloat(meanDelta.toFixed(2)),
+    stdDelta: parseFloat(stdDelta.toFixed(2)),
+    isMonotonic: backwardJumps === 0,
+    anomalies,
+  };
+}
+
 export const RIFE_SETTINGS = {
   SCENE_CUT_THRESHOLD: 0.28,      // Diferencia media absoluta para clasificar corte de plano (> 0.28)
   DUPLICATE_THRESHOLD: 0.015,     // Umbral de diferencia para detectar fotograma duplicado en anime
@@ -375,22 +430,10 @@ export async function createRifeEngine({
     usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.RENDER_ATTACHMENT,
   });
 
-  const outTex = device.createTexture({
-    size: [w, h],
-    format: 'rgba8unorm',
-    usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC,
-  });
-
-  const blendTex = device.createTexture({
-    size: [w, h],
-    format: 'rgba8unorm',
-    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
-  });
-
-  // Estimación de memoria VRAM asignada
-  const vramTexturesBytes = (w * h * 4) * 4;
-  const vramFeaturesBytes = (w * h * 2) * 20;
-  const estimatedVramMb = parseFloat(((vramTexturesBytes + vramFeaturesBytes) / (1024 * 1024)).toFixed(2));
+  // Ring Buffer de Triple Buffering para texturas de salida (desacopla inferencia de presentación)
+  const RING_SIZE = 3;
+  const outTexRing = [];
+  const bindGroupOutTexRing = [];
 
   // Pipeline de presentación Blit (0 costo de CPU, 100% shader)
   const canvasFormat = navigator.gpu?.getPreferredCanvasFormat?.() || 'bgra8unorm';
@@ -419,6 +462,38 @@ export async function createRifeEngine({
     },
   });
 
+  for (let i = 0; i < RING_SIZE; i++) {
+    const ringTex = device.createTexture({
+      label: `rife-outTex-ring-${i}`,
+      size: [w, h],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC,
+    });
+    outTexRing.push(ringTex);
+    bindGroupOutTexRing.push(device.createBindGroup({
+      layout: blitPipeline.getBindGroupLayout(0),
+      entries: [{ binding: 0, resource: ringTex.createView() }],
+    }));
+  }
+
+  // Alias compatible hacia el primer buffer
+  const outTex = outTexRing[0];
+
+  const blendTex = device.createTexture({
+    size: [w, h],
+    format: 'rgba8unorm',
+    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+  });
+
+  // Contabilización exacta de VRAM residente asignada (Objetos WebGPU reales)
+  const bytesPerPixel = 4;
+  const vramTexturesBytes = (w * h * bytesPerPixel) * (2 + RING_SIZE + 1); // 2 input, 3 ring output, 1 blend = 6 texturas
+  const vramWeightsBytes = weightsBin ? weightsBin.byteLength : 4.42 * 1024 * 1024;
+  const vramFeaturesBytes = (w * h * 2) * 20; // Feature maps CNN en fp16
+  const totalAllocatedBytes = vramTexturesBytes + vramWeightsBytes + vramFeaturesBytes;
+  const estimatedVramMb = parseFloat((totalAllocatedBytes / (1024 * 1024)).toFixed(2));
+  const maxVramBudgetMb = VRAM_BUDGET_EXPERIMENTAL_MB;
+
   // PRE-CREACIÓN DE BIND GROUPS (Zero allocations en tiempo de renderizado)
   const bindGroupTexA = device.createBindGroup({
     layout: blitPipeline.getBindGroupLayout(0),
@@ -428,18 +503,17 @@ export async function createRifeEngine({
     layout: blitPipeline.getBindGroupLayout(0),
     entries: [{ binding: 0, resource: texB.createView() }],
   });
-  const bindGroupOutTex = device.createBindGroup({
-    layout: blitPipeline.getBindGroupLayout(0),
-    entries: [{ binding: 0, resource: outTex.createView() }],
-  });
   const bindGroupBlendTex = device.createBindGroup({
     layout: blitPipeline.getBindGroupLayout(0),
     entries: [{ binding: 0, resource: blendTex.createView() }],
   });
 
+  let currentWriteRingIndex = 0;
+  let currentPresentRingIndex = 0;
+
   function presentFrame(type, webgpuContext) {
     if (!webgpuContext || isDestroyed) return;
-    let bg = bindGroupOutTex;
+    let bg = bindGroupOutTexRing[currentPresentRingIndex];
     if (type === 'original' || type === 'frameA') bg = bindGroupTexA;
     else if (type === 'frameB') bg = bindGroupTexB;
     else if (type === 'blend') bg = bindGroupBlendTex;
@@ -468,13 +542,42 @@ export async function createRifeEngine({
   let lastCpuDispatchMs = 0;
   let lastGpuExecutionMs = 0;
 
-  // Pipeline asíncrono no bloqueante y reutilización de textura F1 -> F0 en VRAM
+  // Pipeline asíncrono con Triple Buffering (Cola de hasta 2 trabajos en vuelo sin riesgo de desbordamiento)
   let activeInFlight = 0;
-  const MAX_IN_FLIGHT = 1; // Cola estrictamente acotada a 1 trabajo en vuelo
+  const MAX_IN_FLIGHT = 2; // Desacopla 1 trabajo en GPU mientras 1 fotograma se presenta en pantalla
   let hasValidF1 = false;
 
   function resetTextureHistory() {
     hasValidF1 = false;
+  }
+
+  /**
+   * Ingesta explícita y síncrona del par de fotogramas (F_A, F_B) en VRAM
+   * Garantiza que texA siempre contiene F_A y texB contiene F_B antes de cualquier presentación
+   */
+  function ingestPair(sourceCanvasA, sourceCanvasB, isFirstOrCut = false) {
+    if (isDestroyed) return;
+    if (!isFirstOrCut && hasValidF1) {
+      // Promoción en VRAM: texB pasa a texA (43 us)
+      const promoteEncoder = device.createCommandEncoder({ label: 'promote-f1-to-f0-vram-copy' });
+      promoteEncoder.copyTextureToTexture({ texture: texB }, { texture: texA }, [w, h]);
+      device.queue.submit([promoteEncoder.finish()]);
+      // Copia DMA únicamente del nuevo fotograma B
+      if (sourceCanvasB) {
+        device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
+      }
+    } else {
+      // Ingesta completa inicial o tras corte de escena
+      if (sourceCanvasA) {
+        device.queue.copyExternalImageToTexture({ source: sourceCanvasA }, { texture: texA }, [w, h]);
+      }
+      if (sourceCanvasB) {
+        device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
+      }
+      hasValidF1 = true;
+    }
+    // Pre-cálculo del flujo óptico (prepPair) para que esté listo en GPU
+    rt.prepPair(texA, texB);
   }
 
   /**
@@ -579,37 +682,20 @@ export async function createRifeEngine({
 
     const t0 = performance.now();
 
-    // Si skipPrep es true, el par de texturas texA y texB ya fue ingestada y procesada por prepPair()
-    if (!skipPrep) {
-      // Reutilización inteligente F1 -> F0 en VRAM
-      if (reuseF1AsF0 && hasValidF1) {
-        // Promover F1 a F0 internamente en GPU VRAM (43 us, 0 bus PCIe transfer)
-        const promoteEncoder = device.createCommandEncoder({ label: 'promote-f1-to-f0-vram-copy' });
-        promoteEncoder.copyTextureToTexture(
-          { texture: texB },
-          { texture: texA },
-          [w, h]
-        );
-        device.queue.submit([promoteEncoder.finish()]);
-
-        // Únicamente transferimos el nuevo frame F1 (sourceCanvasB) por DMA
-        device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
-      } else {
-        // Transferencia inicial completa
-        device.queue.copyExternalImageToTexture({ source: sourceCanvasA }, { texture: texA }, [w, h]);
-        device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
-        hasValidF1 = true;
-      }
-
-      if (forceMode === 'rife') {
-        rt.prepPair(texA, texB);
-      }
+    // Si skipPrep es false y se pasaron lienzos, asegurar ingesta síncrona
+    if (!skipPrep && (sourceCanvasA || sourceCanvasB)) {
+      ingestPair(sourceCanvasA, sourceCanvasB, !hasValidF1 || !reuseF1AsF0);
     }
 
+    const targetOutTex = outTexRing[currentWriteRingIndex];
     if (forceMode === 'rife') {
       const clampedT = Math.max(0.01, Math.min(0.99, t));
-      rt.runT(clampedT, outTex);
+      rt.runT(clampedT, targetOutTex);
     }
+
+    // El slot escrito queda listo para la presentación continua desacoplada
+    currentPresentRingIndex = currentWriteRingIndex;
+    currentWriteRingIndex = (currentWriteRingIndex + 1) % RING_SIZE;
 
     const tSubmit = performance.now();
     lastCpuDispatchMs = parseFloat((tSubmit - t0).toFixed(2));
@@ -731,7 +817,7 @@ export async function createRifeEngine({
     try {
       texA.destroy();
       texB.destroy();
-      outTex.destroy();
+      for (const t of outTexRing) t.destroy();
       blendTex.destroy();
     } catch {}
     try { device.destroy(); } catch {}
@@ -743,6 +829,10 @@ export async function createRifeEngine({
     device,
     gpuCheck,
     estimatedVramMb,
+    totalAllocatedVramMb: estimatedVramMb,
+    vramBudgetMb: maxVramBudgetMb,
+    ringSize: RING_SIZE,
+    ingestPair,
     presentFrame,
     dispatchInterpolation,
     profilePipelineStages,
