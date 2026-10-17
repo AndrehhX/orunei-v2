@@ -55,7 +55,7 @@ function ActivityList({ activity }) {
   return <div className="space-y-2">{activity.map((item) => <div key={item.id} className="flex items-start gap-3 rounded-xl bg-white/60 p-3 dark:bg-white/5"><span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand"><Activity size={15} /></span><div className="min-w-0"><p className="text-sm font-medium">{item.label}</p><p className="mt-0.5 text-[11px] text-slate-500">{new Date(item.at).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' })}</p></div></div>)}</div>
 }
 
-export default function ProfilePage({ onEdit }) {
+export default function ProfilePage({ onEdit, onOpenDonation }) {
   const { profile, profileStatus, updateCustomLists, updateAnimeList, recordActivity, storageError } = useProfile()
   const [active, setActive] = useState(profile.landingSection || 'overview')
   const [publicView, setPublicView] = useState(false)
@@ -128,6 +128,16 @@ export default function ProfilePage({ onEdit }) {
           <Avatar profile={profile} large />
           <div className={layout.identity}><div className="flex min-w-0 flex-wrap items-center gap-2"><h1 className="min-w-0 break-words text-2xl font-extrabold tracking-tight md:text-3xl">{profile.displayName}</h1><span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600"><LockKeyhole size={11} /> Solo tú</span></div><p className="truncate text-sm text-slate-500">@{profile.username}</p></div>
           <div className={layout.actions}>
+            {onOpenDonation && (
+              <button
+                type="button"
+                onClick={onOpenDonation}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-bold text-amber-600 dark:text-amber-400 transition hover:-translate-y-0.5 hover:bg-amber-500/20 active:scale-95"
+              >
+                <span>☕</span>
+                <span>Apoyar en Ko-fi</span>
+              </button>
+            )}
             {onEdit && <button onClick={onEdit} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand dark:bg-white dark:text-slate-900"><Pencil size={15} /> Editar perfil</button>}
             <button onClick={() => setPublicView(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200"><Eye size={15} /> Vista pública</button>
           </div>

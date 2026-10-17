@@ -11,7 +11,7 @@ import { getProfileLayoutClasses } from '../ui/profileLayout.js'
 const Head = ({ children, onAll, href = '#amigos' }) => <div className="mb-3 flex items-center justify-between"><h3 className="font-bold">{children}</h3>{onAll && <a href={href} onClick={(e) => { e.preventDefault(); onAll?.() }} className="flex items-center gap-1 text-[11px] text-brand">Ver todo <ArrowRight size={12} /></a>}</div>
 const Avatar = ({ profile }) => <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-brand to-pink-400 text-white">{profile?.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : <UserRound size={15} />}</div>
 
-export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOpenProfile, onOpenAnime }) {
+export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOpenProfile, onOpenAnime, onOpenDonation }) {
   const { items, status: newsStatus } = useNews()
   const { ready: recReady, trends: liveTrends } = useRec()
   const { profile } = useProfile()
@@ -23,6 +23,31 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
   const trendRows = liveTrends.map((item) => ({ ...item, q: item.title, t: item.title, y: item.year || '—', v: formatCount(item.trend), grad: 'linear-gradient(135deg,#d9405a,#2a0f3a)' }))
   return (
     <aside className="scroll-hide sticky top-0 hidden h-screen w-[328px] shrink-0 space-y-5 self-start overflow-y-auto py-5 pr-6 xl:block animate-fade">
+      {/* Apartado de Donaciones Ko-fi (Kofy) */}
+      <div className="card p-4 relative overflow-hidden border border-amber-500/25 bg-gradient-to-br from-amber-500/10 via-rose-500/5 to-purple-500/10 shadow-sm animate-rise">
+        <div className="flex items-center gap-2.5 mb-2">
+          <span className="text-xl animate-bounce">☕</span>
+          <div>
+            <h4 className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+              <span>Apoya a Orunei</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-xs">
+                Kofy
+              </span>
+            </h4>
+            <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">100% independiente y sin anuncios</p>
+          </div>
+        </div>
+        <p className="text-[11px] text-slate-600 dark:text-slate-300 mb-3 leading-relaxed">
+          Tu donación mantiene los servidores 1080p sin cortes y nos ayuda a sumar más animes con doblaje.
+        </p>
+        <button
+          type="button"
+          onClick={onOpenDonation}
+          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white text-xs font-bold shadow-md shadow-amber-500/20 hover:brightness-110 active:scale-95 transition"
+        >
+          <span>Invitar a un café ☕</span>
+        </button>
+      </div>
       <div className="card p-4">
         <div className="mb-2 flex justify-between"><h3 className="font-bold">Tu perfil</h3><a href="#perfil" onClick={(e) => { e.preventDefault(); onSeeProfile?.() }} className="flex items-center gap-1 text-[11px] text-brand">Ver perfil <ArrowRight size={12} /></a></div>
         <div className="relative h-16 overflow-hidden rounded-lg bg-gradient-to-r from-[#3a2a6a] via-[#c06a9a] to-[#f4a6c1]">{profile.banner && <img src={profile.banner} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="absolute inset-0 h-full w-full object-cover" />}</div>

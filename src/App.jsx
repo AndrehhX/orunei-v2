@@ -3,6 +3,7 @@ import { Search, Sparkles, Sun, Moon, WifiOff } from 'lucide-react'
 import { checkForUpdate } from './offline/appUpdater'
 import UpdateModal from './components/UpdateModal'
 import DownloadAppModal from './components/DownloadAppModal'
+import KofiDonationModal from './components/KofiDonationModal'
 import ActiveDownloadBar from './components/ActiveDownloadBar'
 import { isNativeApp } from './offline/platform'
 import { useNetworkStatus } from './offline/useNetworkStatus'
@@ -55,7 +56,7 @@ function GlobalTasteSync() {
 
 const tabs = ['Anime', 'Noticias']
 
-function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownloadApp, isOffline, onOpenOfflineDownloads }) {
+function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownloadApp, onOpenDonation, isOffline, onOpenOfflineDownloads }) {
   const { profile } = useProfile()
   return (
     <header className="flex items-center gap-2.5 sm:gap-4 animate-fade">
@@ -66,6 +67,17 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownlo
         <Search size={18} className="shrink-0" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-xs sm:text-sm outline-none" placeholder="Buscar anime, películas, series..." />
       </label>
+      {onOpenDonation && (
+        <button
+          type="button"
+          onClick={onOpenDonation}
+          title="Apoyar el proyecto en Ko-fi (Kofy)"
+          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold transition active:scale-95 shrink-0"
+        >
+          <span className="text-sm">☕</span>
+          <span className="hidden md:inline">Donar</span>
+        </button>
+      )}
       {isOffline && (
         <button
           type="button"
@@ -114,6 +126,7 @@ export default function App() {
   const [selectedPlayEpisode, setSelectedPlayEpisode] = useState(null)
   const [developmentNotice, setDevelopmentNotice] = useState(null)
   const [showDownloadApp, setShowDownloadApp] = useState(false)
+  const [showDonationModal, setShowDonationModal] = useState(false)
   const [updateInfo, setUpdateInfo] = useState(null)
   const [showSplash, setShowSplash] = useState(() => {
     try {
@@ -214,7 +227,7 @@ export default function App() {
       )}
       <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
         <CustomCursor />
-        <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} />
+        <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} onOpenDonation={() => setShowDonationModal(true)} />
         <main className="min-w-0 flex-1 space-y-6 px-3.5 sm:px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 lg:pb-8 lg:px-8">
           <AppHeader
             query={query}
@@ -223,6 +236,7 @@ export default function App() {
             dark={dark}
             setDark={setDark}
             onOpenDownloadApp={() => setShowDownloadApp(true)}
+            onOpenDonation={() => setShowDonationModal(true)}
             isOffline={isOffline}
             onOpenOfflineDownloads={() => navigatePage('library')}
           />
@@ -244,7 +258,7 @@ export default function App() {
             </div>
           )}
           <div key={page} className="animate-page-enter space-y-7">
-            {page === 'anime' ? <AnimePage query={query} initialOpenId={selectedAnimeId} initialPlayEpisode={selectedPlayEpisode} onCloseDetail={closeAnime} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
+            {page === 'anime' ? <AnimePage query={query} initialOpenId={selectedAnimeId} initialPlayEpisode={selectedPlayEpisode} onCloseDetail={closeAnime} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} onOpenDonation={() => setShowDonationModal(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
             <div className="flex flex-wrap items-end justify-between gap-6 animate-rise">
               <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
                 <p className="mt-2 text-sm leading-6 text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
@@ -256,13 +270,14 @@ export default function App() {
             </>}
           </div>
         </main>
-        {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => navigatePage('profile')} onSeeFriends={() => navigatePage('friends')} onOpenProfile={openPublicProfile} onOpenAnime={openAnime} />}
+        {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => navigatePage('profile')} onSeeFriends={() => navigatePage('friends')} onOpenProfile={openPublicProfile} onOpenAnime={openAnime} onOpenDonation={() => setShowDonationModal(true)} />}
         {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}
         <ActiveDownloadBar onGoToDownloads={() => navigatePage('library')} />
         <MobileNav page={page} setPage={navigatePage} />
         <DevelopmentNotice notice={developmentNotice} onClose={() => setDevelopmentNotice(null)} />
         <UpdateModal updateInfo={updateInfo} onClose={() => setUpdateInfo(null)} />
         <DownloadAppModal isOpen={showDownloadApp} onClose={() => setShowDownloadApp(false)} />
+        <KofiDonationModal isOpen={showDonationModal} onClose={() => setShowDonationModal(false)} />
       </div>
     </Suspense>
   </ProfileProvider>

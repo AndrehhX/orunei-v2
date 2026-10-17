@@ -7,7 +7,7 @@ import OruneiLogo from './OruneiLogo'
 const main = [['Para ti', Home], ['Biblioteca', Library], ['Perfil', User], ['Amigos', Users]]
 const explore = [['Anime', Sparkles], ['Películas', Film], ['Series', MonitorPlay]]
 
-export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, onDevelopmentFeature, onOpenDownloadApp }) {
+export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, onDevelopmentFeature, onOpenDownloadApp, onOpenDonation }) {
   const { profile } = useProfile()
   return (
     <aside className="hidden lg:flex w-[216px] shrink-0 flex-col px-3 py-6 sticky top-0 h-screen">
@@ -31,7 +31,22 @@ export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, 
         <a href="#" onClick={(e) => { e.preventDefault(); onDevelopmentFeature('Juegos') }} className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm"><Gamepad2 size={19} />Juegos
           <span className="rounded-full bg-slate-200/80 dark:bg-white/10 px-2 py-0.5 text-[10px]">Próximamente</span></a>
       </nav>
-      <div className="mt-auto space-y-4">
+      <div className="mt-auto space-y-3">
+        {onOpenDonation && (
+          <button
+            type="button"
+            onClick={onOpenDonation}
+            className="group relative w-full flex items-center justify-between gap-2 rounded-xl py-2 px-3 text-xs font-bold text-amber-600 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-sm"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base group-hover:scale-110 transition-transform">☕</span>
+              <span>Apoyar en Ko-fi</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-sm">
+              Kofy
+            </span>
+          </button>
+        )}
         {onOpenDownloadApp && !isNativeApp() && (
           <button
             type="button"
