@@ -15,7 +15,6 @@ import RightPanel from './components/RightPanel'
 import { Library, Because, News } from './components/Rows'
 import { ProfileProvider, useProfile } from './profile/ProfileProvider'
 import DevelopmentNotice from './components/DevelopmentNotice'
-import CustomCursor from './components/CustomCursor'
 import OruneiLogo from './components/OruneiLogo'
 import AppSplash from './components/AppSplash'
 import SakuraPetals from './components/SakuraPetals'
@@ -75,19 +74,15 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, theme = (dar
           <button
             type="button"
             onClick={onOpenDonation}
-            title="Apoyar a Orunei en Ko-fi (Kofy)"
+            title="Apoyar a Orunei en Ko-fi"
             aria-label="Apoyar a Orunei en Ko-fi"
-            className={`group relative inline-flex h-9 sm:h-9 items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all duration-300 active:scale-95 shrink-0 hover:-translate-y-0.5 ${donationStyle.container}`}
+            className={`group inline-flex h-9 items-center justify-center gap-1.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 shrink-0 ${donationStyle.container}`}
           >
-            <span className="animate-kofi-cup text-sm sm:text-base select-none transition-transform duration-300 group-hover:scale-125 group-hover:-rotate-12">
+            <span className="text-sm select-none transition-transform duration-200 group-hover:scale-110">
               {donationStyle.icon}
             </span>
-            <span className="hidden sm:inline text-[11px] font-bold tracking-tight">
+            <span className="hidden sm:inline text-xs font-bold tracking-tight">
               Ko-fi
-            </span>
-            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-60 ${donationStyle.ping || 'bg-amber-400'}`} />
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${donationStyle.dot || 'bg-amber-500'}`} />
             </span>
           </button>
         );
@@ -263,7 +258,6 @@ export default function App() {
         />
       )}
       <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
-        <CustomCursor />
         {theme === 'sakura' && <SakuraPetals />}
         <Sidebar dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} />
         <main className="min-w-0 flex-1 space-y-6 px-3.5 sm:px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 lg:pb-8 lg:px-8">

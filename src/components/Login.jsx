@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, Check, Eye, EyeOff, Lock, Mail, Moon, MousePointer2, ShieldCheck, Sparkles, Sun, User } from 'lucide-react'
 import { REGISTER_USERNAME_PLACEHOLDER } from '../auth/authModel.js'
 import { getLoginPointerOffset, shouldEnableLoginParallax } from '../ui/loginVisual.js'
-import CustomCursor from './CustomCursor'
 import OruneiLogo from './OruneiLogo'
 
 function Field({ icon: Icon, label, children, ...props }) {
@@ -186,7 +185,6 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
 
   return (
     <>
-      <CustomCursor />
       <main className="login-page relative min-h-screen overflow-hidden px-4 py-5 sm:px-8 sm:py-8 lg:px-12">
         <div className="login-background-blob login-background-blob--one" />
         <div className="login-background-blob login-background-blob--two" />
