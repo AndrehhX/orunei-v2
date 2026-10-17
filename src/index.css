@@ -170,3 +170,124 @@ video::cue {
   border-radius: 6px;
 }
 
+/* ==========================================================================
+   TEMA SAKURA 🌸 (Paleta de Flor de Cerezo Oficial)
+   Soft Blush: #FFE5EC | Pastel Pink: #FFC2D1 | Cherry Blossom: #FFB3C6
+   Cotton Candy: #FF8FAB | Petal Rouge: #FB6F92
+   ========================================================================== */
+:root {
+  --sakura-soft-blush: #FFE5EC;
+  --sakura-pastel-pink: #FFC2D1;
+  --sakura-cherry-blossom: #FFB3C6;
+  --sakura-cotton-candy: #FF8FAB;
+  --sakura-petal-rouge: #FB6F92;
+}
+
+.sakura body {
+  background-color: #fff4f7;
+  background-image: 
+    radial-gradient(circle at 14% 15%, rgba(255, 179, 198, 0.5) 0%, transparent 45%),
+    radial-gradient(circle at 86% 85%, rgba(255, 143, 171, 0.35) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(255, 229, 236, 0.65) 0%, transparent 60%);
+  background-attachment: fixed;
+  color: #381a26;
+}
+
+.sakura .card {
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 179, 198, 0.7);
+  box-shadow: 0 4px 20px -2px rgba(251, 111, 146, 0.1), 0 1px 6px rgba(255, 194, 209, 0.25);
+}
+
+.sakura .card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(251, 111, 146, 0.6);
+  box-shadow: 0 20px 40px -12px rgba(251, 111, 146, 0.28), 0 0 22px rgba(255, 143, 171, 0.2);
+}
+
+/* Acentos y botones Sakura con Petal Rouge #FB6F92 */
+.sakura .bg-brand {
+  background-color: #FB6F92 !important;
+}
+.sakura .text-brand {
+  color: #FB6F92 !important;
+}
+.sakura .border-brand {
+  border-color: #FB6F92 !important;
+}
+.sakura .bg-brand-soft {
+  background-color: #FFE5EC !important;
+  color: #FB6F92 !important;
+}
+.sakura .shadow-brand\/30 {
+  box-shadow: 0 10px 25px -3px rgba(251, 111, 146, 0.35) !important;
+}
+.sakura .shadow-brand\/40 {
+  box-shadow: 0 10px 25px -3px rgba(251, 111, 146, 0.45) !important;
+}
+.sakura .hover\:text-brand:hover {
+  color: #FB6F92 !important;
+}
+.sakura .hover\:border-brand:hover {
+  border-color: #FB6F92 !important;
+}
+.sakura .hover\:bg-brand\/10:hover {
+  background-color: rgba(251, 111, 146, 0.1) !important;
+}
+.sakura .focus-within\:ring-brand\/40:focus-within {
+  --tw-ring-color: rgba(251, 111, 146, 0.45) !important;
+}
+
+/* Cursor interactivo Sakura */
+.sakura .custom-cursor-dot {
+  background: #FB6F92;
+  box-shadow: 0 0 0 3px rgba(255, 229, 236, 0.95);
+}
+.sakura .custom-cursor-ring {
+  border-color: rgba(251, 111, 146, 0.65);
+  background: rgba(255, 229, 236, 0.3);
+}
+.sakura .custom-cursor.is-interactive .custom-cursor-dot {
+  background: #FF8FAB;
+}
+.sakura .custom-cursor.is-interactive .custom-cursor-ring {
+  border-color: rgba(255, 143, 171, 0.85);
+  background: rgba(255, 179, 198, 0.25);
+}
+
+/* Scrollbars Sakura */
+.sakura ::-webkit-scrollbar-thumb {
+  background: rgba(255, 143, 171, 0.5);
+}
+.sakura ::-webkit-scrollbar-thumb:hover {
+  background: #FB6F92;
+  box-shadow: 0 0 10px rgba(251, 111, 146, 0.65);
+}
+
+/* Selección de texto en modo Sakura */
+.sakura ::selection {
+  background: #FFC2D1;
+  color: #381a26;
+}
+
+/* Login en tema Sakura */
+.sakura .login-page {
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255, 179, 198, 0.35), transparent 35%),
+    radial-gradient(circle at 88% 86%, rgba(255, 143, 171, 0.3), transparent 30%),
+    #fff4f7;
+}
+.sakura .login-art-panel {
+  background: linear-gradient(145deg, #782944 0%, #b84368 46%, #fb6f92 100%);
+}
+.sakura .login-form-panel {
+  background: rgba(255, 255, 255, 0.88);
+}
+.sakura .login-background-blob--one {
+  background: rgba(255, 179, 198, 0.45);
+}
+.sakura .login-background-blob--two {
+  background: rgba(255, 143, 171, 0.4);
+}
+
+

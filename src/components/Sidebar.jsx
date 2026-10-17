@@ -7,7 +7,7 @@ import OruneiLogo from './OruneiLogo'
 const main = [['Para ti', Home], ['Biblioteca', Library], ['Perfil', User], ['Amigos', Users]]
 const explore = [['Anime', Sparkles], ['Películas', Film], ['Series', MonitorPlay]]
 
-export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, onDevelopmentFeature, onOpenDownloadApp, onOpenDonation }) {
+export default function Sidebar({ dark, setDark, theme = (dark ? 'dark' : 'light'), setTheme, user, onLogout, page, setPage, onDevelopmentFeature, onOpenDownloadApp, onOpenDonation }) {
   const { profile } = useProfile()
   return (
     <aside className="hidden lg:flex w-[216px] shrink-0 flex-col px-3 py-6 sticky top-0 h-screen">
@@ -57,12 +57,49 @@ export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, 
             <span>App Android (APK)</span>
           </button>
         )}
-        <div className="relative inline-flex rounded-full bg-slate-200/70 dark:bg-white/10 p-1">
-          <span className={`absolute left-1 top-1 h-9 w-9 rounded-full bg-white shadow transition-transform duration-300 ease-out dark:bg-[#2a2a3c] ${dark ? 'translate-x-9' : ''}`} />
-          {[[false, Sun], [true, Moon]].map(([v, I]) => (
-            <button key={String(v)} onClick={() => setDark(v)} aria-label={v ? 'Modo oscuro' : 'Modo claro'}
-              className="relative grid h-9 w-9 place-items-center rounded-full"><I size={17} /></button>
-          ))}
+        <div className="relative inline-flex items-center rounded-full bg-slate-200/70 dark:bg-white/10 p-1 border border-slate-200/80 dark:border-white/5">
+          <span
+            className={`absolute left-1 top-1 h-8 w-8 rounded-full shadow transition-all duration-300 ease-spring ${
+              theme === 'sakura'
+                ? 'translate-x-[68px] bg-gradient-to-tr from-[#FFB3C6] to-[#FB6F92]'
+                : theme === 'dark'
+                ? 'translate-x-[34px] bg-white dark:bg-[#2a2a3c]'
+                : 'translate-x-0 bg-white'
+            }`}
+          />
+          <button
+            type="button"
+            onClick={() => (setTheme ? setTheme('light') : setDark(false))}
+            aria-label="Modo claro"
+            title="Modo claro"
+            className={`relative grid h-8 w-8 place-items-center rounded-full text-xs transition-colors ${
+              theme === 'light' ? 'text-amber-500 font-bold' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
+          >
+            <Sun size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => (setTheme ? setTheme('dark') : setDark(true))}
+            aria-label="Modo oscuro"
+            title="Modo oscuro"
+            className={`relative grid h-8 w-8 place-items-center rounded-full text-xs transition-colors ${
+              theme === 'dark' ? 'text-indigo-400 font-bold' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
+          >
+            <Moon size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => (setTheme ? setTheme('sakura') : setDark(false))}
+            aria-label="Tema Sakura 🌸"
+            title="Tema Sakura 🌸"
+            className={`relative grid h-8 w-8 place-items-center rounded-full text-xs transition-colors ${
+              theme === 'sakura' ? 'text-white font-bold' : 'text-pink-400 hover:text-pink-600'
+            }`}
+          >
+            <span className="text-sm select-none">🌸</span>
+          </button>
         </div>
         <div className="flex items-center gap-3 border-t border-slate-200 dark:border-white/10 pt-4">
           <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-slate-600 to-slate-900 text-sm font-bold text-white">{profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : profile.displayName.slice(0, 1).toUpperCase()}</div>

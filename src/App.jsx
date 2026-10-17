@@ -56,7 +56,7 @@ function GlobalTasteSync() {
 
 const tabs = ['Anime', 'Noticias']
 
-function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownloadApp, onOpenDonation, isOffline, onOpenOfflineDownloads }) {
+function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, theme = (dark ? 'dark' : 'light'), setTheme, onOpenDownloadApp, onOpenDonation, isOffline, onOpenOfflineDownloads }) {
   const { profile } = useProfile()
   return (
     <header className="flex items-center gap-2.5 sm:gap-4 animate-fade">
@@ -89,14 +89,19 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownlo
           <span className="hidden sm:inline">Modo Offline</span>
         </button>
       )}
-      {setDark && (
+      {(setTheme || setDark) && (
         <button
           type="button"
-          onClick={() => setDark(!dark)}
-          aria-label={dark ? 'Modo claro' : 'Modo oscuro'}
+          onClick={() => {
+            const nextTheme = theme === 'dark' ? 'sakura' : theme === 'sakura' ? 'light' : 'dark';
+            if (setTheme) setTheme(nextTheme);
+            else setDark(nextTheme === 'dark');
+          }}
+          aria-label={`Tema actual: ${theme}. Pulsa para alternar.`}
+          title={`Tema actual: ${theme}. Pulsa para alternar.`}
           className="lg:hidden grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-slate-200/80 bg-white/70 text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 active:scale-95"
         >
-          {dark ? <Sun size={16} /> : <Moon size={16} />}
+          {theme === 'sakura' ? <span className="text-sm select-none">🌸</span> : theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
         </button>
       )}
       <button
@@ -112,7 +117,18 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownlo
 }
 
 export default function App() {
-  const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('theme') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+  const dark = theme === 'dark';
+  const setDark = (val) => {
+    if (typeof val === 'string') setTheme(val);
+    else setTheme(val ? 'dark' : 'light');
+  };
   const { user, status: authStatus, error: authError, signIn, signUp, signOut } = useAuth()
   const { isOnline, isOffline } = useNetworkStatus()
   const repository = useMemo(() => user?.id ? createProfileRepository(supabase) : null, [user?.id])
@@ -145,9 +161,16 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark)
-    localStorage.setItem('theme', dark ? 'dark' : 'light')
-  }, [dark])
+    document.documentElement.classList.remove('dark', 'sakura');
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (theme === 'sakura') {
+      document.documentElement.classList.add('sakura');
+    }
+    try {
+      localStorage.setItem('theme', theme);
+    } catch {}
+  }, [theme])
 
   useEffect(() => {
     window.scrollTo(getPageScrollReset())
@@ -212,7 +235,7 @@ export default function App() {
   }
 
   if (authStatus === 'loading') return <div className="grid min-h-screen place-items-center text-sm text-slate-500">Cargando tu sesión…</div>
-  if (!user) return <Login onSignIn={signIn} onSignUp={signUp} authStatus={authStatus} authError={authError} dark={dark} setDark={setDark} />
+  if (!user) return <Login onSignIn={signIn} onSignUp={signUp} authStatus={authStatus} authError={authError} dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} />
   return (
   <ProfileProvider user={user} repository={repository}>
     <GlobalTasteSync />
@@ -227,7 +250,7 @@ export default function App() {
       )}
       <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
         <CustomCursor />
-        <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} onOpenDonation={() => setShowDonationModal(true)} />
+        <Sidebar dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} onOpenDonation={() => setShowDonationModal(true)} />
         <main className="min-w-0 flex-1 space-y-6 px-3.5 sm:px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 lg:pb-8 lg:px-8">
           <AppHeader
             query={query}
@@ -235,6 +258,8 @@ export default function App() {
             onOpenProfile={() => navigatePage('profile')}
             dark={dark}
             setDark={setDark}
+            theme={theme}
+            setTheme={setTheme}
             onOpenDownloadApp={() => setShowDownloadApp(true)}
             onOpenDonation={() => setShowDonationModal(true)}
             isOffline={isOffline}

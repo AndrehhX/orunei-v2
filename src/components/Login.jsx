@@ -123,7 +123,7 @@ function LoginArtwork() {
   )
 }
 
-export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authError = '', dark, setDark }) {
+export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authError = '', dark, setDark, theme = (dark ? 'dark' : 'light'), setTheme }) {
   const [reg, setReg] = useState(false)
   const [f, setF] = useState({ name: '', email: '', pass: '' })
   const [show, setShow] = useState(false)
@@ -194,7 +194,19 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
           <section className="login-form-panel relative flex flex-col px-6 py-7 sm:px-12 sm:py-10 lg:px-16 lg:py-12">
             <header className="flex items-center justify-between">
               <OruneiLogo size={28} withText={true} textClassName="text-xl font-extrabold tracking-tight" />
-              <button onClick={() => setDark(!dark)} aria-label="Cambiar tema" className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-white/80 text-slate-600 shadow-sm transition hover:rotate-12 hover:scale-110 dark:border-white/10 dark:bg-white/10 dark:text-slate-200">{dark ? <Sun size={17} /> : <Moon size={17} />}</button>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextTheme = theme === 'dark' ? 'sakura' : theme === 'sakura' ? 'light' : 'dark';
+                  if (setTheme) setTheme(nextTheme);
+                  else setDark(!dark);
+                }}
+                aria-label={`Cambiar tema (actual: ${theme})`}
+                title={`Cambiar tema (actual: ${theme})`}
+                className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-white/80 text-slate-600 shadow-sm transition hover:rotate-12 hover:scale-110 dark:border-white/10 dark:bg-white/10 dark:text-slate-200"
+              >
+                {theme === 'sakura' ? <span className="text-base select-none">🌸</span> : theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+              </button>
             </header>
 
             <div className="mx-auto flex w-full max-w-[390px] flex-1 flex-col justify-center py-10">
