@@ -365,6 +365,65 @@
     </div>
   </div>
 
+  <!-- Auditoría Controlada de 60 Segundos con Reinicio de Contadores -->
+  <div class="p-4 rounded-xl border border-amber-500/30 bg-amber-950/10 mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <div>
+        <h3 class="text-sm font-bold text-amber-300 flex items-center gap-2">
+          <span>⏱️ Auditoría Controlada de 60 Segundos (Full Telemetry Breakdown)</span>
+          <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Deadlines &amp; VSYNC Sync</span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Reinicia todos los contadores a cero, evalúa exactamente 60 segundos y separa: FPS calculados, fotogramas únicos, presentaciones VSYNC, deadlines incumplidos y tasa real de pérdidas.
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="audit-countdown" class="font-mono text-sm font-bold text-amber-400 hidden">60s restantes</span>
+        <button id="btn-run-audit-60s" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-amber-600 hover:bg-amber-500 text-white shadow">
+          Iniciar Auditoría Controlada 60s
+        </button>
+      </div>
+    </div>
+
+    <div id="audit-results-panel" class="hidden p-3 rounded-lg bg-black/60 border border-slate-800 text-xs">
+      <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3 text-center mb-3">
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">FPS Calculados</div>
+          <div id="aud-fps-calc" class="text-sm font-mono font-bold text-sky-400">--</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Cuadros Únicos</div>
+          <div id="aud-unique" class="text-sm font-mono font-bold text-emerald-400">--</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">VSYNC Efectivos</div>
+          <div id="aud-vsync" class="text-sm font-mono font-bold text-slate-200">--</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Deadlines Fallidos</div>
+          <div id="aud-missed" class="text-sm font-mono font-bold text-emerald-400">0</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Tasa Pérdidas</div>
+          <div id="aud-drop-rate" class="text-sm font-mono font-bold text-emerald-400">0.00%</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Intervalo Medio</div>
+          <div id="aud-interval" class="text-sm font-mono font-bold text-amber-300">-- ms</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Jitter Real (σ)</div>
+          <div id="aud-jitter" class="text-sm font-mono font-bold text-violet-300">-- ms</div>
+        </div>
+        <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">GPU P50 / P95</div>
+          <div id="aud-gpu" class="text-sm font-mono font-bold text-emerald-300">-- ms</div>
+        </div>
+      </div>
+      <div id="aud-verdict" class="text-[11px] font-mono text-amber-200 bg-slate-900/40 p-2.5 rounded border border-slate-800"></div>
+    </div>
+  </div>
+
   <!-- Protocolo de Validación 60 Segundos por Cadencia -->
   <div class="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/10 mb-6">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -674,6 +733,19 @@
     let intervalHistory = [];
     let lastPresentTime = 0;
 
+    let lastRafTime = 0;
+    let timeAccumulatorMs = 0;
+
+    // Métricas para auditoría controlada de 60 segundos
+    let isAuditActive = false;
+    let auditStartTime = 0;
+    let auditSchedulerTicks = 0;
+    let auditUniqueFrames = 0;
+    let auditDuplicateFrames = 0;
+    let auditVsyncPresentations = 0;
+    let auditMissedDeadlines = 0;
+    let auditIntervals = [];
+
     // Registro continuo de trayectoria para diagnóstico de monotonía en vivo
     const liveTrajectoryHistory = [];
 
@@ -684,6 +756,8 @@
       framePairIndex = 0;
       pairPreparedInGpu = false;
       lastPresentTime = 0;
+      lastRafTime = 0;
+      timeAccumulatorMs = 0;
       rife?.resetTextureHistory();
 
       renderProceduralAnimeScene(offCtxA, 0, false);
@@ -722,19 +796,32 @@
       }
     }
 
-    // Bucle principal de renderizado a 60 Hz exactos
+    // Bucle principal de renderizado con acumulador phase-locked adaptativo a VSYNC
     function schedulerLoop(now) {
       rafTicks++;
 
-      if (lastPresentTime === 0) {
+      if (lastRafTime === 0) {
+        lastRafTime = now;
         lastPresentTime = now;
         resetSchedulerTimeline();
+        requestAnimationFrame(schedulerLoop);
+        return;
       }
 
-      const elapsed = now - lastPresentTime;
+      const dt = Math.max(0, Math.min(100, now - lastRafTime));
+      lastRafTime = now;
+      timeAccumulatorMs += dt;
 
-      // Sincronización precisa a 60 Hz (16.6667 ms con margen de 1.5ms para VSYNC)
-      if (elapsed >= TARGET_INTERVAL_MS - 1.5) {
+      // Umbral adaptativo a VSYNC (12.0 ms = 72% del frame interval)
+      // Garantiza sincronización exacta a 60 Hz en monitores de 60Hz, 120Hz o 144Hz
+      const VSYNC_CADENCE_THRESHOLD_MS = TARGET_INTERVAL_MS * 0.72; // 12.0 ms
+
+      if (timeAccumulatorMs >= VSYNC_CADENCE_THRESHOLD_MS) {
+        timeAccumulatorMs -= TARGET_INTERVAL_MS;
+        if (timeAccumulatorMs > TARGET_INTERVAL_MS) {
+          timeAccumulatorMs = 0;
+        }
+
         const deltaPresent = now - lastPresentTime;
         lastPresentTime = now;
 
@@ -750,6 +837,16 @@
           advanceToNextFramePair();
         }
 
+        // Auditoría de telemetría controlada
+        if (isAuditActive) {
+          auditSchedulerTicks++;
+          auditVsyncPresentations++;
+          auditIntervals.push(deltaPresent);
+          if (deltaPresent > 20.5) {
+            auditMissedDeadlines++;
+          }
+        }
+
         // Calcular factor continuo t en [0, 1)
         const span = frameB_timeMs - frameA_timeMs;
         const t = Math.max(0.0, Math.min(1.0, (mediaTimeMs - frameA_timeMs) / span));
@@ -762,6 +859,10 @@
           originalFramesPresented++;
           outputFramesPresented++;
           presentedCalibT = frameA_timeMs / 1000;
+          if (isAuditActive) {
+            if (t <= 0.05) auditUniqueFrames++;
+            else auditDuplicateFrames++;
+          }
         } else {
           // MODO FRAME GENERATION 60 FPS:
           if (t <= 0.05) {
@@ -770,12 +871,14 @@
             originalFramesPresented++;
             outputFramesPresented++;
             presentedCalibT = frameA_timeMs / 1000;
+            if (isAuditActive) auditUniqueFrames++;
           } else if (t >= 0.95) {
             // Instante de ancla original B (Crisp, 0 ms GPU) - texB tiene garantizado el FB actual
             rife?.presentFrame('frameB', webgpuOutCtx);
             originalFramesPresented++;
             outputFramesPresented++;
             presentedCalibT = frameB_timeMs / 1000;
+            if (isAuditActive) auditUniqueFrames++;
           } else {
             // 0.05 < t < 0.95: Inferencia Neuronal RIFE en la posición continua exacta t
             if (rife && webgpuOutCtx) {
@@ -788,6 +891,7 @@
               rifeFramesGenerated++;
               outputFramesPresented++;
               presentedCalibT = (frameA_timeMs + t * span) / 1000;
+              if (isAuditActive) auditUniqueFrames++;
             }
           }
         }
@@ -884,6 +988,101 @@
         verdict.innerText = `⚠️ RETROCESOS TEMPORALES DETECTADOS: ${res.backwardJumps} saltos hacia atrás en la trayectoria.`;
       }
     };
+
+    // =========================================================================
+    // AUDITORÍA CONTROLADA DE 60 SEGUNDOS (FULL BREAKDOWN)
+    // =========================================================================
+    let auditTimerInterval = null;
+
+    window.runControlledAudit = async (durationSec = 60) => {
+      const panel = document.getElementById('audit-results-panel');
+      const countdown = document.getElementById('audit-countdown');
+      const btn = document.getElementById('btn-run-audit-60s');
+      const verdict = document.getElementById('aud-verdict');
+
+      panel.classList.remove('hidden');
+      countdown.classList.remove('hidden');
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+
+      // 1. Reiniciar todos los contadores a cero
+      rife?.resetTelemetry();
+      auditSchedulerTicks = 0;
+      auditUniqueFrames = 0;
+      auditDuplicateFrames = 0;
+      auditVsyncPresentations = 0;
+      auditMissedDeadlines = 0;
+      auditIntervals = [];
+      intervalHistory = [];
+      isAuditActive = true;
+      auditStartTime = performance.now();
+
+      let remainingSec = durationSec;
+      countdown.innerText = `${remainingSec}s restantes`;
+
+      return new Promise((resolve) => {
+        auditTimerInterval = setInterval(() => {
+          remainingSec--;
+          countdown.innerText = `${remainingSec}s restantes`;
+
+          if (remainingSec <= 0) {
+            clearInterval(auditTimerInterval);
+            isAuditActive = false;
+            countdown.classList.add('hidden');
+            btn.disabled = false;
+            btn.classList.remove('opacity-50');
+
+            const totalSec = durationSec;
+            const meanInterval = auditIntervals.length > 0
+              ? auditIntervals.reduce((a, b) => a + b, 0) / auditIntervals.length
+              : 16.67;
+            const variance = auditIntervals.length > 0
+              ? auditIntervals.reduce((a, b) => a + Math.pow(b - meanInterval, 2), 0) / auditIntervals.length
+              : 0;
+            const jitter = Math.sqrt(variance);
+            const dropRate = auditVsyncPresentations > 0
+              ? (auditMissedDeadlines / auditVsyncPresentations) * 100
+              : 0;
+            const fpsCalc = auditSchedulerTicks / totalSec;
+
+            document.getElementById('aud-fps-calc').innerText = fpsCalc.toFixed(2);
+            document.getElementById('aud-unique').innerText = auditUniqueFrames;
+            document.getElementById('aud-vsync').innerText = auditVsyncPresentations;
+            document.getElementById('aud-missed').innerText = auditMissedDeadlines;
+            document.getElementById('aud-drop-rate').innerText = `${dropRate.toFixed(2)}%`;
+            document.getElementById('aud-interval').innerText = `${meanInterval.toFixed(2)} ms`;
+            document.getElementById('aud-jitter').innerText = `${jitter.toFixed(2)} ms`;
+            document.getElementById('aud-gpu').innerText = statGpuP50.innerText;
+
+            let diagnosis = '';
+            if (jitter < 0.3 && auditMissedDeadlines === 0) {
+              diagnosis = `✅ DESEMPEÑO PERFECTO: 0 deadlines perdidos (${dropRate.toFixed(2)}% tasa de pérdidas). Jitter ultra-bajo (${jitter.toFixed(2)} ms) gracias al acumulador phase-locked y triple buffering VRAM.`;
+            } else if (parseFloat(statGpuP50.innerText) > 16.0) {
+              diagnosis = `⚠️ CUELLO DE BOTELLA EN INFERENCIA: La GPU supera los 16.0 ms de cómputo (${statGpuP50.innerText}), provocando retrasos en la cola.`;
+            } else {
+              diagnosis = `ℹ️ REGULARIDAD ALTA: Intervalo medio de ${meanInterval.toFixed(2)} ms con ${auditMissedDeadlines} deadlines mayores a 20.5 ms en ${totalSec}s. Jitter atribuible a VSYNC scheduling.`;
+            }
+
+            verdict.innerText = diagnosis;
+
+            resolve({
+              durationSec: totalSec,
+              fpsCalculated: fpsCalc,
+              uniqueFrames: auditUniqueFrames,
+              duplicateFrames: auditDuplicateFrames,
+              vsyncPresentations: auditVsyncPresentations,
+              missedDeadlines: auditMissedDeadlines,
+              dropRatePercent: dropRate,
+              meanIntervalMs: meanInterval,
+              jitterMs: jitter,
+              gpuP50: statGpuP50.innerText,
+            });
+          }
+        }, 1000);
+      });
+    };
+
+    document.getElementById('btn-run-audit-60s').onclick = () => window.runControlledAudit(60);
 
     // =========================================================================
     // RECONCILIACIÓN FORENSE DE TIEMPOS

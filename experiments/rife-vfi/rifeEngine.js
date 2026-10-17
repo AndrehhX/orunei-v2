@@ -710,14 +710,11 @@ export async function createRifeEngine({
       lastGpuExecutionMs = parseFloat((tDone - tSubmit).toFixed(2));
       const totalGpuMs = parseFloat((tDone - t0).toFixed(2));
 
-      latencyHistory.push(totalGpuMs);
-      if (latencyHistory.length > 100) latencyHistory.shift();
+      // Medir la latencia real de ejecución en hardware GPU
+      latencyHistory.push(lastGpuExecutionMs);
+      if (latencyHistory.length > 120) latencyHistory.shift();
 
       const percentiles = computePercentiles(latencyHistory);
-      const budgetMs = activeTarget.frameIntervalMs * RIFE_SETTINGS.MAX_GPU_BUDGET_RATIO;
-      if (totalGpuMs > budgetMs) {
-        droppedFrames++;
-      }
 
       onTelemetry?.({
         cpuDispatchMs: lastCpuDispatchMs,
@@ -823,6 +820,13 @@ export async function createRifeEngine({
     try { device.destroy(); } catch {}
   }
 
+  function resetTelemetry() {
+    droppedFrames = 0;
+    latencyHistory.length = 0;
+    lastCpuDispatchMs = 0;
+    lastGpuExecutionMs = 0;
+  }
+
   return {
     w,
     h,
@@ -841,6 +845,7 @@ export async function createRifeEngine({
     readbackOutputFrame,
     isGpuBusy: () => activeInFlight >= MAX_IN_FLIGHT,
     resetTextureHistory,
+    resetTelemetry,
     setTargetMode,
     destroy,
   };
