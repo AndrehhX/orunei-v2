@@ -1228,48 +1228,50 @@ export default function AnimePlayer({
           )}
 
           {/* Selector de Subtítulos */}
-          <div className="relative">
-            <button
-              onClick={() => { setShowSubMenu(!showSubMenu); setShowServerMenu(false); setShowSettings(false); setShowAudioMenu(false); }}
-              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${selectedSub !== 'off' ? 'bg-brand text-white border-brand shadow-[0_0_15px_rgba(109,92,255,0.4)]' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
-              title="Seleccionar subtítulos"
-            >
-              <Subtitles size={15} className="shrink-0" />
-              <span className="hidden sm:inline">Subtítulos: </span>
-              <span className="truncate max-w-[80px] sm:max-w-none">{selectedSub === 'off' ? 'Off' : (subTracks.find((s) => s.id === selectedSub || s.lang === selectedSub)?.label || 'Español')}</span>
-            </button>
-
-            {showSubMenu && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 w-56 max-w-[calc(100vw-24px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
+          {subTracks.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => { setShowSubMenu(!showSubMenu); setShowServerMenu(false); setShowSettings(false); setShowAudioMenu(false); }}
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${selectedSub !== 'off' ? 'bg-brand text-white border-brand shadow-[0_0_15px_rgba(109,92,255,0.4)]' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
+                title="Seleccionar subtítulos"
               >
-                <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
-                  Pistas disponibles
-                </div>
-                <div className="mt-1 flex flex-col gap-0.5 max-h-48 overflow-y-auto">
-                  <button
-                    onClick={() => { setSelectedSub('off'); setShowSubMenu(false); }}
-                    className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all duration-200 active:scale-95 ${selectedSub === 'off' ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
-                  >
-                    <span>Desactivado (Off)</span>
-                    {selectedSub === 'off' && <Check size={14} />}
-                  </button>
+                <Subtitles size={15} className="shrink-0" />
+                <span className="hidden sm:inline">Subtítulos: </span>
+                <span className="truncate max-w-[80px] sm:max-w-none">{selectedSub === 'off' ? 'Off' : (subTracks.find((s) => s.id === selectedSub || s.lang === selectedSub)?.label || 'Español')}</span>
+              </button>
 
-                  {subTracks.map((tr) => (
+              {showSubMenu && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 w-56 max-w-[calc(100vw-24px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
+                >
+                  <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+                    Pistas disponibles
+                  </div>
+                  <div className="mt-1 flex flex-col gap-0.5 max-h-48 overflow-y-auto">
                     <button
-                      key={tr.id || tr.lang}
-                      onClick={() => { setSelectedSub(tr.id || tr.lang); setShowSubMenu(false); }}
-                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all duration-200 active:scale-95 ${(selectedSub === tr.id || selectedSub === tr.lang) ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
+                      onClick={() => { setSelectedSub('off'); setShowSubMenu(false); }}
+                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all duration-200 active:scale-95 ${selectedSub === 'off' ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
                     >
-                      <span className="truncate">{tr.label}</span>
-                      {(selectedSub === tr.id || selectedSub === tr.lang) && <Check size={14} />}
+                      <span>Desactivado (Off)</span>
+                      {selectedSub === 'off' && <Check size={14} />}
                     </button>
-                  ))}
+
+                    {subTracks.map((tr) => (
+                      <button
+                        key={tr.id || tr.lang}
+                        onClick={() => { setSelectedSub(tr.id || tr.lang); setShowSubMenu(false); }}
+                        className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all duration-200 active:scale-95 ${(selectedSub === tr.id || selectedSub === tr.lang) ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
+                      >
+                        <span className="truncate">{tr.label}</span>
+                        {(selectedSub === tr.id || selectedSub === tr.lang) && <Check size={14} />}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             </div>
+          )}
           </div>
           {/* Fin GRUPO 2: Fuente y Pistas */}
 

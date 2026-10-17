@@ -65,7 +65,7 @@ export default function SeasonAudioModal({
         {/* Opciones de Idioma */}
         <div className="space-y-2.5 mb-5">
           {/* Opción 1: Español Latino DUB */}
-          {availability.hasLatino ? (
+          {availability.hasLatino && (
             <button
               type="button"
               onClick={() => setSelected('latino')}
@@ -81,11 +81,13 @@ export default function SeasonAudioModal({
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-white">Español Latino</span>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      <Sparkles size={10} /> Full HD 1080p
+                      <Sparkles size={10} /> {availability.batchInfo ? availability.batchInfo.label : 'Full HD 1080p'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Audio doblado al español latino oficial verificado en toda la temporada.
+                    {availability.batchInfo
+                      ? `Audio oficial en español latino (${availability.batchInfo.label}).`
+                      : 'Audio doblado al español latino oficial verificado en toda la temporada.'}
                   </p>
                 </div>
               </div>
@@ -97,20 +99,10 @@ export default function SeasonAudioModal({
                 {selected === 'latino' && <Check size={12} strokeWidth={3} />}
               </div>
             </button>
-          ) : (
-            <div className="w-full text-left p-3 rounded-xl border border-white/5 bg-white/[0.02] opacity-50 cursor-not-allowed flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl grayscale" role="img" aria-label="México">🇲🇽</span>
-                <div>
-                  <span className="text-sm font-semibold text-slate-400">Español Latino (DUB)</span>
-                  <p className="text-[11px] text-slate-500">Temporada completa no disponible en 1080p.</p>
-                </div>
-              </div>
-            </div>
           )}
 
           {/* Opción 2: Español Castellano DUB */}
-          {availability.hasCastellano ? (
+          {availability.hasCastellano && (
             <button
               type="button"
               onClick={() => setSelected('castellano')}
@@ -142,19 +134,6 @@ export default function SeasonAudioModal({
                 {selected === 'castellano' && <Check size={12} strokeWidth={3} />}
               </div>
             </button>
-          ) : (
-            <div className="w-full text-left p-3 rounded-xl border border-white/5 bg-white/[0.02] opacity-50 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl grayscale" role="img" aria-label="España">🇪🇸</span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-400">Español Castellano</span>
-                    <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-800 text-slate-400">No disponible</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">Sin cobertura de temporada completa en 1080p.</p>
-                </div>
-              </div>
-            </div>
           )}
 
           {/* Opción 3: Japonés Subtitulado SUB */}

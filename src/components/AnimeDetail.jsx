@@ -841,7 +841,10 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
       {showSeasonAudioModal && m && (
         <SeasonAudioModal
           animeTitle={title(m)}
-          availability={dubAvailability || { hasLatino: true, hasCastellano: false }}
+          availability={{
+            ...(dubAvailability || { hasLatino: true, hasCastellano: false }),
+            batchInfo: getDubBatchInfo(m.idMal || m.id)
+          }}
           defaultPreference={audioLanguage}
           onConfirm={handleConfirmSeasonAudio}
           onClose={() => {
