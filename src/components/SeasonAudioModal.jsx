@@ -22,9 +22,9 @@ export default function SeasonAudioModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
       <div
-        className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-900/95 p-6 shadow-2xl shadow-brand/20 text-slate-100"
+        className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-900/95 p-4 sm:p-6 shadow-2xl shadow-brand/20 text-slate-100"
         role="dialog"
         aria-modal="true"
         aria-labelledby="audio-modal-title"
@@ -34,13 +34,13 @@ export default function SeasonAudioModal({
         <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
 
         {/* Encabezado */}
-        <div className="flex items-start justify-between gap-4 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/20 text-brand ring-1 ring-brand/30">
-              <Volume2 size={22} className="text-brand" />
+        <div className="flex items-start justify-between gap-3 sm:gap-4 mb-4 sm:mb-5">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-brand/20 text-brand ring-1 ring-brand/30 shrink-0">
+              <Volume2 size={20} className="text-brand sm:w-[22px] sm:h-[22px]" />
             </div>
             <div>
-              <h3 id="audio-modal-title" className="text-base font-bold text-white tracking-tight">
+              <h3 id="audio-modal-title" className="text-sm sm:text-base font-bold text-white tracking-tight">
                 Elige el idioma de la temporada
               </h3>
               <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
@@ -51,7 +51,7 @@ export default function SeasonAudioModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition shrink-0"
             aria-label="Cerrar"
           >
             <X size={18} />

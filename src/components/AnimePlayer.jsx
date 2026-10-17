@@ -731,45 +731,46 @@ export default function AnimePlayer({
           : 'rounded-2xl'
       }`}
     >
-      {/* Cabecera del reproductor */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/10 bg-[#161824]/95 backdrop-blur-md text-white">
-        <div className="min-w-0 pr-4">
-          <div className="flex items-center gap-2.5">
-            <span className="relative flex h-2.5 w-2.5">
+      {/* Cabecera del reproductor con adaptación responsive para móvil, tablet y PC */}
+      <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-white/10 bg-[#161824]/95 backdrop-blur-md text-white gap-2">
+        <div className="min-w-0 pr-1 sm:pr-4 flex-1">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <span className="relative flex h-2 sm:h-2.5 w-2 sm:w-2.5 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+              <span className="relative inline-flex rounded-full h-2 sm:h-2.5 w-2 sm:w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
             </span>
-            <h3 className="text-sm sm:text-base font-bold truncate text-slate-100">{animeTitle}</h3>
+            <h3 className="text-xs sm:text-base font-bold truncate text-slate-100 max-w-[200px] sm:max-w-md md:max-w-xl">{animeTitle}</h3>
           </div>
-          <p className="mt-0.5 text-xs text-slate-400 font-medium">Episodio {episode}{totalEpisodes ? ` de ${totalEpisodes}` : ''}</p>
+          <p className="mt-0.5 text-[11px] sm:text-xs text-slate-400 font-medium">Episodio {episode}{totalEpisodes ? ` de ${totalEpisodes}` : ''}</p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* Badge de idioma de audio / subtítulos */}
           {currentAudioLanguage === 'latino' && (
-            <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+            <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 text-[10px] sm:text-[11px] font-bold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
               <span>🇲🇽</span>
-              <span>Español Latino (1080p)</span>
+              <span className="hidden sm:inline">Español Latino (1080p)</span>
+              <span className="inline sm:hidden">Latino 1080p</span>
             </span>
           )}
 
           {currentAudioLanguage !== 'latino' && playbackData && playbackData.hasSpanishSubtitles && (
             <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
               <Check size={12} className="text-emerald-400" />
-              Sub Español Disponible
+              Sub Español
             </span>
           )}
 
           {currentAudioLanguage !== 'latino' && playbackData && !playbackData.hasSpanishSubtitles && (
             <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
               <AlertCircle size={13} />
-              Subtítulos en español no disponibles
+              Sin Sub Español
             </span>
           )}
 
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-all duration-200 active:scale-95 shadow-sm"
+            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-all duration-200 active:scale-95 shadow-sm"
             title="Cerrar reproductor"
           >
             <X size={15} />
@@ -778,11 +779,11 @@ export default function AnimePlayer({
         </div>
       </div>
 
-      {/* Área del reproductor de video contenida en pantalla */}
+      {/* Área del reproductor de video contenida en pantalla con escalado dinámico */}
       <div
         ref={videoWrapperRef}
         className={`relative aspect-video w-full bg-black flex items-center justify-center overflow-hidden mx-auto select-none transition-all duration-300 ${
-          isTheaterMode ? 'max-h-[78vh]' : 'max-h-[50vh]'
+          isTheaterMode ? 'max-h-[82vh]' : 'max-h-[52vh] sm:max-h-[62vh] md:max-h-[70vh] lg:max-h-[75vh]'
         }`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -1022,14 +1023,14 @@ export default function AnimePlayer({
         />
       )}
 
-      {/* Barra de controles inferiores: Jerarquía limpia en 3 islas visuales */}
-      <div className="relative z-40 flex flex-col md:flex-row md:items-center justify-between gap-3 px-3 sm:px-6 py-2.5 sm:py-3 border-t border-white/10 bg-[#141724]/95 backdrop-blur-md text-sm text-white">
+      {/* Barra de controles inferiores: Jerarquía limpia en 3 islas visuales responsivas */}
+      <div className="relative z-40 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 px-2.5 sm:px-6 py-2 sm:py-3 border-t border-white/10 bg-[#141724]/95 backdrop-blur-md text-sm text-white">
         {/* GRUPO 1: Navegación de Episodios (Isla encapsulada) */}
-        <div className="flex items-center justify-between sm:justify-start gap-1 p-1 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner">
+        <div className="flex items-center justify-between sm:justify-start gap-1 p-1 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner w-full sm:w-auto">
           <button
             onClick={handlePrevEp}
             disabled={episode <= 1 || loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95 flex-1 sm:flex-none"
             title="Episodio anterior"
           >
             <ChevronLeft size={16} />
@@ -1044,7 +1045,7 @@ export default function AnimePlayer({
           <button
             onClick={handleNextEp}
             disabled={(totalEpisodes && episode >= totalEpisodes) || loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95 flex-1 sm:flex-none"
             title="Episodio siguiente"
           >
             <span className="hidden sm:inline">Siguiente</span>
@@ -1053,9 +1054,9 @@ export default function AnimePlayer({
         </div>
 
         {/* GRUPOS 2 Y 3: Transmisión y Ajustes */}
-        <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center justify-between lg:justify-end gap-1.5 sm:gap-2.5 flex-wrap sm:flex-nowrap w-full lg:w-auto">
           {/* GRUPO 2: Fuente y Pistas (Audio, Servidor y Subtítulos) */}
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/[0.04] border border-white/10">
+          <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-2xl bg-white/[0.04] border border-white/10 flex-wrap sm:flex-nowrap">
           {/* Selector de Idioma de Audio (Latino / Japonés) */}
           {(dubAvailability?.hasLatino || currentAudioLanguage === 'latino') && (
             <div className="relative">
@@ -1075,7 +1076,7 @@ export default function AnimePlayer({
               {showAudioMenu && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
+                  className="absolute bottom-full left-0 sm:left-0 sm:right-auto mb-2 w-56 max-w-[calc(100vw-24px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
                 >
                   <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                     Idioma de Audio
@@ -1126,7 +1127,7 @@ export default function AnimePlayer({
               {showServerMenu && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
+                  className="absolute bottom-full left-0 sm:left-0 sm:right-auto mb-2 w-56 max-w-[calc(100vw-24px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
                 >
                   <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                     Servidores disponibles ({servers.length})
@@ -1163,7 +1164,7 @@ export default function AnimePlayer({
             {showSubMenu && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
+                className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 w-56 max-w-[calc(100vw-24px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
               >
                 <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                   Pistas disponibles

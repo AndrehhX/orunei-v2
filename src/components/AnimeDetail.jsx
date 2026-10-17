@@ -342,14 +342,29 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
                         <CheckCircle2 size={11} /> Offline
                       </span>
                     )}
+                    {isDownloading && (
+                      <span className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand/90 text-[10px] font-bold text-white shadow z-10 animate-pulse">
+                        <Loader2 size={10} className="animate-spin" /> {dl?.progress}%
+                      </span>
+                    )}
                     {epProgress.watched && (
                       <span className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-600/95 text-[10px] font-bold text-white shadow z-10">
                         <Check size={11} className="stroke-[3]" /> Visto
                       </span>
                     )}
 
+                    {/* Barra de progreso de descarga activa */}
+                    {isDownloading && (
+                      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/60 z-20 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-brand via-indigo-500 to-emerald-400 transition-all duration-300"
+                          style={{ width: `${Math.max(dl?.progress || 0, 5)}%` }}
+                        />
+                      </div>
+                    )}
+
                     {/* Barra de progreso de reproducción al pie de la miniatura */}
-                    {epProgress.percent > 0 && (
+                    {!isDownloading && epProgress.percent > 0 && (
                       <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50 z-10">
                         <div
                           className={`h-full ${epProgress.watched ? 'bg-emerald-500' : 'bg-brand'}`}
@@ -378,11 +393,11 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
                           e.stopPropagation()
                           handleDownload(epNum, epTitle)
                         }}
-                        className={`p-2 rounded-xl transition shrink-0 ml-2 ${
+                        className={`p-2 rounded-xl transition-all duration-200 shrink-0 ml-2 active:scale-95 ${
                           isDownloaded
-                            ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20'
+                            ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-sm shadow-emerald-500/20'
                             : isDownloading
-                            ? 'text-brand bg-brand/10'
+                            ? 'text-brand bg-brand/15 border border-brand/30 shadow-md shadow-brand/20 animate-pulse'
                             : 'text-slate-400 hover:text-brand hover:bg-slate-200/50 dark:hover:bg-white/10'
                         }`}
                         title={
@@ -398,7 +413,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
                         ) : isDownloading ? (
                           <div className="flex items-center gap-1">
                             <Loader2 size={13} className="animate-spin text-brand" />
-                            <span className="text-[10px] font-bold text-brand">{dl?.progress}%</span>
+                            <span className="text-[10px] font-bold text-brand font-mono">{dl?.progress}%</span>
                           </div>
                         ) : (
                           <Download size={15} />
