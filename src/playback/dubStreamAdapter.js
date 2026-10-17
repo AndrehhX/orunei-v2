@@ -7,18 +7,19 @@ const STREAM_BASE = (rawEnvUrl && !rawEnvUrl.includes('trycloudflare.com') && ra
 
 const ANIMEAV1_BASE = 'https://animeav1.com';
 
+function getProxiedUrl(targetUrl, referer = 'https://animeav1.com/') {
+  if (typeof window === 'undefined') return targetUrl;
+  return `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(referer)}`;
+}
+
 /**
  * Extrae la URL directa de video desde un embed de YourUpload.
  * Retorna video MP4 Full HD (1080p) con cabeceras CORS permisivas.
  */
 async function extractYourUploadStream(embedUrl) {
   try {
-    const res = await fetch(embedUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': `${ANIMEAV1_BASE}/`
-      }
-    });
+    const fetchUrl = getProxiedUrl(embedUrl, `${ANIMEAV1_BASE}/`);
+    const res = await fetch(fetchUrl);
     if (!res.ok) return null;
     const html = await res.text();
     const match = html.match(/content="([^"]+)"\s*property="og:video"/i) || html.match(/property="og:video"\s*content="([^"]+)"/i);
@@ -38,12 +39,8 @@ async function extractYourUploadStream(embedUrl) {
  */
 async function extractMP4UploadStream(embedUrl) {
   try {
-    const res = await fetch(embedUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': `${ANIMEAV1_BASE}/`
-      }
-    });
+    const fetchUrl = getProxiedUrl(embedUrl, `${ANIMEAV1_BASE}/`);
+    const res = await fetch(fetchUrl);
     if (!res.ok) return null;
     const html = await res.text();
     const match = html.match(/src:\s*"([^"]+\.mp4)"/);
@@ -72,7 +69,7 @@ export async function getDubEpisodePlayback({ animeId, malId, animeTitle, slug =
   }
 
   const epUrl = `${ANIMEAV1_BASE}/media/${resolvedSlug}/${episode}/__data.json`;
-  const res = await fetch(epUrl);
+  const res = await fetch(getProxiedUrl(epUrl));
   if (!res.ok) {
     throw new Error(`No se pudo obtener información del episodio ${episode} (HTTP ${res.status}).`);
   }

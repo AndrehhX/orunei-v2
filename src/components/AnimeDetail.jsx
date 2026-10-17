@@ -486,13 +486,13 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
     setM(null)
     setErr(false)
     setTab(0)
-    setPlayingEpisode(initialPlayEpisode ? Number(initialPlayEpisode) : null)
+    setPlayingEpisode(null)
     setMiruroId(null)
     setDubAvailability(null)
     setShowSeasonAudioModal(false)
     setPendingPlayEpisode(null)
     getAnime(id).then(setM).catch(() => setErr(true))
-  }, [id, initialPlayEpisode])
+  }, [id])
 
   useEffect(() => {
     if (m?.id) {
@@ -505,8 +505,18 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
         animeTitle: title(m),
         expectedEpisodes: m.episodes || 1
       })
-        .then(setDubAvailability)
-        .catch(() => setDubAvailability(null))
+        .then((availability) => {
+          setDubAvailability(availability)
+          if (initialPlayEpisode) {
+            handlePlayEpisode(Number(initialPlayEpisode))
+          }
+        })
+        .catch(() => {
+          setDubAvailability(null)
+          if (initialPlayEpisode) {
+            executePlayEpisode(Number(initialPlayEpisode))
+          }
+        })
     }
   }, [m])
   useEffect(() => {
@@ -713,7 +723,15 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
               <div className="flex min-w-0 flex-col justify-end gap-2 animate-rise" style={{ animationDelay: '.1s' }}>
                 <h2 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">{title(m)}</h2>
                 <p className="text-sm text-slate-500">{m.title?.native || ''}{m.title?.native && m.title?.romaji ? ' · ' : ''}{m.title?.romaji && m.title?.romaji !== title(m) ? m.title.romaji : ''}</p>
-                <div className="flex flex-wrap gap-1.5">{(m.genres || []).map((g) => <span key={g} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: accent }}>{g}</span>)}</div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(m.genres || []).map((g) => <span key={g} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: accent }}>{g}</span>)}
+                  {dubAvailability?.hasLatino && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm animate-fade">
+                      <span>🇲🇽</span>
+                      <span>Doblaje Latino (1080p)</span>
+                    </span>
+                  )}
+                </div>
                 {next && (
                   <div className="my-1.5 flex flex-wrap items-center gap-2 animate-rise">
                     <div className="inline-flex flex-wrap items-center gap-2.5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 px-4 py-2.5 border border-emerald-500/35 text-emerald-800 dark:text-emerald-200 shadow-sm w-fit backdrop-blur-md">
