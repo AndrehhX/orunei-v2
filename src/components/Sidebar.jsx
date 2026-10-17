@@ -2,6 +2,7 @@ import { Sparkles, Home, Library, User, Users, Film, MonitorPlay, Gamepad2, Sun,
 import { getMainDestination } from '../profile/navigation'
 import { useProfile } from '../profile/ProfileProvider'
 import { isNativeApp } from '../offline/platform'
+import OruneiLogo from './OruneiLogo'
 
 const main = [['Para ti', Home], ['Biblioteca', Library], ['Perfil', User], ['Amigos', Users]]
 const explore = [['Anime', Sparkles], ['Películas', Film], ['Series', MonitorPlay]]
@@ -10,7 +11,9 @@ export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, 
   const { profile } = useProfile()
   return (
     <aside className="hidden lg:flex w-[216px] shrink-0 flex-col px-3 py-6 sticky top-0 h-screen">
-      <div className="flex items-center gap-2 px-3 mb-8 text-2xl font-extrabold"><Sparkles className="text-brand" size={26} />Orunei</div>
+      <div className="px-3 mb-8">
+        <OruneiLogo size={30} withText={true} textClassName="text-2xl font-black tracking-tight" />
+      </div>
       <nav className="space-y-1">
         {main.map(([n, I], i) => (
           <a key={n} href="#" onClick={(e) => { e.preventDefault(); const destination = getMainDestination(n); if (destination) setPage(destination) }} aria-current={(n === 'Para ti' && page === 'home') || (n === 'Biblioteca' && page === 'library') || (n === 'Perfil' && page === 'profile') || (n === 'Amigos' && page === 'friends') ? 'page' : undefined} className={`relative flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium transition-all duration-200 hover:translate-x-0.5 ${(n === 'Para ti' && page === 'home') || (n === 'Biblioteca' && page === 'library') || (n === 'Perfil' && page === 'profile') || (n === 'Amigos' && page === 'friends') ? 'bg-brand-soft text-brand dark:bg-brand/20' : 'text-slate-700 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-white/5'}`}>

@@ -3,6 +3,7 @@ import { ArrowRight, Check, Eye, EyeOff, Lock, Mail, Moon, MousePointer2, Shield
 import { REGISTER_USERNAME_PLACEHOLDER } from '../auth/authModel.js'
 import { getLoginPointerOffset, shouldEnableLoginParallax } from '../ui/loginVisual.js'
 import CustomCursor from './CustomCursor'
+import OruneiLogo from './OruneiLogo'
 
 function Field({ icon: Icon, label, children, ...props }) {
   return (
@@ -192,7 +193,7 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
         <div className="login-frame relative mx-auto grid min-h-[calc(100vh-2.5rem)] w-full max-w-[1240px] overflow-hidden rounded-[2rem] border border-white/80 bg-white/80 shadow-[0_30px_100px_rgba(44,37,92,.14)] backdrop-blur-xl dark:border-white/10 dark:bg-[#151522]/90 sm:min-h-[calc(100vh-4rem)] lg:grid-cols-[minmax(390px,.84fr)_minmax(480px,1.16fr)]">
           <section className="login-form-panel relative flex flex-col px-6 py-7 sm:px-12 sm:py-10 lg:px-16 lg:py-12">
             <header className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xl font-extrabold tracking-tight"><Sparkles className="text-brand" size={23} /> Orunei</div>
+              <OruneiLogo size={28} withText={true} textClassName="text-xl font-extrabold tracking-tight" />
               <button onClick={() => setDark(!dark)} aria-label="Cambiar tema" className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-white/80 text-slate-600 shadow-sm transition hover:rotate-12 hover:scale-110 dark:border-white/10 dark:bg-white/10 dark:text-slate-200">{dark ? <Sun size={17} /> : <Moon size={17} />}</button>
             </header>
 

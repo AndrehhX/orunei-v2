@@ -6,6 +6,7 @@ import Poster from './Poster'
 import { useNews, NewsLink } from '../news'
 import { useProfile } from '../profile/ProfileProvider'
 import { enrichContinueWatchingItem, sortContinueWatchingList, filterContinueWatchingList } from '../playback/continueWatching.js'
+import { isMalIdDubbedInSpanish } from '../playback/dubSeasonManager.js'
 
 export const Title = ({ children, onClick }) => (
   <div className="mb-3 flex items-center justify-between"><h3 onClick={onClick} className={`flex items-center gap-1 text-[17px] font-bold transition-colors ${onClick ? 'cursor-pointer hover:text-brand' : ''}`}>{children}<ChevronRight size={17} /></h3><ChevronRight size={15} className="text-slate-400" /></div>
@@ -64,6 +65,12 @@ export function Library({ query, onMore, onOpenAnime }) {
                 <div className="absolute left-2 top-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[10px] font-extrabold text-white shadow border border-white/10">
                   Ep. {a.nextEpisode}
                 </div>
+                {/* Badge de audio español confirmado */}
+                {isMalIdDubbedInSpanish(a.idMal || a.id) && (
+                  <div className="absolute right-2 top-2 px-1.5 py-0.5 rounded-md bg-emerald-600/90 backdrop-blur-md text-[9px] font-extrabold text-white shadow border border-emerald-400/30">
+                    🇲🇽 DUB
+                  </div>
+                )}
                 {/* Barra de progreso de reproducción del episodio */}
                 <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/60 overflow-hidden">
                   <div

@@ -1,21 +1,85 @@
-import { useEffect, useState } from 'react';
-import { Download, X, ArrowRight } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Download, X, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { getActiveDownloads, subscribeDownloads, cancelDownload, isNativeApp } from '../offline/downloadEngine';
 
 export default function ActiveDownloadBar({ onGoToDownloads }) {
   const [activeItems, setActiveItems] = useState([]);
+  const [lastFinished, setLastFinished] = useState(null);
+  const prevItemsRef = useRef([]);
 
   useEffect(() => {
     if (!isNativeApp()) return;
     const update = () => {
-      setActiveItems(getActiveDownloads());
+      const currentList = getActiveDownloads();
+      
+      // Detectar cuando un ítem que estaba descargando desaparece de la lista activa (se completó)
+      if (prevItemsRef.current.length > 0 && currentList.length < prevItemsRef.current.length) {
+        const completed = prevItemsRef.current.find(prev => !currentList.some(curr => curr.id === prev.id));
+        if (completed && completed.progress >= 95) {
+          setLastFinished(completed);
+        }
+      }
+      
+      prevItemsRef.current = currentList;
+      setActiveItems(currentList);
     };
+
     update();
     const unsub = subscribeDownloads(update);
     return () => unsub();
   }, []);
 
-  if (!isNativeApp() || activeItems.length === 0) return null;
+  useEffect(() => {
+    if (!lastFinished) return;
+    const timer = setTimeout(() => {
+      setLastFinished(null);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [lastFinished]);
+
+  if (!isNativeApp()) return null;
+
+  // Si acaba de completarse una descarga y no hay otras activas
+  if (activeItems.length === 0 && lastFinished) {
+    return (
+      <div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-lg animate-rise">
+        <div className="flex items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl bg-[#0f1914]/95 backdrop-blur-xl border border-emerald-500/40 shadow-2xl shadow-emerald-500/20 text-white transition-all duration-300">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="grid place-items-center h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
+              <CheckCircle2 size={22} className="animate-pulse" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-emerald-300">¡Descarga completada con éxito!</p>
+              <p className="text-[11px] text-slate-300 truncate mt-0.5">
+                {lastFinished.animeTitle} · {lastFinished.episodeTitle}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {onGoToDownloads && (
+              <button
+                onClick={onGoToDownloads}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition active:scale-95 shadow-md shadow-emerald-500/30"
+              >
+                <span>Ver</span>
+                <ArrowRight size={14} />
+              </button>
+            )}
+            <button
+              onClick={() => setLastFinished(null)}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white transition"
+              aria-label="Cerrar aviso"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeItems.length === 0) return null;
 
   const current = activeItems[0];
 

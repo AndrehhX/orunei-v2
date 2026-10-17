@@ -47,6 +47,22 @@ function releaseWakeLock() {
   }
 }
 
+function showDownloadCompleteNotification(meta) {
+  try {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        new Notification('Descarga completada en Orunei', {
+          body: `${meta.animeTitle || 'Anime'} · ${meta.episodeTitle || 'Episodio'} ya está listo para ver sin conexión.`,
+          icon: '/favicon.svg',
+          badge: '/favicon.svg'
+        });
+      } else if (Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
+  } catch {}
+}
+
 function getDb() {
   if (dbInstance) return Promise.resolve(dbInstance);
   ensurePersistentStorage().catch(() => {});
@@ -434,6 +450,7 @@ export async function startEpisodeDownload({
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
+      showDownloadCompleteNotification(meta);
     } else {
       // Descarga de archivo único de video directo (MP4/WebM)
       const response = await fetch(streamUrl, { signal: controller.signal });
@@ -480,6 +497,7 @@ export async function startEpisodeDownload({
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
+      showDownloadCompleteNotification(meta);
     }
 
     activeDownloads.delete(id);

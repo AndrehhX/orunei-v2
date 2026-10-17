@@ -15,6 +15,8 @@ import { Library, Because, News } from './components/Rows'
 import { ProfileProvider, useProfile } from './profile/ProfileProvider'
 import DevelopmentNotice from './components/DevelopmentNotice'
 import CustomCursor from './components/CustomCursor'
+import OruneiLogo from './components/OruneiLogo'
+import AppSplash from './components/AppSplash'
 import { getPageScrollReset } from './ui/pageNavigation.js'
 import { getHomeTabClass } from './ui/homeTabs.js'
 import { getDevelopmentNotice } from './developmentNotice'
@@ -57,9 +59,8 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownlo
   const { profile } = useProfile()
   return (
     <header className="flex items-center gap-2.5 sm:gap-4 animate-fade">
-      <div className="flex lg:hidden items-center gap-1.5 shrink-0">
-        <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand text-xs font-black text-white shadow-md shadow-brand/30">O</span>
-        <span className="text-base font-bold tracking-tight bg-gradient-to-r from-brand to-purple-400 bg-clip-text text-transparent">Orunei</span>
+      <div className="flex lg:hidden items-center shrink-0">
+        <OruneiLogo size={28} withText={true} textClassName="text-base font-extrabold tracking-tight" />
       </div>
       <label className="flex h-10 sm:h-11 flex-1 max-w-[540px] items-center gap-2.5 sm:gap-3 rounded-xl bg-slate-200/60 dark:bg-white/5 px-3 sm:px-4 text-slate-500 transition focus-within:bg-white dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-brand/40">
         <Search size={18} className="shrink-0" />
@@ -114,6 +115,13 @@ export default function App() {
   const [developmentNotice, setDevelopmentNotice] = useState(null)
   const [showDownloadApp, setShowDownloadApp] = useState(false)
   const [updateInfo, setUpdateInfo] = useState(null)
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && !sessionStorage.getItem('orunei_splash_viewed')
+    } catch {
+      return false
+    }
+  })
 
   useEffect(() => {
     checkForUpdate().then((info) => {
@@ -196,10 +204,18 @@ export default function App() {
   <ProfileProvider user={user} repository={repository}>
     <GlobalTasteSync />
     <Suspense fallback={<PageLoading />}>
+      {showSplash && (
+        <AppSplash
+          onFinish={() => {
+            setShowSplash(false)
+            try { sessionStorage.setItem('orunei_splash_viewed', 'true') } catch {}
+          }}
+        />
+      )}
       <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
         <CustomCursor />
         <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} />
-        <main className="min-w-0 flex-1 space-y-6 px-4 py-4 pb-24 lg:pb-8 lg:px-5">
+        <main className="min-w-0 flex-1 space-y-6 px-3.5 sm:px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 lg:pb-8 lg:px-8">
           <AppHeader
             query={query}
             setQuery={setQuery}

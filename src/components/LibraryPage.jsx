@@ -52,10 +52,10 @@ function LibraryCard({ item, onStatusChange, onMarkWatched, onToggleFavorite, on
 
 export default function LibraryPage({ query = '', onDiscover }) {
   const { profile, profileStatus, updateAnimeList, recordActivity } = useProfile()
-  const filters = allFilters.filter(([id]) => id !== 'downloads' || isNativeApp())
-  const [filter, setFilter] = useState('all')
   const [downloads, setDownloads] = useState([])
   const [storageStats, setStorageStats] = useState({ bytes: 0, formatted: '0 MB', count: 0 })
+  const filters = allFilters.filter(([id]) => id !== 'downloads' || isNativeApp() || downloads.length > 0)
+  const [filter, setFilter] = useState('all')
   const [playingOfflineEpisode, setPlayingOfflineEpisode] = useState(null)
   const [preferredQuality, setPreferredQuality] = useState(() => getPreferredDownloadQuality())
   const [autoDelete, setAutoDelete] = useState(() => isAutoDeleteWatchedEnabled())
