@@ -11,6 +11,8 @@ test('exposes safe local image constraints for avatar and banner uploads', () =>
 
 test('rejects oversized and unsupported profile images before browser processing', () => {
   assert.equal(validateImageFile({ type: 'image/webp', size: 5000 }, 'avatar').ok, true)
+  assert.equal(validateImageFile({ type: 'image/gif', size: 3 * 1024 * 1024 }, 'avatar').ok, true, 'Debe permitir GIFs para avatar')
+  assert.equal(validateImageFile({ type: 'image/gif', size: 4 * 1024 * 1024 }, 'banner').ok, true, 'Debe permitir GIFs para banner')
   assert.equal(validateImageFile({ type: 'image/svg+xml', size: 5000 }, 'banner').ok, false)
   assert.equal(validateImageFile({ type: 'image/png', size: 5 * 1024 * 1024 + 1 }, 'avatar').ok, false)
 })
@@ -21,4 +23,5 @@ test('shows profile image upload progress instead of appearing inert', () => {
   assert.match(editor, /setUploadingKind\(kind\)/)
   assert.match(editor, /disabled=\{uploading\}/)
   assert.match(editor, /Subiendo/)
+  assert.match(editor, /GIF/i, 'ProfileEditor debe indicar soporte explícito para GIFs')
 })

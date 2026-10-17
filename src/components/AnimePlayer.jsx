@@ -12,6 +12,10 @@ import { useVideoGestures, togglePiP, isPiPSupported } from '../playback/useVide
 import { handlePlayerKeydown, PLAYER_SHORTCUTS } from '../playback/keyboardShortcuts';
 import { SUPPORTED_SPEEDS, getStoredPlaybackSpeed, setStoredPlaybackSpeed, applyPlaybackSpeed } from '../playback/playbackSpeed';
 import { shouldTriggerCountdown, COUNTDOWN_DURATION } from '../playback/nextEpisodeCountdown';
+import PartyBanner from '../party/PartyBanner';
+import PartyChat from '../party/PartyChat';
+import CreatePartyModal from '../party/CreatePartyModal';
+import { OruneiPartyClient, calculateSyncAction } from '../party/partyClient';
 
 export default function AnimePlayer({
   animeId,
@@ -25,6 +29,8 @@ export default function AnimePlayer({
   dubAvailability = null,
   seasonId = 's1',
   userId = null,
+  partySession = null,
+  onLeaveParty = null,
   onClose,
   onEpisodeChange,
   onComplete,
@@ -34,6 +40,16 @@ export default function AnimePlayer({
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const offlineSourceRef = useRef(null);
+
+  // Orunei Party State
+  const [activeParty, setActiveParty] = useState(partySession);
+  const [partyParticipants, setPartyParticipants] = useState([]);
+  const [partyMessages, setPartyMessages] = useState([]);
+  const [showPartyChat, setShowPartyChat] = useState(false);
+  const [showCreatePartyModal, setShowCreatePartyModal] = useState(false);
+  const [isPartySynced, setIsPartySynced] = useState(true);
+  const partyClientRef = useRef(null);
+  const isPartySeekingRef = useRef(false);
 
   const [episode, setEpisode] = useState(initialEpisode);
   const [loading, setLoading] = useState(true);
@@ -114,6 +130,82 @@ export default function AnimePlayer({
       setEpisode(initialEpisode);
     }
   }, [initialEpisode]);
+
+  // Conectar o reconectar cliente de Orunei Party
+  useEffect(() => {
+    if (!activeParty) {
+      if (partyClientRef.current) {
+        partyClientRef.current.leave();
+        partyClientRef.current = null;
+      }
+      return;
+    }
+
+    const client = new OruneiPartyClient(activeParty.roomId, { id: userId || 'usr_me', displayName: 'Tú' }, {
+      isHost: Boolean(activeParty.isHost),
+      allowParticipantControls: Boolean(activeParty.allowParticipantControls),
+      animeId,
+      animeTitle,
+      episode,
+      roomName: activeParty.roomName || 'Noche de anime',
+    });
+
+    partyClientRef.current = client;
+
+    // Presencia de amigos conectados
+    client.on('presence', (participants) => {
+      if (Array.isArray(participants)) {
+        setPartyParticipants(participants.map((p) => ({
+          ...p,
+          isMe: p.id === (userId || 'usr_me'),
+        })));
+      }
+    });
+
+    // Chat en tiempo real
+    client.on('chat', (msg) => {
+      setPartyMessages((prev) => [...prev, msg]);
+    });
+
+    // Eventos de sincronización de reproducción
+    client.on('sync', (syncEvent) => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      if (syncEvent.action === 'EPISODE_CHANGE' && syncEvent.episode && syncEvent.episode !== episode) {
+        setEpisode(syncEvent.episode);
+        onEpisodeChange?.(syncEvent.episode);
+        return;
+      }
+
+      const syncAction = calculateSyncAction(video.currentTime, syncEvent.currentTime, !syncEvent.isPlaying);
+      if (syncAction.type === 'SEEK') {
+        isPartySeekingRef.current = true;
+        video.currentTime = syncAction.targetTime;
+        setTimeout(() => { isPartySeekingRef.current = false; }, 300);
+      } else if (syncAction.type === 'SPEED_ADJUST') {
+        video.playbackRate = syncAction.rate;
+        setIsPartySynced(false);
+        setTimeout(() => {
+          if (videoRef.current) videoRef.current.playbackRate = playbackSpeed;
+          setIsPartySynced(true);
+        }, 2000);
+      }
+
+      if (syncEvent.isPlaying && video.paused) {
+        video.play().catch(() => {});
+      } else if (!syncEvent.isPlaying && !video.paused) {
+        video.pause();
+      }
+    });
+
+    client.connect();
+
+    return () => {
+      client.leave();
+      partyClientRef.current = null;
+    };
+  }, [activeParty?.roomId]);
 
   // Lista de servidores disponibles
   const servers = playbackData?.servers?.length
@@ -1422,6 +1514,30 @@ export default function AnimePlayer({
             <span className="hidden md:inline">Cine</span>
           </button>
 
+          {/* Botón Orunei Party: Una sala. Un anime. Todos sincronizados */}
+          <button
+            type="button"
+            onClick={() => {
+              if (activeParty) {
+                setShowPartyChat(!showPartyChat);
+              } else {
+                setShowCreatePartyModal(true);
+              }
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-xl border transition active:scale-95 shadow-sm ${
+              activeParty
+                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/15'
+            }`}
+            title={activeParty ? 'Abrir/cerrar chat de Party' : 'Crear sala de Orunei Party'}
+          >
+            <span className="text-sm select-none">🍿</span>
+            <span className="hidden sm:inline">{activeParty ? 'Party en vivo' : 'Party'}</span>
+            {activeParty && (
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            )}
+          </button>
+
           {/* Botón Picture-in-Picture (PiP) */}
           {isPiPSupported() && (
             <button
@@ -1447,6 +1563,69 @@ export default function AnimePlayer({
         {/* Fin GRUPO 3 */}
       </div>
     </div>
+
+    {/* Panel de estado y participantes de Orunei Party (si la sala está activa) */}
+    {activeParty && (
+      <div className="mt-3 animate-slideDown">
+        <PartyBanner
+          roomName={activeParty.roomName}
+          isPrivate={true}
+          participants={partyParticipants.length ? partyParticipants : [
+            { id: 'me', name: 'Tú', isMe: true, color: '#6d5cff' },
+            { id: 'u1', name: 'Alex', color: '#00b4d8' },
+            { id: 'u2', name: 'Sofi', color: '#f72585' },
+            { id: 'u3', name: 'Luis', color: '#fb8500' },
+          ]}
+          currentEpisode={episode}
+          seasonText={seasonId ? `Temporada ${seasonId.replace('s', '')}` : 'Temporada 1'}
+          currentTime={videoRef.current?.currentTime || 0}
+          duration={videoRef.current?.duration || 1440}
+          isPlaying={Boolean(videoRef.current && !videoRef.current.paused)}
+          isSynced={isPartySynced}
+          isHost={Boolean(activeParty.isHost)}
+          roomId={activeParty.roomId}
+          onTogglePlay={() => {
+            const video = videoRef.current;
+            if (!video) return;
+            if (video.paused) {
+              video.play().catch(() => {});
+              partyClientRef.current?.sendPlaybackEvent('PLAY', video.currentTime);
+            } else {
+              video.pause();
+              partyClientRef.current?.sendPlaybackEvent('PAUSE', video.currentTime);
+            }
+          }}
+          onOpenChat={() => setShowPartyChat(!showPartyChat)}
+        />
+      </div>
+    )}
+
+    {/* Chat flotante / deslizable de la Party */}
+    {activeParty && showPartyChat && (
+      <div className="fixed sm:absolute bottom-4 right-4 z-50 w-[calc(100vw-32px)] sm:w-80 h-96 shadow-2xl animate-scaleUp">
+        <PartyChat
+          messages={partyMessages}
+          onSendMessage={(text) => {
+            partyClientRef.current?.sendChatMessage(text);
+          }}
+          roomName={activeParty.roomName}
+          isDemo={false}
+        />
+      </div>
+    )}
+
+    {/* Modal para Crear o unirse a Orunei Party */}
+    <CreatePartyModal
+      isOpen={showCreatePartyModal}
+      onClose={() => setShowCreatePartyModal(false)}
+      animeTitle={animeTitle}
+      animeId={animeId}
+      currentEpisode={episode}
+      onJoinOrCreate={(partyData) => {
+        setActiveParty(partyData);
+        setShowPartyChat(true);
+      }}
+    />
     </div>
   );
 }

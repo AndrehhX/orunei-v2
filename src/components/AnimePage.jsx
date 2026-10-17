@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Star, X, SlidersHorizontal, Play, ChevronDown } from 'lucide-react'
 import AnimeDetail from './AnimeDetail'
 import { GENRES, EXTRA_CATEGORIES, FORMATS, STATUS, SORTS, T, title, searchAnime } from '../api/anime'
@@ -41,7 +41,7 @@ export function AnimeCard({ m, onOpen }) {
   )
 }
 
-export default function AnimePage({ query, initialOpenId = null, initialPlayEpisode = null, onCloseDetail }) {
+export default function AnimePage({ query, initialOpenId = null, initialPlayEpisode = null, initialPartySession = null, onCloseDetail }) {
   const [f, setF] = useState(init)
   const [onlyDub, setOnlyDub] = useState(false)
   const [showExtra, setShowExtra] = useState(false)
@@ -69,7 +69,11 @@ export default function AnimePage({ query, initialOpenId = null, initialPlayEpis
   }
   useEffect(() => { const t = setTimeout(() => run(1, false), query ? 400 : 0); return () => { clearTimeout(t); abort.current?.abort() } }, [f, query])
 
-  if (open) return <AnimeDetail id={open} initialPlayEpisode={open === initialOpenId ? initialPlayEpisode : null} onClose={() => { setOpen(null); onCloseDetail?.() }} onOpen={setOpen} />
+  const filteredItems = useMemo(() => {
+    return onlyDub ? items.filter((m) => isMalIdDubbedInSpanish(m.idMal || m.id)) : items
+  }, [items, onlyDub])
+
+  if (open) return <AnimeDetail id={open} initialPlayEpisode={open === initialOpenId ? initialPlayEpisode : null} initialPartySession={open === initialOpenId ? initialPartySession : null} onClose={() => { setOpen(null); onCloseDetail?.() }} onOpen={setOpen} />
 
   return (
     <section className="space-y-5 pb-10">
@@ -117,11 +121,11 @@ export default function AnimePage({ query, initialOpenId = null, initialPlayEpis
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
         {state === 'loading' && !items.length && Array.from({ length: 8 }, (_, k) => <div key={k} className="aspect-[2/3] animate-pulse rounded-2xl bg-slate-200/70 dark:bg-white/5" />)}
-        {(onlyDub ? items.filter((m) => isMalIdDubbedInSpanish(m.idMal || m.id)) : items).map((m) => (
+        {filteredItems.map((m) => (
           <AnimeCard key={m.id} m={m} onOpen={setOpen} />
         ))}
       </div>
-      {state === 'ok' && !(onlyDub ? items.filter((m) => isMalIdDubbedInSpanish(m.idMal || m.id)) : items).length && (
+      {state === 'ok' && !filteredItems.length && (
         <p className="py-16 text-center text-slate-500">Nada con esos filtros. Prueba quitando alguno.</p>
       )}
       {state === 'error' && <p className="py-10 text-center text-sm text-amber-600">No pudimos conectar con AniList. <button onClick={() => run(1, false)} className="font-semibold underline">Reintentar</button></p>}

@@ -24,14 +24,21 @@ const groups = [
 ]
 
 function Avatar({ profile }) {
-  return <div className={`h-24 w-24 shrink-0 ${getPublicProfileAvatarClass()} overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 shadow-lg dark:border-[#171723] md:h-28 md:w-28`}>
-    {profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} /> : <span className="grid h-full w-full place-items-center text-3xl font-bold text-white">{profile.displayName.slice(0, 1).toUpperCase()}</span>}
+  const isGif = typeof profile?.avatar === 'string' && (profile.avatar.toLowerCase().includes('.gif') || profile.avatar.startsWith('data:image/gif'))
+  return <div className={`relative h-24 w-24 shrink-0 ${getPublicProfileAvatarClass()} md:h-28 md:w-28 group`}>
+    <div className="h-full w-full overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 via-brand/30 to-slate-900 shadow-xl dark:border-[#171723] ring-2 ring-brand/40 transition-transform duration-300 group-hover:scale-105">
+      {profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} /> : <span className="grid h-full w-full place-items-center text-3xl font-bold text-white">{profile.displayName.slice(0, 1).toUpperCase()}</span>}
+    </div>
+    {isGif && <span className="absolute bottom-0 right-0 px-1.5 py-0.2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-[8px] font-black uppercase text-white shadow-md border border-white/50 dark:border-slate-900 animate-pulse">GIF</span>}
   </div>
 }
 
 function Banner({ profile }) {
-  return <div className="relative h-36 overflow-hidden bg-gradient-to-r from-[#3a2a6a] via-brand to-[#f08ab8] md:h-48">
+  const isGif = typeof profile?.banner === 'string' && (profile.banner.toLowerCase().includes('.gif') || profile.banner.startsWith('data:image/gif'))
+  return <div className="relative h-36 overflow-hidden bg-gradient-to-r from-[#22153d] via-brand/90 to-[#f08ab8] md:h-52">
     {profile.banner && <img src={profile.banner} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10 pointer-events-none" />
+    {isGif && <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[9px] font-black tracking-wider uppercase text-pink-300 border border-pink-400/30 shadow-md">GIF animado</span>}
   </div>
 }
 

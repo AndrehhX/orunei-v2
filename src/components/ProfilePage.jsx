@@ -26,13 +26,22 @@ const groups = [
 ]
 
 function Avatar({ profile, large = false }) {
-  return <div className={`${large ? 'h-24 w-24 md:h-28 md:w-28' : 'h-10 w-10'} ${large ? getProfileLayoutClasses().avatar : ''} overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 shadow-lg dark:border-[#171723]`}>
-    {profile.avatar ? <img src={profile.avatar} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center text-2xl font-bold text-white">{profile.displayName.slice(0, 1).toUpperCase()}</span>}
+  const isGif = typeof profile?.avatar === 'string' && (profile.avatar.toLowerCase().includes('.gif') || profile.avatar.startsWith('data:image/gif'))
+  return <div className={`relative ${large ? 'h-24 w-24 sm:h-28 sm:w-28' : 'h-10 w-10'} ${large ? getProfileLayoutClasses().avatar : ''} group`}>
+    <div className="h-full w-full overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 via-brand/30 to-slate-900 shadow-xl dark:border-[#171723] ring-2 ring-brand/40 transition-transform duration-300 group-hover:scale-105">
+      {profile.avatar ? <img src={profile.avatar} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center text-2xl font-bold text-white">{profile.displayName.slice(0, 1).toUpperCase()}</span>}
+    </div>
+    {isGif && <span className="absolute bottom-0 right-0 px-1.5 py-0.2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-[8px] font-black uppercase text-white shadow-md border border-white/50 dark:border-slate-900 animate-pulse">GIF</span>}
   </div>
 }
 
 function Banner({ src, className = '' }) {
-  return <div className={`relative overflow-hidden bg-gradient-to-r from-[#3a2a6a] via-brand to-[#f08ab8] ${className}`}>{src && <img src={src} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="absolute inset-0 h-full w-full object-cover" />}</div>
+  const isGif = typeof src === 'string' && (src.toLowerCase().includes('.gif') || src.startsWith('data:image/gif'))
+  return <div className={`relative overflow-hidden bg-gradient-to-r from-[#22153d] via-brand/90 to-[#f08ab8] ${className}`}>
+    {src && <img src={src} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="absolute inset-0 h-full w-full object-cover" />}
+    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10 pointer-events-none" />
+    {isGif && <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[9px] font-black tracking-wider uppercase text-pink-300 border border-pink-400/30 shadow-md">GIF animado</span>}
+  </div>
 }
 
 function AnimeCard({ item, onStatusChange, onMarkWatched, onToggleFavorite }) {
@@ -121,30 +130,57 @@ export default function ProfilePage({ onEdit, onOpenDonation }) {
   return <div className={`${layout.shell} space-y-5 pb-10 animate-fade`}>
     {storageError && <p role="alert" className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600">{storageError}</p>}
     <ProfileAnimeListManager visible={active === 'animelist'} />
-    <section className="overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
-      <Banner src={profile.banner} className="h-32 bg-cover bg-center sm:h-36 lg:h-44" />
-      <div className="min-w-0 px-5 pb-5 md:px-8">
-        <div className="-mt-12 flex min-w-0 flex-wrap items-end gap-4 md:-mt-14">
+    <section className="overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-lg shadow-black/5 dark:border-white/10 dark:bg-[#141523] transition-all">
+      <Banner src={profile.banner} className="h-36 bg-cover bg-center sm:h-44 lg:h-52" />
+      <div className="min-w-0 px-5 pb-6 md:px-8">
+        <div className="-mt-14 flex min-w-0 flex-wrap items-end gap-4 md:-mt-16">
           <Avatar profile={profile} large />
-          <div className={layout.identity}><div className="flex min-w-0 flex-wrap items-center gap-2"><h1 className="min-w-0 break-words text-2xl font-extrabold tracking-tight md:text-3xl">{profile.displayName}</h1><span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600"><LockKeyhole size={11} /> Solo tú</span></div><p className="truncate text-sm text-slate-500">@{profile.username}</p></div>
+          <div className={layout.identity}>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <h1 className="min-w-0 break-words text-2xl font-black tracking-tight md:text-3xl bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+                {profile.displayName}
+              </h1>
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shadow-xs">
+                <LockKeyhole size={11} /> Solo tú
+              </span>
+            </div>
+            <p className="truncate text-xs sm:text-sm font-semibold text-slate-400">@{profile.username}</p>
+          </div>
           <div className={layout.actions}>
-            {onOpenDonation && (
+            {onEdit && (
               <button
                 type="button"
-                onClick={onOpenDonation}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm font-bold text-amber-600 dark:text-amber-400 transition hover:-translate-y-0.5 hover:bg-amber-500/20 active:scale-95"
+                onClick={onEdit}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-purple-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-brand/30 transition hover:-translate-y-0.5 hover:brightness-110 active:scale-95"
               >
-                <span>☕</span>
-                <span>Apoyar en Ko-fi</span>
+                <Pencil size={15} /> Editar perfil
               </button>
             )}
-            {onEdit && <button onClick={onEdit} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand dark:bg-white dark:text-slate-900"><Pencil size={15} /> Editar perfil</button>}
-            <button onClick={() => setPublicView(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200"><Eye size={15} /> Vista pública</button>
+            <button
+              type="button"
+              onClick={() => setPublicView(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white/60 dark:bg-white/5 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200 shadow-xs active:scale-95"
+            >
+              <Eye size={15} /> Vista pública
+            </button>
           </div>
         </div>
-        <div className="mt-4 max-w-2xl"><p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{profile.bio || 'Añade una bio para contar qué historias te acompañan.'}</p>{profile.status && <p className="mt-2 text-xs font-medium text-brand">{profile.status}</p>}</div>
-        <div className={`${layout.stats} dark:divide-white/10 dark:bg-white/5`}>
-          {[[stats.works, 'Obras'], [stats.favorites, 'Favoritos'], [stats.lists, 'Listas']].map(([value, label]) => <div key={label} className="px-4 py-3 text-center"><p className="text-xl font-extrabold">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>)}
+        <div className="mt-4 max-w-2xl">
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{profile.bio || 'Añade una bio para contar qué historias te acompañan.'}</p>
+          {profile.status && (
+            <div className="mt-2.5 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/20 text-xs font-semibold text-brand">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
+              <span>{profile.status}</span>
+            </div>
+          )}
+        </div>
+        <div className={`${layout.stats} dark:divide-white/10 dark:bg-white/5 shadow-xs overflow-hidden`}>
+          {[[stats.works, 'Obras', 'text-brand'], [stats.favorites, 'Favoritos', 'text-pink-500'], [stats.lists, 'Listas', 'text-emerald-500']].map(([value, label, color]) => (
+            <div key={label} className="px-4 py-3.5 text-center transition hover:bg-slate-100/50 dark:hover:bg-white/[0.03]">
+              <p className={`text-xl sm:text-2xl font-black ${color}`}>{value}</p>
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { ChevronRight, Star, MoreHorizontal, X, Play } from 'lucide-react'
 import LikeBtn from './LikeBtn'
 import { useRec } from '../rec/rec'
@@ -20,9 +20,11 @@ export function Library({ query, onMore, onOpenAnime }) {
   const source = Array.isArray(profile.animeList) ? profile.animeList : []
 
   // Filtrar estrictamente solo obras en curso (excluyendo las marcadas como vistas o con todos los caps completados)
-  const inProgress = filterContinueWatchingList(source)
-  const sortedCandidates = sortContinueWatchingList(inProgress)
-  const list = sortedCandidates.filter((a) => ok(a.t, query)).slice(0, 6)
+  const list = useMemo(() => {
+    const inProgress = filterContinueWatchingList(source)
+    const sortedCandidates = sortContinueWatchingList(inProgress)
+    return sortedCandidates.filter((a) => ok(a.t, query)).slice(0, 6)
+  }, [source, query])
 
   const emptyMessage = query
     ? undefined

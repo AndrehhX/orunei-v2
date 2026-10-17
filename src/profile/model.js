@@ -240,6 +240,10 @@ export function readImageAsDataUrl(file, kind) {
     const reader = new FileReader()
     reader.onerror = () => reject(new Error('No se pudo leer la imagen.'))
     reader.onload = () => {
+      // Preservar GIFs animados completos sin aplanar a JPEG estático
+      if (file.type === 'image/gif') {
+        return resolve(reader.result)
+      }
       const image = new Image()
       image.onerror = () => reject(new Error('La imagen no se pudo procesar.'))
       image.onload = () => {

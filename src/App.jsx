@@ -18,8 +18,10 @@ import DevelopmentNotice from './components/DevelopmentNotice'
 import CustomCursor from './components/CustomCursor'
 import OruneiLogo from './components/OruneiLogo'
 import AppSplash from './components/AppSplash'
+import SakuraPetals from './components/SakuraPetals'
 import { getPageScrollReset } from './ui/pageNavigation.js'
 import { getHomeTabClass } from './ui/homeTabs.js'
+import { getDonationThemeStyles } from './ui/donationButton.js'
 import { getDevelopmentNotice } from './developmentNotice'
 import { useAuth } from './auth/AuthProvider'
 import { createProfileRepository } from './profile/profileRepository'
@@ -34,6 +36,7 @@ const ProfilePage = lazy(() => import('./components/ProfilePage'))
 const ProfileEditor = lazy(() => import('./components/ProfileEditor'))
 const FriendsPage = lazy(() => import('./components/FriendsPage'))
 const PublicProfileRoute = lazy(() => import('./components/PublicProfileRoute'))
+const PartyPage = lazy(() => import('./party/PartyPage'))
 
 function PageLoading() {
   return <div className="grid min-h-[18rem] place-items-center text-sm text-slate-500">Cargando…</div>
@@ -67,17 +70,26 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, theme = (dar
         <Search size={18} className="shrink-0" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-xs sm:text-sm outline-none" placeholder="Buscar anime, películas, series..." />
       </label>
-      {onOpenDonation && (
-        <button
-          type="button"
-          onClick={onOpenDonation}
-          title="Apoyar el proyecto en Ko-fi (Kofy)"
-          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold transition active:scale-95 shrink-0"
-        >
-          <span className="text-sm">☕</span>
-          <span className="hidden md:inline">Donar</span>
-        </button>
-      )}
+      {onOpenDonation && (() => {
+        const donationStyle = getDonationThemeStyles(theme);
+        return (
+          <button
+            type="button"
+            onClick={onOpenDonation}
+            title="Apoyar a Orunei en Ko-fi (Kofy)"
+            aria-label="Apoyar a Orunei en Ko-fi"
+            className={`group relative inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-black transition-all duration-300 active:scale-95 shrink-0 hover:-translate-y-0.5 ${donationStyle.container}`}
+          >
+            <span className="text-sm select-none transition-transform duration-300 group-hover:scale-125 group-hover:-rotate-12">
+              {donationStyle.icon}
+            </span>
+            <span className="tracking-tight">Donar</span>
+            <span className={`hidden sm:inline-block px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider ${donationStyle.pill}`}>
+              Kofi
+            </span>
+          </button>
+        );
+      })()}
       {isOffline && (
         <button
           type="button"
@@ -140,6 +152,7 @@ export default function App() {
   const [selectedUsername, setSelectedUsername] = useState(initialProfileUsername)
   const [selectedAnimeId, setSelectedAnimeId] = useState(null)
   const [selectedPlayEpisode, setSelectedPlayEpisode] = useState(null)
+  const [selectedPartySession, setSelectedPartySession] = useState(null)
   const [developmentNotice, setDevelopmentNotice] = useState(null)
   const [showDownloadApp, setShowDownloadApp] = useState(false)
   const [showDonationModal, setShowDonationModal] = useState(false)
@@ -195,23 +208,26 @@ export default function App() {
     if (nextPage !== 'anime') {
       setSelectedAnimeId(null)
       setSelectedPlayEpisode(null)
+      setSelectedPartySession(null)
     }
     if (nextPage !== 'public-profile') {
       setSelectedUsername('')
       if (typeof window !== 'undefined' && getPublicProfileUsername(window.location.hash)) window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
     }
   }
-  const openAnime = (media, playEpisode = null) => {
+  const openAnime = (media, playEpisode = null, partySession = null) => {
     const id = typeof media === 'object' ? media?.id : media
     const queryValue = typeof media === 'object' ? media?.q : ''
     setSelectedAnimeId(id ? String(id) : null)
     setSelectedPlayEpisode(playEpisode ? Number(playEpisode) : null)
+    setSelectedPartySession(partySession || null)
     setQuery(id ? '' : queryValue || '')
     setPage('anime')
   }
   const closeAnime = () => {
     setSelectedAnimeId(null)
     setSelectedPlayEpisode(null)
+    setSelectedPartySession(null)
   }
   const openPublicProfile = (username) => {
     const hash = getPublicProfileHash(username)
@@ -250,7 +266,8 @@ export default function App() {
       )}
       <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
         <CustomCursor />
-        <Sidebar dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} onOpenDonation={() => setShowDonationModal(true)} />
+        {theme === 'sakura' && <SakuraPetals />}
+        <Sidebar dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} />
         <main className="min-w-0 flex-1 space-y-6 px-3.5 sm:px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 lg:pb-8 lg:px-8">
           <AppHeader
             query={query}
@@ -283,7 +300,32 @@ export default function App() {
             </div>
           )}
           <div key={page} className="animate-page-enter space-y-7">
-            {page === 'anime' ? <AnimePage query={query} initialOpenId={selectedAnimeId} initialPlayEpisode={selectedPlayEpisode} onCloseDetail={closeAnime} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} onOpenDonation={() => setShowDonationModal(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
+            {page === 'anime' ? (
+              <AnimePage
+                query={query}
+                initialOpenId={selectedAnimeId}
+                initialPlayEpisode={selectedPlayEpisode}
+                initialPartySession={selectedPartySession}
+                onCloseDetail={closeAnime}
+              />
+            ) : page === 'party' ? (
+              <PartyPage
+                onOpenAnime={openAnime}
+                onStartParty={(partyData) => {
+                  const targetId = partyData.animeId || '25777';
+                  const ep = partyData.episode || 1;
+                  openAnime(targetId, ep, partyData);
+                }}
+              />
+            ) : page === 'library' ? (
+              <LibraryPage query={query} onDiscover={() => navigatePage('anime')} />
+            ) : page === 'profile' ? (
+              <ProfilePage onEdit={() => setEditingProfile(true)} />
+            ) : page === 'friends' ? (
+              <FriendsPage onOpenProfile={openPublicProfile} />
+            ) : page === 'public-profile' ? (
+              <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} />
+            ) : <>
             <div className="flex flex-wrap items-end justify-between gap-6 animate-rise">
               <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
                 <p className="mt-2 text-sm leading-6 text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
@@ -295,7 +337,7 @@ export default function App() {
             </>}
           </div>
         </main>
-        {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => navigatePage('profile')} onSeeFriends={() => navigatePage('friends')} onOpenProfile={openPublicProfile} onOpenAnime={openAnime} onOpenDonation={() => setShowDonationModal(true)} />}
+        {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => navigatePage('profile')} onSeeFriends={() => navigatePage('friends')} onOpenProfile={openPublicProfile} onOpenAnime={openAnime} />}
         {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}
         <ActiveDownloadBar onGoToDownloads={() => navigatePage('library')} />
         <MobileNav page={page} setPage={navigatePage} />

@@ -184,58 +184,96 @@ video::cue {
 }
 
 .sakura body {
-  background-color: #fff4f7;
+  background-color: #fff0f5;
   background-image: 
-    radial-gradient(circle at 14% 15%, rgba(255, 179, 198, 0.5) 0%, transparent 45%),
-    radial-gradient(circle at 86% 85%, rgba(255, 143, 171, 0.35) 0%, transparent 40%),
-    radial-gradient(circle at 50% 50%, rgba(255, 229, 236, 0.65) 0%, transparent 60%);
+    radial-gradient(circle at 14% 15%, rgba(244, 63, 94, 0.25) 0%, transparent 45%),
+    radial-gradient(circle at 86% 85%, rgba(225, 29, 72, 0.18) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(255, 179, 198, 0.4) 0%, transparent 60%);
   background-attachment: fixed;
-  color: #381a26;
+  color: #2b0d1e;
 }
 
 .sakura .card {
-  background-color: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 179, 198, 0.7);
-  box-shadow: 0 4px 20px -2px rgba(251, 111, 146, 0.1), 0 1px 6px rgba(255, 194, 209, 0.25);
+  background-color: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  box-shadow: 0 4px 24px -2px rgba(225, 29, 72, 0.08), 0 1px 8px rgba(251, 111, 146, 0.16);
 }
 
 .sakura .card:hover {
   transform: translateY(-4px);
-  border-color: rgba(251, 111, 146, 0.6);
-  box-shadow: 0 20px 40px -12px rgba(251, 111, 146, 0.28), 0 0 22px rgba(255, 143, 171, 0.2);
+  border-color: rgba(225, 29, 72, 0.55);
+  box-shadow: 0 20px 40px -12px rgba(225, 29, 72, 0.22), 0 0 24px rgba(244, 63, 94, 0.2);
 }
 
-/* Acentos y botones Sakura con Petal Rouge #FB6F92 */
+/* Acentos y botones Sakura con tonos vivos y elegantes */
 .sakura .bg-brand {
-  background-color: #FB6F92 !important;
+  background-color: #F43F5E !important;
+  background-image: linear-gradient(135deg, #F43F5E 0%, #E11D48 100%) !important;
 }
 .sakura .text-brand {
-  color: #FB6F92 !important;
+  color: #E11D48 !important;
 }
 .sakura .border-brand {
-  border-color: #FB6F92 !important;
+  border-color: #F43F5E !important;
 }
 .sakura .bg-brand-soft {
-  background-color: #FFE5EC !important;
-  color: #FB6F92 !important;
+  background-color: #FFE4EC !important;
+  color: #BE123C !important;
 }
 .sakura .shadow-brand\/30 {
-  box-shadow: 0 10px 25px -3px rgba(251, 111, 146, 0.35) !important;
+  box-shadow: 0 10px 25px -3px rgba(225, 29, 72, 0.4) !important;
 }
 .sakura .shadow-brand\/40 {
-  box-shadow: 0 10px 25px -3px rgba(251, 111, 146, 0.45) !important;
+  box-shadow: 0 10px 25px -3px rgba(225, 29, 72, 0.5) !important;
 }
 .sakura .hover\:text-brand:hover {
-  color: #FB6F92 !important;
+  color: #BE123C !important;
 }
 .sakura .hover\:border-brand:hover {
-  border-color: #FB6F92 !important;
+  border-color: #F43F5E !important;
 }
 .sakura .hover\:bg-brand\/10:hover {
-  background-color: rgba(251, 111, 146, 0.1) !important;
+  background-color: rgba(244, 63, 94, 0.12) !important;
 }
 .sakura .focus-within\:ring-brand\/40:focus-within {
-  --tw-ring-color: rgba(251, 111, 146, 0.45) !important;
+  --tw-ring-color: rgba(244, 63, 94, 0.5) !important;
+}
+
+/* Tipografía de títulos con alto contraste en tema Sakura */
+.sakura h1, .sakura h2, .sakura h3, .sakura h4 {
+  color: #230816;
+}
+
+/* Animación de pétalos de sakura flotantes (GPU-accelerated) */
+@keyframes sakuraDrift {
+  0% {
+    transform: translate3d(0, -10px, 0) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.85;
+  }
+  88% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(90px, 106vh, 0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.sakura-falling-petal {
+  will-change: transform, opacity;
+  animation-name: sakuraDrift;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation-iteration-count: infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sakura-falling-petal {
+    animation: none !important;
+    display: none !important;
+  }
 }
 
 /* Cursor interactivo Sakura */

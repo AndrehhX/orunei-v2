@@ -464,7 +464,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
   )
 }
 
-export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, onOpen }) {
+export default function AnimeDetail({ id, initialPlayEpisode = null, initialPartySession = null, onClose, onOpen }) {
   const [m, setM] = useState(null)
   const [err, setErr] = useState(false)
   const [tab, setTab] = useState(0)
@@ -486,13 +486,13 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
     setM(null)
     setErr(false)
     setTab(0)
-    setPlayingEpisode(null)
+    setPlayingEpisode(initialPlayEpisode ? Number(initialPlayEpisode) : null)
     setMiruroId(null)
     setDubAvailability(null)
     setShowSeasonAudioModal(false)
     setPendingPlayEpisode(null)
     getAnime(id).then(setM).catch(() => setErr(true))
-  }, [id])
+  }, [id, initialPlayEpisode])
 
   useEffect(() => {
     if (m?.id) {
@@ -719,6 +719,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
             dubAvailability={dubAvailability}
             seasonId={m.season ? `${m.season}_${m.seasonYear || ''}` : 's1'}
             userId={profile?.id}
+            partySession={initialPartySession}
             onClose={() => setPlayingEpisode(null)}
             onEpisodeChange={executePlayEpisode}
             onComplete={handleCompleteSeries}

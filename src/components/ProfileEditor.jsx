@@ -9,9 +9,27 @@ const clone = (value) => JSON.parse(JSON.stringify(value))
 
 function UploadButton({ kind, onChange, current, fileName, onReset, uploading }) {
   const id = `profile-${kind}-upload`
-  return <div className="flex items-center gap-3">
-    <div className={`${kind === 'avatar' ? 'h-16 w-16 rounded-full' : 'h-16 w-28 rounded-xl'} relative overflow-hidden bg-gradient-to-br from-brand to-pink-400`}><img key={current || 'empty'} src={current || undefined} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" /></div>
-    <div><label htmlFor={id} aria-disabled={uploading} className={`inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold transition hover:border-brand hover:text-brand dark:border-white/10 ${uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}><Upload size={14} /> {uploading ? 'Subiendo…' : `Subir ${kind === 'avatar' ? 'avatar' : 'banner'}`}</label><input id={id} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={onChange} disabled={uploading} className="sr-only" /><p aria-live="polite" className="mt-1 max-w-[220px] truncate text-[10px] text-slate-500" title={fileName}>{uploading ? `Subiendo ${kind === 'avatar' ? 'avatar' : 'banner'}…` : fileName || 'Ninguna imagen seleccionada · máximo 5 MB'}</p>{current && <button onClick={onReset} className="mt-1 text-[10px] font-semibold text-slate-500 hover:text-red-500">Quitar imagen</button>}</div>
+  const isGif = typeof current === 'string' && (current.toLowerCase().includes('.gif') || current.startsWith('data:image/gif'))
+  return <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/60 dark:bg-white/[0.03] border border-slate-200/70 dark:border-white/5 transition hover:border-brand/40">
+    <div className={`${kind === 'avatar' ? 'h-16 w-16 rounded-full' : 'h-16 w-28 rounded-xl'} relative overflow-hidden bg-gradient-to-br from-brand to-pink-400 shadow-md ring-2 ring-white/50 dark:ring-white/10 shrink-0`}>
+      <img key={current || 'empty'} src={current || undefined} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" />
+      {isGif && (
+        <span className="absolute bottom-1 right-1 px-1.5 py-0.2 rounded-md bg-black/80 text-[8px] font-black uppercase text-pink-400 backdrop-blur border border-pink-500/30">
+          GIF
+        </span>
+      )}
+    </div>
+    <div className="min-w-0 flex-1">
+      <label htmlFor={id} aria-disabled={uploading} className={`inline-flex items-center gap-2 rounded-xl bg-white dark:bg-white/10 border border-slate-200/80 px-3.5 py-2 text-xs font-bold transition hover:border-brand hover:text-brand dark:border-white/10 shadow-xs active:scale-95 ${uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
+        <Upload size={14} />
+        <span>{uploading ? 'Subiendo…' : `Subir ${kind === 'avatar' ? 'avatar' : 'banner'} o GIF`}</span>
+      </label>
+      <input id={id} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={onChange} disabled={uploading} className="sr-only" />
+      <p aria-live="polite" className="mt-1 max-w-[260px] truncate text-[10px] text-slate-500" title={fileName}>
+        {uploading ? `Subiendo ${kind === 'avatar' ? 'avatar' : 'banner'}…` : fileName || 'Soporta GIF animado, PNG, JPG o WebP (máximo 5 MB)'}
+      </p>
+      {current && <button type="button" onClick={onReset} className="mt-1 text-[10px] font-semibold text-slate-500 hover:text-red-500 transition">Quitar imagen</button>}
+    </div>
   </div>
 }
 
