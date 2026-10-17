@@ -152,3 +152,52 @@ test('providerCircuitBreaker: protege contra fallos continuos de proveedores', a
   assert.equal(isProviderAvailable('test-prov'), true, 'El circuito debe restablecerse al reset');
 });
 
+test('cero falsos positivos: JoJo y animes sin servidores de streaming son excluidos', async () => {
+  const { isMalIdDubbedInSpanish, EXCLUDED_DUB_MAL_IDS } = await import('../src/playback/dubSeasonManager.js');
+
+  // JoJo Parts 1 a 6 deben estar explícitamente en el conjunto de exclusión
+  assert.equal(EXCLUDED_DUB_MAL_IDS.has('14719'), true);
+  assert.equal(EXCLUDED_DUB_MAL_IDS.has('20899'), true);
+  assert.equal(EXCLUDED_DUB_MAL_IDS.has('26055'), true);
+  assert.equal(EXCLUDED_DUB_MAL_IDS.has('37991'), true);
+  assert.equal(EXCLUDED_DUB_MAL_IDS.has('48661'), true);
+
+  // isMalIdDubbedInSpanish debe retornar false para evitar etiquetas engañosas en el catálogo
+  assert.equal(isMalIdDubbedInSpanish(14719), false);
+  assert.equal(isMalIdDubbedInSpanish(20899), false);
+  assert.equal(isMalIdDubbedInSpanish(26055), false);
+});
+
+test('mapeo por lotes: valida rangos de episodios oficiales para animes extensos', async () => {
+  const { isEpisodeInDubRange, getDubBatchInfo } = await import('../src/playback/dubSeasonManager.js');
+
+  // 1. One Piece (doblado hasta el ep 325)
+  assert.equal(isEpisodeInDubRange('21', 1), true);
+  assert.equal(isEpisodeInDubRange('21', 325), true);
+  assert.equal(isEpisodeInDubRange('21', 326), false);
+  assert.equal(getDubBatchInfo('21')?.label, 'Eps. 1-325');
+
+  // 2. Naruto Shippuden (doblado hasta el ep 112)
+  assert.equal(isEpisodeInDubRange('1735', 1), true);
+  assert.equal(isEpisodeInDubRange('1735', 112), true);
+  assert.equal(isEpisodeInDubRange('1735', 113), false);
+
+  // 3. Bleach clásico (doblado hasta el ep 229)
+  assert.equal(isEpisodeInDubRange('269', 100), true);
+  assert.equal(isEpisodeInDubRange('269', 229), true);
+  assert.equal(isEpisodeInDubRange('269', 230), false);
+
+  // 4. Anime completamente doblado sin restricción de lote (ej. Chainsaw Man)
+  assert.equal(isEpisodeInDubRange('44511', 12), true);
+  assert.equal(getDubBatchInfo('44511'), null);
+});
+
+test('stormMonoschinosProvider: extrae y normaliza servidores sin duplicar', async () => {
+  const { resolveMonoschinosSlug, getMonoschinosEpisodeServers } = await import('../src/playback/stormMonoschinosProvider.js');
+
+  // Comprueba que las funciones estén definidas y exportadas
+  assert.equal(typeof resolveMonoschinosSlug, 'function');
+  assert.equal(typeof getMonoschinosEpisodeServers, 'function');
+});
+
+

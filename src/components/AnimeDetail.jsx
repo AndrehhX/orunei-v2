@@ -9,7 +9,7 @@ import { buildEpisodeCards } from '../api/episodeData.js'
 import AnimePlayer from './AnimePlayer'
 import SeasonAudioModal from './SeasonAudioModal'
 import { getSeasonAudioPreference, setSeasonAudioPreference } from '../playback/audioPreference.js'
-import { verifySeasonDubAvailability, isMalIdDubbedInSpanish } from '../playback/dubSeasonManager.js'
+import { verifySeasonDubAvailability, isMalIdDubbedInSpanish, EXCLUDED_DUB_MAL_IDS, getDubBatchInfo } from '../playback/dubSeasonManager.js'
 import { getMiruroId, getEpisodePlayback } from '../api/streamAdapter'
 import { startEpisodeDownload, getDownload, cancelDownload, deleteDownload, subscribeDownloads, isNativeApp } from '../offline/downloadEngine'
 import { hasAiringAlert, toggleAiringAlert } from '../offline/airingAlerts'
@@ -641,7 +641,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
       } catch (_) {}
     }
 
-    if (currentDub?.hasLatino || currentDub?.hasCastellano || hasDubCataloged) {
+    if (currentDub?.hasLatino || currentDub?.hasCastellano || (hasDubCataloged && !EXCLUDED_DUB_MAL_IDS.has(String(m.idMal || m.id)))) {
       setPendingPlayEpisode(ep)
       setShowSeasonAudioModal(true)
     } else {
@@ -742,10 +742,10 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
                 <p className="text-sm text-slate-500">{m.title?.native || ''}{m.title?.native && m.title?.romaji ? ' · ' : ''}{m.title?.romaji && m.title?.romaji !== title(m) ? m.title.romaji : ''}</p>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {(m.genres || []).map((g) => <span key={g} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: accent }}>{g}</span>)}
-                  {(dubAvailability?.hasLatino || isMalIdDubbedInSpanish(m.idMal || m.id)) && (
+                  {((dubAvailability ? dubAvailability.hasLatino : isMalIdDubbedInSpanish(m.idMal || m.id)) && !EXCLUDED_DUB_MAL_IDS.has(String(m.idMal || m.id))) && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm animate-fade">
                       <span>🇲🇽</span>
-                      <span>Doblaje Latino (1080p)</span>
+                      <span>Doblaje Latino {getDubBatchInfo(m.idMal || m.id)?.label ? `(${getDubBatchInfo(m.idMal || m.id).label})` : '(1080p)'}</span>
                     </span>
                   )}
                   {dubAvailability?.hasCastellano && (

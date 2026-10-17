@@ -206,9 +206,12 @@ export default function AnimePlayer({
           .catch((err) => {
             if (isCancelled) return;
             console.warn('[AnimePlayer] Error cargando audio doblado, conmutando a japonés subtitulado:', err.message);
-            markDubAsUnavailable(malId || animeId);
-            setSkipNotice('Doblaje no disponible en servidor. Conmutando a versión original subtitulada...');
-            setTimeout(() => setSkipNotice(null), 4000);
+            const isBatchBoundary = err.message && (err.message.includes('lote oficial') || err.message.includes('disponible hasta'));
+            if (!isBatchBoundary) {
+              markDubAsUnavailable(malId || animeId);
+            }
+            setSkipNotice(err.message || 'Doblaje no disponible para este episodio. Conmutando a versión original subtitulada...');
+            setTimeout(() => setSkipNotice(null), 4500);
             prevPropAudioLangRef.current = 'sub_es';
             setCurrentAudioLanguage('sub_es');
             onAudioLanguageChange?.('sub_es');

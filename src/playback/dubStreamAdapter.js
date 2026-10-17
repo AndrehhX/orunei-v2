@@ -1,6 +1,7 @@
-import { resolveAnimeAV1Slug } from './dubSeasonManager.js';
+import { resolveAnimeAV1Slug, isEpisodeInDubRange, getDubBatchInfo } from './dubSeasonManager.js';
 import { selectAndPrioritizeServers } from './sourceSelector.js';
 import { resolveLatanimeSlug, getLatanimeEpisodeServers } from './soraDubProvider.js';
+import { resolveMonoschinosSlug, getMonoschinosEpisodeServers } from './stormMonoschinosProvider.js';
 
 const rawEnvUrl = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_STREAM_API_URL || '').trim() : '';
 const STREAM_BASE = (rawEnvUrl && !rawEnvUrl.includes('trycloudflare.com') && rawEnvUrl.startsWith('http'))
@@ -138,6 +139,12 @@ export async function getDubEpisodePlayback({
   const targetMalId = malId || animeId;
   const isMobile = isMobileOrTabletDevice();
   const rawCandidates = [];
+
+  // Verificación estricta de lote de doblaje (evita falsos positivos en episodios no doblados)
+  if (!isEpisodeInDubRange(targetMalId, targetEpisode)) {
+    const batch = getDubBatchInfo(targetMalId);
+    throw new Error(`El episodio ${targetEpisode} no cuenta con doblaje oficial al español (disponible hasta ${batch?.label || 'episodios anteriores'}). Conmutando a versión original subtitulada.`);
+  }
 
   // ==========================================
   // CASO 1: ESPAÑOL CASTELLANO (ESPAÑA)
@@ -324,6 +331,21 @@ export async function getDubEpisodePlayback({
       }
     } catch (err) {
       console.warn('[dubStreamAdapter] Aviso en proveedor Sora:', err.message);
+    }
+  }
+
+  // 3. Si aún faltan fuentes (< 3 servidores), consultar conector Monoschinos (Storm Extensions)
+  if (rawCandidates.length < 3) {
+    try {
+      const monoSlug = await resolveMonoschinosSlug(targetMalId, animeTitle, 'latino');
+      if (monoSlug) {
+        const monoServers = await getMonoschinosEpisodeServers(monoSlug, targetEpisode, 'latino');
+        if (Array.isArray(monoServers) && monoServers.length > 0) {
+          rawCandidates.push(...monoServers);
+        }
+      }
+    } catch (err) {
+      console.warn('[dubStreamAdapter] Aviso en proveedor Monoschinos:', err.message);
     }
   }
 

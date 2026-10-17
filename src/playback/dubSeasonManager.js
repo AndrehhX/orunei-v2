@@ -96,7 +96,50 @@ export const EXCLUDED_DUB_MAL_IDS = new Set([
   '32281', // Kimi no Na wa. (Your Name)
   '28851', // Koe no Katachi (A Silent Voice)
   '22319', // Tokyo Ghoul (sin servidores DUB en streaming)
+  '14719', // JoJo no Kimyou na Bouken (Phantom Blood / Battle Tendency - sin servidores DUB en streaming gratuito)
+  '20899', // JoJo: Stardust Crusaders
+  '26055', // JoJo: Stardust Crusaders Egypt
+  '31425', // JoJo: Diamond is Unbreakable
+  '37991', // JoJo: Golden Wind
+  '48661', // JoJo: Stone Ocean
+  '50849', // JoJo: Stone Ocean Part 2
+  '53273', // JoJo: Stone Ocean Part 3
 ]);
+
+/**
+ * Mapeo oficial por lotes de episodios para animes extensos cuya cobertura de doblaje es parcial.
+ * Evita falsos positivos en episodios que nunca fueron doblados al español.
+ */
+export const DUB_BATCH_RANGES = {
+  // One Piece: Arcos doblados (East Blue hasta Enies Lobby / Water 7)
+  '21': { maxEpisode: 325, label: 'Eps. 1-325' },
+  // Naruto Shippuden: Lotes 1 y 2 doblados oficialmente
+  '1735': { maxEpisode: 112, label: 'Eps. 1-112' },
+  // Bleach clásico: Episodios con doblaje latino oficial
+  '269': { maxEpisode: 229, label: 'Eps. 1-229' },
+};
+
+/**
+ * Determina si un número de episodio específico está dentro del lote con doblaje oficial al español.
+ */
+export function isEpisodeInDubRange(malId, episodeNumber = 1) {
+  if (!malId) return true;
+  const strId = String(malId);
+  const resolved = ANILIST_TO_MAL_MAP[strId] || strId;
+  const batch = DUB_BATCH_RANGES[resolved];
+  if (!batch) return true;
+  return Number(episodeNumber) <= batch.maxEpisode;
+}
+
+/**
+ * Obtiene la información del lote de doblaje si el anime tiene cobertura parcial.
+ */
+export function getDubBatchInfo(malId) {
+  if (!malId) return null;
+  const strId = String(malId);
+  const resolved = ANILIST_TO_MAL_MAP[strId] || strId;
+  return DUB_BATCH_RANGES[resolved] || null;
+}
 
 const unstreamableDubSet = new Set();
 try {
