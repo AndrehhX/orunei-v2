@@ -755,8 +755,6 @@
       frameB_timeMs = inputIntervalMs;
       framePairIndex = 0;
       pairPreparedInGpu = false;
-      lastPresentTime = 0;
-      lastRafTime = 0;
       timeAccumulatorMs = 0;
       rife?.resetTextureHistory();
 
@@ -995,6 +993,10 @@
     let auditTimerInterval = null;
 
     window.runControlledAudit = async (durationSec = 60) => {
+      if (auditTimerInterval) {
+        clearInterval(auditTimerInterval);
+        auditTimerInterval = null;
+      }
       const panel = document.getElementById('audit-results-panel');
       const countdown = document.getElementById('audit-countdown');
       const btn = document.getElementById('btn-run-audit-60s');
