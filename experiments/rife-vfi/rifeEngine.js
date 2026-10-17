@@ -23,6 +23,32 @@ export const RIFE_SETTINGS = {
   OVERLOAD_PERSIST_MS: 3000,      // Tiempo de sobrecarga antes del auto-apagado
 };
 
+export const INPUT_CADENCES = {
+  '23.976fps': {
+    label: '23.976 FPS (Anime Cine/BD)',
+    fps: 24000 / 1001,
+    frameIntervalMs: 1000 / (24000 / 1001), // 41.7083 ms
+  },
+  '24fps': {
+    label: '24 FPS (Anime Estándar)',
+    fps: 24,
+    frameIntervalMs: 1000 / 24, // 41.6667 ms
+  },
+  '25fps': {
+    label: '25 FPS (Broadcast PAL)',
+    fps: 25,
+    frameIntervalMs: 1000 / 25, // 40.0 ms
+  },
+  '30fps': {
+    label: '30 FPS (Web / TV)',
+    fps: 30,
+    frameIntervalMs: 1000 / 30, // 33.3333 ms
+  },
+};
+
+export const UNIVERSAL_TARGET_FPS = 60;
+export const OUTPUT_FRAME_INTERVAL_MS = 1000 / 60; // 16.6667 ms
+
 export const INTERPOLATION_TARGETS = {
   '48fps': {
     label: '24 → 48 FPS',
@@ -31,7 +57,7 @@ export const INTERPOLATION_TARGETS = {
     frameIntervalMs: 1000 / 48, // 20.833 ms
   },
   '60fps': {
-    label: '30 → 60 FPS',
+    label: 'Universal → 60 FPS',
     baseFps: 30,
     targetFps: 60,
     frameIntervalMs: 1000 / 60, // 16.666 ms
@@ -543,7 +569,7 @@ export async function createRifeEngine({
    */
   function dispatchInterpolation(sourceCanvasA, sourceCanvasB, options = {}) {
     if (isDestroyed) return Promise.resolve(null);
-    const { forceMode = 'rife', reuseF1AsF0 = true } = options;
+    const { forceMode = 'rife', reuseF1AsF0 = true, t = 0.5, skipPrep = false } = options;
 
     // Control de cola acotada: si la GPU ya tiene un trabajo en vuelo, contamos drop y evitamos encolar
     if (activeInFlight >= MAX_IN_FLIGHT) {
@@ -553,29 +579,36 @@ export async function createRifeEngine({
 
     const t0 = performance.now();
 
-    // Reutilización inteligente F1 -> F0 en VRAM
-    if (reuseF1AsF0 && hasValidF1) {
-      // Promover F1 a F0 internamente en GPU VRAM (43 us, 0 bus PCIe transfer)
-      const promoteEncoder = device.createCommandEncoder({ label: 'promote-f1-to-f0-vram-copy' });
-      promoteEncoder.copyTextureToTexture(
-        { texture: texB },
-        { texture: texA },
-        [w, h]
-      );
-      device.queue.submit([promoteEncoder.finish()]);
+    // Si skipPrep es true, el par de texturas texA y texB ya fue ingestada y procesada por prepPair()
+    if (!skipPrep) {
+      // Reutilización inteligente F1 -> F0 en VRAM
+      if (reuseF1AsF0 && hasValidF1) {
+        // Promover F1 a F0 internamente en GPU VRAM (43 us, 0 bus PCIe transfer)
+        const promoteEncoder = device.createCommandEncoder({ label: 'promote-f1-to-f0-vram-copy' });
+        promoteEncoder.copyTextureToTexture(
+          { texture: texB },
+          { texture: texA },
+          [w, h]
+        );
+        device.queue.submit([promoteEncoder.finish()]);
 
-      // Únicamente transferimos el nuevo frame F1 (sourceCanvasB) por DMA
-      device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
-    } else {
-      // Transferencia inicial completa
-      device.queue.copyExternalImageToTexture({ source: sourceCanvasA }, { texture: texA }, [w, h]);
-      device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
-      hasValidF1 = true;
+        // Únicamente transferimos el nuevo frame F1 (sourceCanvasB) por DMA
+        device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
+      } else {
+        // Transferencia inicial completa
+        device.queue.copyExternalImageToTexture({ source: sourceCanvasA }, { texture: texA }, [w, h]);
+        device.queue.copyExternalImageToTexture({ source: sourceCanvasB }, { texture: texB }, [w, h]);
+        hasValidF1 = true;
+      }
+
+      if (forceMode === 'rife') {
+        rt.prepPair(texA, texB);
+      }
     }
 
     if (forceMode === 'rife') {
-      rt.prepPair(texA, texB);
-      rt.runT(0.5, outTex);
+      const clampedT = Math.max(0.01, Math.min(0.99, t));
+      rt.runT(clampedT, outTex);
     }
 
     const tSubmit = performance.now();

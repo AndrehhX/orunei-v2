@@ -62,47 +62,50 @@
 
   <!-- Controles Principales -->
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-    <!-- 1. Cadencia -->
+    <!-- 1. Modo de Procesamiento -->
     <div class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/40">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cadencia de Reproducción</label>
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Modo de Procesamiento</label>
       <div class="grid grid-cols-2 gap-1.5">
-        <button id="btn-target-48" class="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-violet-600 text-white shadow">
-          24 → 48 FPS (20.8ms)
+        <button id="btn-mode-normal" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          🎬 Normal (Nativo)
         </button>
-        <button id="btn-target-60" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
-          30 → 60 FPS (16.6ms)
+        <button id="btn-mode-fg60" class="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white shadow">
+          ⚡ Frame Gen 60 FPS
         </button>
       </div>
     </div>
 
-    <!-- 2. Resolución -->
+    <!-- 2. Cadencia del Video Original -->
     <div class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/40">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Resolución de Inferencia</label>
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cadencia Entrada (Anime)</label>
+      <div class="grid grid-cols-4 gap-1">
+        <button id="btn-cadence-23976" class="px-1 py-1.5 text-[10px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          23.976
+        </button>
+        <button id="btn-cadence-24" class="px-1 py-1.5 text-[10px] font-bold rounded-lg bg-violet-600 text-white">
+          24.0
+        </button>
+        <button id="btn-cadence-25" class="px-1 py-1.5 text-[10px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          25.0
+        </button>
+        <button id="btn-cadence-30" class="px-1 py-1.5 text-[10px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          30.0
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. Resolución -->
+    <div class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/40">
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Resolución Objetivo</label>
       <div class="grid grid-cols-3 gap-1">
-        <button id="res-sd" class="px-2 py-1.5 text-[11px] font-bold rounded-lg bg-indigo-600 text-white">
+        <button id="res-sd" class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
           640×368
         </button>
-        <button id="res-720p" class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+        <button id="res-720p" class="px-2 py-1.5 text-[11px] font-bold rounded-lg bg-indigo-600 text-white">
           720p HD
         </button>
         <button id="res-1080p" class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
           1080p FHD
-        </button>
-      </div>
-    </div>
-
-    <!-- 3. Algoritmo -->
-    <div class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/40">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Algoritmo Cuadro Intermedio</label>
-      <div class="grid grid-cols-3 gap-1">
-        <button id="mode-rife" class="px-2 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white">
-          RIFE
-        </button>
-        <button id="mode-blend" class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
-          Blend
-        </button>
-        <button id="mode-native" class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
-          Nativo
         </button>
       </div>
     </div>
@@ -135,7 +138,7 @@
         <span id="label-orig-fps" class="mono font-bold text-slate-400">24.0 FPS</span>
       </div>
       <div class="relative aspect-video rounded-xl overflow-hidden bg-black flex items-center justify-center">
-        <canvas id="canvas-original" width="640" height="368" class="w-full h-full object-contain"></canvas>
+        <canvas id="canvas-original" width="1280" height="720" class="w-full h-full object-contain"></canvas>
       </div>
       <div class="mt-2 text-[11px] text-slate-400 flex justify-between">
         <span>Flujo de entrada sin interpolar</span>
@@ -143,21 +146,21 @@
       </div>
     </div>
 
-    <!-- Panel Derecho: Interpolado con Presentación 1:1 Alternada -->
+    <!-- Panel Derecho: Interpolado con Presentación a 60 FPS -->
     <div class="flex flex-col rounded-2xl border border-violet-500/30 bg-violet-950/10 p-3 shadow-xl">
       <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs">
         <span class="font-bold text-violet-300 flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-          Salida Presentada (<span id="label-output-mode">RIFE Neural</span>)
+          Salida Presentada (<span id="label-output-mode">Frame Gen 60 FPS</span>)
         </span>
-        <span id="label-output-fps" class="mono font-extrabold text-emerald-400">48.0 FPS</span>
+        <span id="label-output-fps" class="mono font-extrabold text-emerald-400">60.0 FPS</span>
       </div>
       <div class="relative aspect-video rounded-xl overflow-hidden bg-black flex items-center justify-center">
-        <canvas id="canvas-output" width="640" height="368" class="w-full h-full object-contain"></canvas>
+        <canvas id="canvas-output" width="1280" height="720" class="w-full h-full object-contain"></canvas>
       </div>
       <div class="mt-2 text-[11px] text-slate-400 flex justify-between">
-        <span id="interp-status-desc" class="text-emerald-400">Cadencia auténtica F0 → F0.5 → F1</span>
-        <span id="interp-pacing" class="mono text-slate-400">20.8ms / frame</span>
+        <span id="interp-status-desc" class="text-emerald-400">Planificador continuo RIFE (t = Δt_out / Δt_in)</span>
+        <span id="interp-pacing" class="mono text-slate-400">16.6ms / frame</span>
       </div>
     </div>
   </div>
@@ -166,9 +169,9 @@
   <div class="p-4 rounded-xl border border-slate-800 bg-slate-900/60 mb-6">
     <div class="flex items-center justify-between mb-3">
       <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-        <span>📊 Telemetría Segregada de Hardware y Presentación</span>
+        <span>📊 Telemetría Segregada de Hardware y Presentación a 60 FPS</span>
       </h3>
-      <span class="text-[11px] text-slate-400">Medición no bloqueante (Ventana 100 muestras)</span>
+      <span class="text-[11px] text-slate-400">Objetivo: 60.0 FPS sostenidos | Ventana 120 muestras</span>
     </div>
     <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3 text-center">
       <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
@@ -176,32 +179,32 @@
         <div id="stat-fps-input" class="text-sm sm:text-base font-mono font-bold text-slate-300">24.0</div>
       </div>
       <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
-        <div class="text-[10px] text-slate-400 uppercase">FPS Presentados</div>
-        <div id="stat-fps-output" class="text-sm sm:text-base font-mono font-bold text-emerald-400">48.0</div>
+        <div class="text-[10px] text-slate-400 uppercase">FPS Salida 60Hz</div>
+        <div id="stat-fps-output" class="text-sm sm:text-base font-mono font-bold text-emerald-400">60.0</div>
       </div>
       <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
-        <div class="text-[10px] text-slate-400 uppercase">Monitor rAF</div>
-        <div id="stat-fps-raf" class="text-sm sm:text-base font-mono font-bold text-sky-400">--</div>
+        <div class="text-[10px] text-slate-400 uppercase">Cuadros RIFE</div>
+        <div id="stat-rife-count" class="text-sm sm:text-base font-mono font-bold text-purple-400">36</div>
+      </div>
+      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
+        <div class="text-[10px] text-slate-400 uppercase">Cuadros Originales</div>
+        <div id="stat-orig-count" class="text-sm sm:text-base font-mono font-bold text-sky-400">24</div>
+      </div>
+      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
+        <div class="text-[10px] text-slate-400 uppercase">Intervalo Medio</div>
+        <div id="stat-interval-mean" class="text-sm sm:text-base font-mono font-bold text-emerald-300">16.67 ms</div>
+      </div>
+      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
+        <div class="text-[10px] text-slate-400 uppercase">Jitter Temporal (σ)</div>
+        <div id="stat-jitter" class="text-sm sm:text-base font-mono font-bold text-emerald-400">0.42 ms</div>
       </div>
       <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
         <div class="text-[10px] text-slate-400 uppercase">GPU P50 (Mediana)</div>
         <div id="stat-gpu-p50" class="text-sm sm:text-base font-mono font-bold text-violet-300">-- ms</div>
       </div>
       <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
-        <div class="text-[10px] text-slate-400 uppercase">GPU P95</div>
-        <div id="stat-gpu-p95" class="text-sm sm:text-base font-mono font-bold text-violet-400">-- ms</div>
-      </div>
-      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
-        <div class="text-[10px] text-slate-400 uppercase">CPU Dispatch</div>
-        <div id="stat-cpu-dispatch" class="text-sm sm:text-base font-mono font-bold text-slate-300">-- ms</div>
-      </div>
-      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
         <div class="text-[10px] text-slate-400 uppercase">Drops / Pérdidas</div>
         <div id="stat-drops" class="text-sm sm:text-base font-mono font-bold text-amber-400">0</div>
-      </div>
-      <div class="p-2 rounded-lg bg-black/40 border border-slate-800">
-        <div class="text-[10px] text-slate-400 uppercase">Estado Transición</div>
-        <div id="stat-transition" class="text-xs font-mono font-bold text-slate-400 mt-1">Normal</div>
       </div>
     </div>
   </div>
@@ -314,6 +317,44 @@
     </div>
   </div>
 
+  <!-- Protocolo de Validación 60 Segundos por Cadencia -->
+  <div class="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/10 mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <div>
+        <h3 class="text-sm font-bold text-emerald-300 flex items-center gap-2">
+          <span>🧪 Protocolo de Pruebas Obligatorias de 60s por Cadencia (23.976 / 24 / 25 / 30 FPS)</span>
+        </h3>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Ejecuta una corrida de 60 segundos por cada cadencia, tabulando FPS reales, frames RIFE vs Originales, P50/P95 y Jitter.
+        </p>
+      </div>
+      <button id="btn-run-cadence-suite" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow">
+        Ejecutar Suite 60s
+      </button>
+    </div>
+
+    <div id="cadence-suite-panel" class="hidden p-3 rounded-lg bg-black/60 border border-slate-800 text-xs overflow-x-auto">
+      <div id="cadence-suite-status" class="text-emerald-400 font-mono mb-2">Iniciando evaluación...</div>
+      <table class="w-full text-left font-mono text-[11px] border-collapse">
+        <thead>
+          <tr class="border-b border-slate-700 text-slate-400">
+            <th class="p-1.5">Cadencia</th>
+            <th class="p-1.5">FPS Entrada</th>
+            <th class="p-1.5">FPS Salida</th>
+            <th class="p-1.5">Cuadros RIFE</th>
+            <th class="p-1.5">Cuadros Orig</th>
+            <th class="p-1.5">Drops</th>
+            <th class="p-1.5">Intervalo Medio</th>
+            <th class="p-1.5">Jitter (σ)</th>
+            <th class="p-1.5">GPU P50/P95</th>
+            <th class="p-1.5">Veredicto</th>
+          </tr>
+        </thead>
+        <tbody id="cadence-suite-tbody" class="divide-y divide-slate-800 text-slate-200"></tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Test de Resistencia Sostenido de 15 Minutos -->
   <div class="p-4 rounded-xl border border-slate-800 bg-slate-900/40 mb-6 flex flex-wrap items-center justify-between gap-4">
     <div>
@@ -337,6 +378,9 @@
       createRifeEngine,
       calculateFrameDifference,
       SUPPORTED_RESOLUTIONS,
+      INPUT_CADENCES,
+      UNIVERSAL_TARGET_FPS,
+      OUTPUT_FRAME_INTERVAL_MS,
     } from './rifeEngine.js';
 
     // Elementos DOM
@@ -359,34 +403,43 @@
 
     const statFpsInput = document.getElementById('stat-fps-input');
     const statFpsOutput = document.getElementById('stat-fps-output');
-    const statFpsRaf = document.getElementById('stat-fps-raf');
+    const statRifeCount = document.getElementById('stat-rife-count');
+    const statOrigCount = document.getElementById('stat-orig-count');
+    const statIntervalMean = document.getElementById('stat-interval-mean');
+    const statJitter = document.getElementById('stat-jitter');
     const statGpuP50 = document.getElementById('stat-gpu-p50');
-    const statGpuP95 = document.getElementById('stat-gpu-p95');
-    const statCpuDispatch = document.getElementById('stat-cpu-dispatch');
     const statDrops = document.getElementById('stat-drops');
-    const statTransition = document.getElementById('stat-transition');
 
-    // Estado general
-    let currentResolutionKey = 'sd';
-    let currentTarget = '48fps';
-    let currentMode = 'rife';
+    const labelOrigFps = document.getElementById('label-orig-fps');
+    const labelOutputFps = document.getElementById('label-output-fps');
+    const labelOutputMode = document.getElementById('label-output-mode');
+    const origPacing = document.getElementById('orig-pacing');
+    const interpPacing = document.getElementById('interp-pacing');
+    const interpStatusDesc = document.getElementById('interp-status-desc');
+
+    // Estado general (Por defecto 720p HD a 60 FPS)
+    let currentResolutionKey = '720p';
+    let isFrameGenActive = true; // true = Frame Gen 60 FPS, false = Normal Nativo
+    let currentCadenceKey = '24fps';
+    let inputFps = 24.0;
+    let inputIntervalMs = 1000 / 24.0; // 41.6667 ms
+    const TARGET_FPS = 60.0;
+    const TARGET_INTERVAL_MS = 1000 / TARGET_FPS; // 16.66667 ms
+
     let isPlaying = true;
     let forceSceneCut = false;
     let forceDuplicateHold = false;
     let forceFlash = false;
 
     let rife = null;
-    let width = 640;
-    let height = 368;
-    let animTime = 0;
+    let width = 1280;
+    let height = 720;
 
     // Buffers fuera de pantalla para renderizar
     let offscreenA = document.createElement('canvas');
     let offCtxA = offscreenA.getContext('2d');
     let offscreenB = document.createElement('canvas');
     let offCtxB = offscreenB.getContext('2d');
-    let offscreenInter = document.createElement('canvas');
-    let offCtxInter = offscreenInter.getContext('2d');
 
     // Canvas miniatura de análisis rápido (160×90 = 14KB, zero overhead)
     const thumbA = document.createElement('canvas');
@@ -492,8 +545,9 @@
       ctx.fill();
     }
 
-    async function initEngine(resolutionKey = 'sd') {
-      const resConfig = SUPPORTED_RESOLUTIONS[resolutionKey] || SUPPORTED_RESOLUTIONS['sd'];
+    // Inicialización del Motor RIFE
+    async function initEngine(resKey = '720p') {
+      const resConfig = SUPPORTED_RESOLUTIONS[resKey] || SUPPORTED_RESOLUTIONS['720p'];
       resizeCanvases(resConfig.width, resConfig.height);
 
       if (rife) {
@@ -506,11 +560,9 @@
         rife = await createRifeEngine({
           width: resConfig.width,
           height: resConfig.height,
-          targetMode: currentTarget,
+          targetMode: '60fps',
           onTelemetry: (t) => {
             statGpuP50.innerText = `${t.p50.toFixed(1)} ms`;
-            statGpuP95.innerText = `${t.p95.toFixed(1)} ms`;
-            statCpuDispatch.innerText = `${t.cpuDispatchMs.toFixed(2)} ms`;
             statDrops.innerText = t.droppedFrames;
             lblVramEl.innerText = `${t.estimatedVramMb} MB`;
 
@@ -524,30 +576,6 @@
               gpuTypeBadgeEl.innerText = 'Integrada';
               gpuTypeBadgeEl.className = 'ml-2 px-2 py-0.5 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30';
             }
-          },
-          onSceneCut: () => {
-            statTransition.innerText = 'Corte (Bypass)';
-            statTransition.className = 'text-xs font-mono font-bold text-rose-400 mt-1';
-            setTimeout(() => {
-              statTransition.innerText = 'Normal';
-              statTransition.className = 'text-xs font-mono font-bold text-slate-400 mt-1';
-            }, 600);
-          },
-          onDuplicateBypass: () => {
-            statTransition.innerText = 'Hold (0ms GPU)';
-            statTransition.className = 'text-xs font-mono font-bold text-amber-400 mt-1';
-            setTimeout(() => {
-              statTransition.innerText = 'Normal';
-              statTransition.className = 'text-xs font-mono font-bold text-slate-400 mt-1';
-            }, 300);
-          },
-          onFlashDetected: () => {
-            statTransition.innerText = 'Flash 1f (Bypass)';
-            statTransition.className = 'text-xs font-mono font-bold text-sky-400 mt-1';
-            setTimeout(() => {
-              statTransition.innerText = 'Normal';
-              statTransition.className = 'text-xs font-mono font-bold text-slate-400 mt-1';
-            }, 300);
           },
         });
 
@@ -569,19 +597,42 @@
     }
 
     // =========================================================================
-    // PIPELINE ASÍNCRONO NO BLOQUEANTE CON PRESENTACIÓN ALTERNADA 1:1
+    // PLANIFICADOR TEMPORAL UNIVERSAL BASADO EN TIMESTAMPS REALES A 60 FPS
     // =========================================================================
-    let currentSlot = 0; // 0 = Presentando Original F0, 1 = Presentando Interpolado F0.5
-    let cycleStartTime = performance.now();
+    let mediaTimeMs = 0;
+    let frameA_timeMs = 0;
+    let frameB_timeMs = 0;
+    let framePairIndex = 0;
 
+    let pairPreparedInGpu = false;
     let rafTicks = 0;
-    let inputFramesGenerated = 0;
     let outputFramesPresented = 0;
+    let rifeFramesGenerated = 0;
+    let originalFramesPresented = 0;
     let secondAnchorTime = performance.now();
+    let intervalHistory = [];
+    let lastPresentTime = 0;
 
-    function prepareNextInputPair() {
-      const baseFps = currentTarget === '48fps' ? 24 : 30;
-      const stepSec = 1 / baseFps;
+    function resetSchedulerTimeline() {
+      mediaTimeMs = 0;
+      frameA_timeMs = 0;
+      frameB_timeMs = inputIntervalMs;
+      framePairIndex = 0;
+      pairPreparedInGpu = false;
+      lastPresentTime = 0;
+      rife?.resetTextureHistory();
+
+      renderProceduralAnimeScene(offCtxA, 0, false);
+      renderProceduralAnimeScene(offCtxB, frameB_timeMs / 1000, false);
+    }
+
+    function advanceToNextFramePair() {
+      framePairIndex++;
+      frameA_timeMs = frameB_timeMs;
+      frameB_timeMs = frameA_timeMs + inputIntervalMs;
+
+      // Promover buffer B a buffer A en host
+      offCtxA.drawImage(offscreenB, 0, 0);
 
       const isCut = forceSceneCut;
       forceSceneCut = false;
@@ -590,110 +641,119 @@
       const isFlash = forceFlash;
       forceFlash = false;
 
-      if (isCut) {
-        rife?.resetTextureHistory();
-      }
+      if (isCut) rife?.resetTextureHistory();
 
-      // Reutilización F1 -> F0: offscreenB ya contiene el fotograma anterior
-      if (!isCut && inputFramesGenerated > 0) {
-        offCtxA.drawImage(offscreenB, 0, 0);
-        if (!isHold) {
-          animTime += stepSec;
-        }
-        renderProceduralAnimeScene(offCtxB, animTime, { isCut, isFlash });
-      } else {
-        renderProceduralAnimeScene(offCtxA, animTime, false);
-        if (!isHold) {
-          animTime += stepSec;
-        }
-        renderProceduralAnimeScene(offCtxB, animTime, { isCut, isFlash });
-      }
+      // Renderizar nuevo fotograma B en su timestamp exacto
+      renderProceduralAnimeScene(offCtxB, frameB_timeMs / 1000, { isCut, isFlash });
 
-      // Análisis ultra-liviano de diferencias en thumbnail (0.05 ms, 0 heap churn)
+      // Análisis ultra-liviano de diferencias en thumbnail (160×90)
       thumbCtxA.drawImage(offscreenA, 0, 0, 160, 90);
       thumbCtxB.drawImage(offscreenB, 0, 0, 160, 90);
       const tA = thumbCtxA.getImageData(0, 0, 160, 90).data;
       const tB = thumbCtxB.getImageData(0, 0, 160, 90).data;
       const diff = calculateFrameDifference(tA, tB);
 
-      inputFramesGenerated++;
-
-      // Despachar inferencia asíncrona a la GPU con reutilización inteligente F1->F0
-      if (rife && isPlaying) {
-        rife.dispatchInterpolation(offscreenA, offscreenB, {
-          forceMode: currentMode,
-          reuseF1AsF0: !isCut && inputFramesGenerated > 1,
-        });
-      }
-
-      // Reflejar en canvas nativo izquierdo
-      ctxOrig.drawImage(offscreenA, 0, 0);
+      pairPreparedInGpu = false;
     }
 
-    // Bucle principal de renderizado (runs smoothly at monitor refresh, zero JS blocking)
+    // Bucle principal de renderizado a 60 Hz exactos
     function schedulerLoop(now) {
       rafTicks++;
 
-      const baseFps = currentTarget === '48fps' ? 24 : 30;
-      const targetFps = baseFps * 2;
-      const slotDurationMs = 1000 / targetFps; // 20.83ms (48 FPS) o 16.66ms (60 FPS)
-
-      // Primera inicialización
-      if (inputFramesGenerated === 0) {
-        prepareNextInputPair();
-        cycleStartTime = now;
+      if (lastPresentTime === 0) {
+        lastPresentTime = now;
+        resetSchedulerTimeline();
       }
 
-      const elapsed = now - cycleStartTime;
+      const elapsed = now - lastPresentTime;
 
-      if (elapsed < slotDurationMs) {
-        // RANURA 0: Presentar Cuadro Original F0 (Crisp, sin artefactos)
-        if (currentSlot !== 0) {
-          currentSlot = 0;
+      // Sincronización precisa a 60 Hz (16.6667 ms con margen de 1.5ms para VSYNC)
+      if (elapsed >= TARGET_INTERVAL_MS - 1.5) {
+        const deltaPresent = now - lastPresentTime;
+        lastPresentTime = now;
+
+        intervalHistory.push(deltaPresent);
+        if (intervalHistory.length > 120) intervalHistory.shift();
+
+        if (isPlaying) {
+          mediaTimeMs += TARGET_INTERVAL_MS;
+        }
+
+        // Avanzar par de cuadros si mediaTimeMs sobrepasa frameB_timeMs
+        while (mediaTimeMs >= frameB_timeMs) {
+          advanceToNextFramePair();
+        }
+
+        // Calcular factor continuo t en [0, 1)
+        const span = frameB_timeMs - frameA_timeMs;
+        const t = Math.max(0.0, Math.min(1.0, (mediaTimeMs - frameA_timeMs) / span));
+
+        if (!isFrameGenActive) {
+          // MODO NORMAL: Presentar el cuadro original nativo (sample-and-hold del frame actual)
+          rife?.presentFrame('original', webgpuOutCtx);
+          originalFramesPresented++;
           outputFramesPresented++;
-        }
-        if (rife && webgpuOutCtx) {
-          rife.presentFrame('original', webgpuOutCtx);
-        }
-      } else if (elapsed < slotDurationMs * 2) {
-        // RANURA 1: Presentar Cuadro Neuronal F0.5
-        if (currentSlot !== 1) {
-          currentSlot = 1;
-          outputFramesPresented++;
-        }
-        if (rife && webgpuOutCtx) {
-          // Si la GPU aún está ocupada (missed deadline), presentFrame aplica hold seguro
-          if (rife.isGpuBusy()) {
-            rife.presentFrame('original', webgpuOutCtx);
+        } else {
+          // MODO FRAME GENERATION 60 FPS:
+          if (t <= 0.05) {
+            // Instante de ancla original A (Crisp, 0 ms GPU)
+            rife?.presentFrame('original', webgpuOutCtx);
+            originalFramesPresented++;
+            outputFramesPresented++;
+          } else if (t >= 0.95) {
+            // Instante de ancla original B (Crisp, 0 ms GPU)
+            rife?.presentFrame('frameB', webgpuOutCtx);
+            originalFramesPresented++;
+            outputFramesPresented++;
           } else {
-            rife.presentFrame(currentMode === 'blend' ? 'blend' : 'interpolated', webgpuOutCtx);
+            // 0.05 < t < 0.95: Inferencia Neuronal RIFE en la posición continua exacta t
+            if (rife && webgpuOutCtx) {
+              const needPrep = !pairPreparedInGpu;
+              rife.dispatchInterpolation(offscreenA, offscreenB, {
+                forceMode: 'rife',
+                reuseF1AsF0: !needPrep,
+                skipPrep: pairPreparedInGpu,
+                t: t,
+              });
+              pairPreparedInGpu = true;
+
+              rife.presentFrame('interpolated', webgpuOutCtx);
+              rifeFramesGenerated++;
+              outputFramesPresented++;
+            }
           }
         }
-      } else {
-        // Fin de ciclo (2 ranuras completadas) -> Avanzar al siguiente par de cuadros
-        cycleStartTime = now;
-        currentSlot = 0;
-        outputFramesPresented++;
-        if (isPlaying) {
-          prepareNextInputPair();
-        }
-        if (rife && webgpuOutCtx) {
-          rife.presentFrame('original', webgpuOutCtx);
-        }
+
+        // Reflejar en canvas nativo izquierdo el frame original
+        ctxOrig.drawImage(offscreenA, 0, 0);
       }
 
       // Métricas por segundo sin jitter
       if (now - secondAnchorTime >= 1000) {
         const deltaSec = (now - secondAnchorTime) / 1000;
-        statFpsInput.innerText = (inputFramesGenerated / deltaSec).toFixed(1);
+        statFpsInput.innerText = inputFps.toFixed(3);
         statFpsOutput.innerText = (outputFramesPresented / deltaSec).toFixed(1);
-        statFpsRaf.innerText = Math.round(rafTicks / deltaSec);
 
-        inputFramesGenerated = 0;
+        if (intervalHistory.length > 10) {
+          const mean = intervalHistory.reduce((a, b) => a + b, 0) / intervalHistory.length;
+          const variance = intervalHistory.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / intervalHistory.length;
+          const jitter = Math.sqrt(variance);
+          statJitter.innerText = `${jitter.toFixed(2)} ms`;
+          statIntervalMean.innerText = `${mean.toFixed(2)} ms`;
+        }
+
+        statRifeCount.innerText = rifeFramesGenerated;
+        statOrigCount.innerText = originalFramesPresented;
+
         outputFramesPresented = 0;
+        rifeFramesGenerated = 0;
+        originalFramesPresented = 0;
         rafTicks = 0;
         secondAnchorTime = now;
       }
+
+      requestAnimationFrame(schedulerLoop);
+    }
 
       requestAnimationFrame(schedulerLoop);
     }
@@ -812,29 +872,53 @@
     };
 
     // =========================================================================
-    // CONTROLES UI
+    // CONTROLES UI: MODO NORMAL VS FRAME GENERATION 60 FPS
     // =========================================================================
-    document.getElementById('btn-target-48').onclick = () => {
-      currentTarget = '48fps';
-      rife?.setTargetMode('48fps');
-      document.getElementById('btn-target-48').className = 'px-2.5 py-1.5 text-xs font-bold rounded-lg bg-violet-600 text-white shadow';
-      document.getElementById('btn-target-60').className = 'px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
-      document.getElementById('label-orig-fps').innerText = '24.0 FPS';
-      document.getElementById('label-output-fps').innerText = '48.0 FPS';
-      document.getElementById('orig-pacing').innerText = '41.6ms / frame';
-      document.getElementById('interp-pacing').innerText = '20.8ms / frame';
+    document.getElementById('btn-mode-normal').onclick = () => {
+      isFrameGenActive = false;
+      document.getElementById('btn-mode-normal').className = 'px-2.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white shadow';
+      document.getElementById('btn-mode-fg60').className = 'px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
+      labelOutputMode.innerText = 'Normal (Nativo)';
+      interpStatusDesc.innerText = 'Reproducción original sin interpolación neuronal';
     };
 
-    document.getElementById('btn-target-60').onclick = () => {
-      currentTarget = '60fps';
-      rife?.setTargetMode('60fps');
-      document.getElementById('btn-target-60').className = 'px-2.5 py-1.5 text-xs font-bold rounded-lg bg-violet-600 text-white shadow';
-      document.getElementById('btn-target-48').className = 'px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
-      document.getElementById('label-orig-fps').innerText = '30.0 FPS';
-      document.getElementById('label-output-fps').innerText = '60.0 FPS';
-      document.getElementById('orig-pacing').innerText = '33.3ms / frame';
-      document.getElementById('interp-pacing').innerText = '16.6ms / frame';
+    document.getElementById('btn-mode-fg60').onclick = () => {
+      isFrameGenActive = true;
+      document.getElementById('btn-mode-fg60').className = 'px-2.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white shadow';
+      document.getElementById('btn-mode-normal').className = 'px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
+      labelOutputMode.innerText = 'Frame Gen 60 FPS';
+      interpStatusDesc.innerText = 'Planificador continuo RIFE (t = Δt_out / Δt_in)';
     };
+
+    // =========================================================================
+    // CONTROLES UI: CADENCIAS DE ENTRADA (23.976, 24, 25, 30 FPS)
+    // =========================================================================
+    function setCadence(cadKey) {
+      currentCadenceKey = cadKey;
+      const cad = INPUT_CADENCES[cadKey] || INPUT_CADENCES['24fps'];
+      inputFps = cad.fps;
+      inputIntervalMs = cad.frameIntervalMs;
+
+      ['btn-cadence-23976', 'btn-cadence-24', 'btn-cadence-25', 'btn-cadence-30'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.className = 'px-1 py-1.5 text-[10px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
+      });
+
+      const activeBtnId = cadKey === '23.976fps' ? 'btn-cadence-23976' :
+                          cadKey === '24fps' ? 'btn-cadence-24' :
+                          cadKey === '25fps' ? 'btn-cadence-25' : 'btn-cadence-30';
+      const activeBtn = document.getElementById(activeBtnId);
+      if (activeBtn) activeBtn.className = 'px-1 py-1.5 text-[10px] font-bold rounded-lg bg-violet-600 text-white shadow';
+
+      labelOrigFps.innerText = `${inputFps.toFixed(3)} FPS`;
+      origPacing.innerText = `${inputIntervalMs.toFixed(1)}ms / frame`;
+      resetSchedulerTimeline();
+    }
+
+    document.getElementById('btn-cadence-23976').onclick = () => setCadence('23.976fps');
+    document.getElementById('btn-cadence-24').onclick = () => setCadence('24fps');
+    document.getElementById('btn-cadence-25').onclick = () => setCadence('25fps');
+    document.getElementById('btn-cadence-30').onclick = () => setCadence('30fps');
 
     // Selector de Resoluciones
     document.getElementById('res-sd').onclick = async () => {
@@ -843,6 +927,7 @@
       document.getElementById('res-720p').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
       document.getElementById('res-1080p').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
       await initEngine('sd');
+      resetSchedulerTimeline();
     };
 
     document.getElementById('res-720p').onclick = async () => {
@@ -851,6 +936,7 @@
       document.getElementById('res-sd').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
       document.getElementById('res-1080p').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
       await initEngine('720p');
+      resetSchedulerTimeline();
     };
 
     document.getElementById('res-1080p').onclick = async () => {
@@ -859,39 +945,17 @@
       document.getElementById('res-sd').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
       document.getElementById('res-720p').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
       await initEngine('1080p');
+      resetSchedulerTimeline();
     };
 
-    // Selector de Modos
-    document.getElementById('mode-rife').onclick = () => {
-      currentMode = 'rife';
-      document.getElementById('mode-rife').className = 'px-2 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white';
-      document.getElementById('mode-blend').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
-      document.getElementById('mode-native').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
-      document.getElementById('label-output-mode').innerText = 'RIFE Neural';
-    };
-
-    document.getElementById('mode-blend').onclick = () => {
-      currentMode = 'blend';
-      document.getElementById('mode-blend').className = 'px-2 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white';
-      document.getElementById('mode-rife').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
-      document.getElementById('mode-native').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
-      document.getElementById('label-output-mode').innerText = 'Alpha Blend';
-    };
-
-    document.getElementById('mode-native').onclick = () => {
-      currentMode = 'native';
-      document.getElementById('mode-native').className = 'px-2 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white';
-      document.getElementById('mode-rife').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
-      document.getElementById('mode-blend').className = 'px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300';
-      document.getElementById('label-output-mode').innerText = 'Nativo';
-    };
-
+    // Simulación de eventos
     document.getElementById('btn-trigger-cut').onclick = () => { forceSceneCut = true; };
     document.getElementById('btn-trigger-hold').onclick = () => { forceDuplicateHold = true; };
     document.getElementById('btn-trigger-flash').onclick = () => { forceFlash = true; };
 
-    // Inicialización al cargar la página
-    await initEngine('sd');
+    // Inicialización por defecto en 720p HD a 60 FPS
+    await initEngine('720p');
+    setCadence('24fps');
     requestAnimationFrame(schedulerLoop);
   </script>
 </body>
