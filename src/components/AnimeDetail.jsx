@@ -641,7 +641,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
       } catch (_) {}
     }
 
-    if (currentDub?.hasLatino || hasDubCataloged) {
+    if (currentDub?.hasLatino || currentDub?.hasCastellano || hasDubCataloged) {
       setPendingPlayEpisode(ep)
       setShowSeasonAudioModal(true)
     } else {
@@ -746,6 +746,12 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
                     <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm animate-fade">
                       <span>🇲🇽</span>
                       <span>Doblaje Latino (1080p)</span>
+                    </span>
+                  )}
+                  {dubAvailability?.hasCastellano && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm animate-fade">
+                      <span>🇪🇸</span>
+                      <span>Doblaje Castellano (1080p)</span>
                     </span>
                   )}
                 </div>

@@ -108,3 +108,47 @@ test('dubStreamAdapter: extrae servidores 1080p reales en esquema de Orunei', as
   assert.ok(mainServer.proxiedStreamUrl, 'El servidor debe tener stream URL');
   assert.equal(mainServer.quality, '1080p');
 });
+
+test('sourceSelector: deduplica, limita a máximo 5 servidores y prioriza por dispositivo', async () => {
+  const { selectAndPrioritizeServers } = await import('../src/playback/sourceSelector.js');
+
+  const mockServers = [
+    { id: 's1', sourceName: 'MP4Upload', proxiedStreamUrl: 'https://cdn.example.com/video1.mp4', isAv1: true, quality: '1080p' },
+    { id: 's2', sourceName: 'StreamTape', proxiedStreamUrl: 'https://cdn.example.com/video2.mp4', isUniversalH264: true, quality: '1080p' },
+    { id: 's3', sourceName: 'Zilla', embedUrl: 'https://player.example.com/embed1', isEmbed: true, quality: '1080p' },
+    { id: 's4', sourceName: 'VOE', embedUrl: 'https://player.example.com/embed2', isEmbed: true, quality: '1080p' },
+    { id: 's5', sourceName: 'Byse', embedUrl: 'https://player.example.com/embed3', isEmbed: true, quality: '1080p' },
+    { id: 's6', sourceName: 'Mega', embedUrl: 'https://player.example.com/embed4', isEmbed: true, quality: '1080p' },
+    { id: 's7', sourceName: 'Duplicate', proxiedStreamUrl: 'https://cdn.example.com/video1.mp4?token=123' } // Duplicado
+  ];
+
+  // 1. En móvil / iPad: Universal H.264 y embeds deben ir primero para evitar pantalla negra
+  const mobileResult = selectAndPrioritizeServers(mockServers, { isMobile: true, language: 'latino' });
+  assert.ok(mobileResult.length <= 5, 'No debe superar 5 servidores para no sobresaturar');
+  assert.equal(mobileResult[0].isUniversalH264, true, 'En móvil H.264 universal debe ser el primero');
+  assert.ok(mobileResult[0].name.includes('🇲🇽 Servidor 1'));
+
+  // 2. En Desktop: Directo Bluray primero
+  const desktopResult = selectAndPrioritizeServers(mockServers, { isMobile: false, language: 'castellano' });
+  assert.ok(desktopResult.length <= 5);
+  assert.equal(desktopResult[0].isEmbed, false, 'En desktop streams directos van primero');
+  assert.ok(desktopResult[0].name.includes('🇪🇸 Servidor 1'));
+});
+
+test('providerCircuitBreaker: protege contra fallos continuos de proveedores', async () => {
+  const { isProviderAvailable, recordProviderOutcome, resetProviderStats } = await import('../src/playback/providerCircuitBreaker.js');
+
+  resetProviderStats();
+  assert.equal(isProviderAvailable('test-prov'), true);
+
+  // Registrar 3 fallos consecutivos para abrir circuito
+  recordProviderOutcome('test-prov', 'failed');
+  recordProviderOutcome('test-prov', 'failed');
+  recordProviderOutcome('test-prov', 'failed');
+
+  assert.equal(isProviderAvailable('test-prov'), false, 'El circuito debe estar abierto tras 3 fallos');
+
+  resetProviderStats();
+  assert.equal(isProviderAvailable('test-prov'), true, 'El circuito debe restablecerse al reset');
+});
+

@@ -187,14 +187,14 @@ export default function AnimePlayer({
         return;
       }
 
-      // Reproducción en audio doblado al español latino
-      if (currentAudioLanguage === 'latino') {
+      // Reproducción en audio doblado al español (Latino o Castellano)
+      if (currentAudioLanguage === 'latino' || currentAudioLanguage === 'castellano') {
         getDubEpisodePlayback({
           animeId,
           malId,
           animeTitle,
           episode,
-          language: 'latino'
+          language: currentAudioLanguage
         })
           .then((data) => {
             if (isCancelled) return;
@@ -205,7 +205,7 @@ export default function AnimePlayer({
           })
           .catch((err) => {
             if (isCancelled) return;
-            console.warn('[AnimePlayer] Error cargando audio latino, conmutando a japonés subtitulado:', err.message);
+            console.warn('[AnimePlayer] Error cargando audio doblado, conmutando a japonés subtitulado:', err.message);
             markDubAsUnavailable(malId || animeId);
             setSkipNotice('Doblaje no disponible en servidor. Conmutando a versión original subtitulada...');
             setTimeout(() => setSkipNotice(null), 4000);
@@ -788,14 +788,22 @@ export default function AnimePlayer({
             </span>
           )}
 
-          {currentAudioLanguage !== 'latino' && playbackData && playbackData.hasSpanishSubtitles && (
+          {currentAudioLanguage === 'castellano' && (
+            <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 text-[10px] sm:text-[11px] font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+              <span>🇪🇸</span>
+              <span className="hidden sm:inline">Español Castellano (1080p)</span>
+              <span className="inline sm:hidden">Castellano 1080p</span>
+            </span>
+          )}
+
+          {currentAudioLanguage !== 'latino' && currentAudioLanguage !== 'castellano' && playbackData && playbackData.hasSpanishSubtitles && (
             <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
               <Check size={12} className="text-emerald-400" />
               Sub Español
             </span>
           )}
 
-          {currentAudioLanguage !== 'latino' && playbackData && !playbackData.hasSpanishSubtitles && (
+          {currentAudioLanguage !== 'latino' && currentAudioLanguage !== 'castellano' && playbackData && !playbackData.hasSpanishSubtitles && (
             <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
               <AlertCircle size={13} />
               Sin Sub Español
@@ -1104,20 +1112,24 @@ export default function AnimePlayer({
         <div className="flex items-center justify-between lg:justify-end gap-1.5 sm:gap-2.5 flex-wrap sm:flex-nowrap w-full lg:w-auto">
           {/* GRUPO 2: Fuente y Pistas (Audio, Servidor y Subtítulos) */}
           <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-2xl bg-white/[0.04] border border-white/10 flex-wrap sm:flex-nowrap">
-          {/* Selector de Idioma de Audio (Latino / Japonés) */}
-          {(dubAvailability?.hasLatino || currentAudioLanguage === 'latino') && (
+          {/* Selector de Idioma de Audio (Latino / Castellano / Japonés) */}
+          {(dubAvailability?.hasLatino || dubAvailability?.hasCastellano || currentAudioLanguage === 'latino' || currentAudioLanguage === 'castellano') && (
             <div className="relative">
               <button
                 onClick={() => { setShowAudioMenu(!showAudioMenu); setShowServerMenu(false); setShowSubMenu(false); setShowSettings(false); }}
                 className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${
                   currentAudioLanguage === 'latino'
                     ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                    : currentAudioLanguage === 'castellano'
+                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
                     : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
                 }`}
                 title="Cambiar idioma de audio de la temporada"
               >
-                <Volume2 size={14} className={currentAudioLanguage === 'latino' ? 'text-emerald-400' : 'text-slate-400'} />
-                <span className="truncate">{currentAudioLanguage === 'latino' ? '🇲🇽 Latino' : '🇯🇵 Japonés'}</span>
+                <Volume2 size={14} className={currentAudioLanguage === 'latino' ? 'text-emerald-400' : currentAudioLanguage === 'castellano' ? 'text-amber-400' : 'text-slate-400'} />
+                <span className="truncate">
+                  {currentAudioLanguage === 'latino' ? '🇲🇽 Latino' : currentAudioLanguage === 'castellano' ? '🇪🇸 Castellano' : '🇯🇵 Japonés'}
+                </span>
               </button>
 
               {showAudioMenu && (
@@ -1129,18 +1141,34 @@ export default function AnimePlayer({
                     Idioma de Audio
                   </div>
                   <div className="mt-1 flex flex-col gap-0.5">
-                    <button
-                      onClick={() => handleSwitchAudioLanguage('latino')}
-                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all ${
-                        currentAudioLanguage === 'latino' ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span>🇲🇽</span>
-                        <span>Español Latino (1080p)</span>
-                      </span>
-                      {currentAudioLanguage === 'latino' && <Check size={14} />}
-                    </button>
+                    {(dubAvailability?.hasLatino || currentAudioLanguage === 'latino') && (
+                      <button
+                        onClick={() => handleSwitchAudioLanguage('latino')}
+                        className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all ${
+                          currentAudioLanguage === 'latino' ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>🇲🇽</span>
+                          <span>Español Latino (1080p)</span>
+                        </span>
+                        {currentAudioLanguage === 'latino' && <Check size={14} />}
+                      </button>
+                    )}
+                    {(dubAvailability?.hasCastellano || currentAudioLanguage === 'castellano') && (
+                      <button
+                        onClick={() => handleSwitchAudioLanguage('castellano')}
+                        className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all ${
+                          currentAudioLanguage === 'castellano' ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>🇪🇸</span>
+                          <span>Español Castellano (1080p)</span>
+                        </span>
+                        {currentAudioLanguage === 'castellano' && <Check size={14} />}
+                      </button>
+                    )}
                     <button
                       onClick={() => handleSwitchAudioLanguage('sub_es')}
                       className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all ${

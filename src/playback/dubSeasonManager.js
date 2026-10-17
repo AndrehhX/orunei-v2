@@ -21,6 +21,9 @@ function getProxiedUrl(targetUrl, referer = 'https://animeav1.com/') {
  * Mapeo rápido de alta disponibilidad para temporadas completas confirmadas en Español Latino Full HD.
  * Proporciona detección instantánea (0ms) en la interfaz sin depender de latencia de red.
  */
+import { resolveLatanimeSlug } from './soraDubProvider.js';
+import { isProviderAvailable } from './providerCircuitBreaker.js';
+
 export const VERIFIED_LATINO_DUB_MAP = {
   '20': { slug: 'naruto', episodes: 220 },
   '269': { slug: 'bleach', episodes: 366 },
@@ -58,6 +61,22 @@ export const VERIFIED_LATINO_DUB_MAP = {
   '52211': { slug: 'mashle', episodes: 12 },
   '52299': { slug: 'ore-dake-level-up-na-ken', episodes: 12 },
   '52991': { slug: 'sousou-no-frieren', episodes: 28 },
+};
+
+/**
+ * Mapeo rápido de alta disponibilidad para temporadas completas confirmadas en Español Castellano (España).
+ * Proporciona detección instantánea (0ms) en la interfaz para títulos doblados en castellano.
+ */
+export const VERIFIED_CASTELLANO_DUB_MAP = {
+  '1535': { slug: 'death-note-castellano', episodes: 37 },
+  '16498': { slug: 'shingeki-no-kyojin-castellano', episodes: 25 },
+  '31964': { slug: 'boku-no-hero-academia-castellano', episodes: 13 },
+  '35247': { slug: 'boku-no-hero-academia-2nd-season-castellano', episodes: 25 },
+  '38000': { slug: 'kimetsu-no-yaiba-castellano', episodes: 26 },
+  '44511': { slug: 'chainsaw-man-castellano', episodes: 12 },
+  '51009': { slug: 'jujutsu-kaisen-s2-castellano', episodes: 23 },
+  '52299': { slug: 'solo-leveling-castellano', episodes: 12 },
+  '52991': { slug: 'sousou-no-frieren-castellano', episodes: 28 },
 };
 
 /**
@@ -165,6 +184,7 @@ export function isMalIdDubbedInSpanish(malId) {
   const resolved = ANILIST_TO_MAL_MAP[str] || str;
   if (EXCLUDED_DUB_MAL_IDS.has(resolved)) return false;
   if (VERIFIED_LATINO_DUB_MAP[resolved]) return true;
+  if (VERIFIED_CASTELLANO_DUB_MAP[resolved]) return true;
   if (unstreamableDubSet.has(resolved)) return false;
   return Boolean(dubbedSpanishList[resolved]);
 }
@@ -300,14 +320,18 @@ export async function verifySeasonDubAvailability({ malId, animeTitle, expectedE
   }
 
   // 1. Verificación instantánea si el título está en el catálogo oficial verificado
-  if (targetId && VERIFIED_LATINO_DUB_MAP[String(targetId)]) {
-    const verified = VERIFIED_LATINO_DUB_MAP[String(targetId)];
+  const verifiedLat = targetId ? VERIFIED_LATINO_DUB_MAP[String(targetId)] : null;
+  const verifiedCas = targetId ? VERIFIED_CASTELLANO_DUB_MAP[String(targetId)] : null;
+
+  if (verifiedLat || verifiedCas) {
     const result = {
       available: true,
-      hasLatino: true,
-      hasCastellano: false,
-      slug: verified.slug,
-      totalEpisodes: verified.episodes
+      hasLatino: Boolean(verifiedLat),
+      hasCastellano: Boolean(verifiedCas),
+      slug: verifiedLat?.slug || verifiedCas?.slug,
+      latinoSlug: verifiedLat?.slug || null,
+      castellanoSlug: verifiedCas?.slug || null,
+      totalEpisodes: verifiedLat?.episodes || verifiedCas?.episodes || (Number(expectedEpisodes) || 1)
     };
     seasonVerificationCache.set(cacheKey, result);
     return result;
@@ -330,62 +354,58 @@ export async function verifySeasonDubAvailability({ malId, animeTitle, expectedE
 
   // 3. Resolver slug en AnimeAV1 mediante proxy CORS
   const slugInfo = await resolveAnimeAV1Slug(targetId, animeTitle);
-  if (!slugInfo || !slugInfo.slug) {
-    const res = { available: false, hasLatino: false, hasCastellano: false, reason: 'Fuente DUB no encontrada' };
-    seasonVerificationCache.set(cacheKey, res);
-    return res;
-  }
+  if (slugInfo && slugInfo.slug) {
+    const slug = slugInfo.slug;
+    const count = Math.max(Number(slugInfo.episodesCount) || 1, Number(expectedEpisodes) || 1);
 
-  const slug = slugInfo.slug;
-  const count = Math.max(Number(slugInfo.episodesCount) || 1, Number(expectedEpisodes) || 1);
+    // Verificar cobertura completa de episodios
+    try {
+      const [ep1Res, epLastRes] = await Promise.all([
+        fetch(getProxiedUrl(`${ANIMEAV1_BASE}/media/${slug}/1/__data.json`)),
+        count > 1 ? fetch(getProxiedUrl(`${ANIMEAV1_BASE}/media/${slug}/${count}/__data.json`)) : Promise.resolve({ ok: true, text: () => '' })
+      ]);
 
-  // 4. Verificar cobertura completa de episodios (muestreo inicial + verificación integral)
-  try {
-    const [ep1Res, epLastRes] = await Promise.all([
-      fetch(getProxiedUrl(`${ANIMEAV1_BASE}/media/${slug}/1/__data.json`)),
-      count > 1 ? fetch(getProxiedUrl(`${ANIMEAV1_BASE}/media/${slug}/${count}/__data.json`)) : Promise.resolve({ ok: true, text: () => '' })
-    ]);
+      if (ep1Res.ok) {
+        const ep1Json = await ep1Res.json();
+        const ep1Text = JSON.stringify(ep1Json);
+        const ep1HasDub = ep1Text.includes('"DUB"') || (ep1Text.includes('"embeds":{') && ep1Text.includes('DUB'));
 
-    if (!ep1Res.ok) {
-      const res = { available: false, hasLatino: false, hasCastellano: false, slug };
-      seasonVerificationCache.set(cacheKey, res);
-      return res;
-    }
-
-    const ep1Json = await ep1Res.json();
-    const ep1Text = JSON.stringify(ep1Json);
-    const ep1HasDub = ep1Text.includes('"DUB"') || ep1Text.includes('"embeds":{') && ep1Text.includes('DUB');
-
-    if (!ep1HasDub) {
-      const res = { available: false, hasLatino: false, hasCastellano: false, slug, reason: 'Episodio 1 sin DUB' };
-      seasonVerificationCache.set(cacheKey, res);
-      return res;
-    }
-
-    if (count > 1 && epLastRes.ok) {
-      const epLastJson = await epLastRes.json();
-      const epLastText = JSON.stringify(epLastJson);
-      const epLastHasDub = epLastText.includes('"DUB"');
-      if (!epLastHasDub) {
-        const res = { available: false, hasLatino: false, hasCastellano: false, slug, reason: 'Temporada parcialmente doblada' };
-        seasonVerificationCache.set(cacheKey, res);
-        return res;
+        if (ep1HasDub) {
+          const result = {
+            available: true,
+            hasLatino: true,
+            hasCastellano: Boolean(verifiedCas),
+            slug,
+            totalEpisodes: count
+          };
+          seasonVerificationCache.set(cacheKey, result);
+          return result;
+        }
       }
-    }
-
-    // Temporada completa verificada con audio Latino
-    const result = {
-      available: true,
-      hasLatino: true,
-      hasCastellano: false,
-      slug,
-      totalEpisodes: count
-    };
-
-    seasonVerificationCache.set(cacheKey, result);
-    return result;
-  } catch (err) {
-    console.warn('[dubSeasonManager] Error verificando temporada:', err.message);
-    return { available: false, hasLatino: false, hasCastellano: false, error: err.message };
+    } catch (_) {}
   }
+
+  // 4. Si AnimeAV1 no dispone de fuentes, consultar proveedor Sora (Latanime)
+  try {
+    const soraLatinoSlug = await resolveLatanimeSlug(targetId, animeTitle, 'latino');
+    const soraCastellanoSlug = await resolveLatanimeSlug(targetId, animeTitle, 'castellano');
+
+    if (soraLatinoSlug || soraCastellanoSlug) {
+      const result = {
+        available: true,
+        hasLatino: Boolean(soraLatinoSlug),
+        hasCastellano: Boolean(soraCastellanoSlug),
+        slug: soraLatinoSlug || soraCastellanoSlug,
+        latinoSlug: soraLatinoSlug,
+        castellanoSlug: soraCastellanoSlug,
+        totalEpisodes: Number(expectedEpisodes) || 1
+      };
+      seasonVerificationCache.set(cacheKey, result);
+      return result;
+    }
+  } catch (_) {}
+
+  const fallbackRes = { available: false, hasLatino: false, hasCastellano: false, reason: 'Fuentes DUB no encontradas' };
+  seasonVerificationCache.set(cacheKey, fallbackRes);
+  return fallbackRes;
 }

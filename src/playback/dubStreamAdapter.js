@@ -1,4 +1,6 @@
 import { resolveAnimeAV1Slug } from './dubSeasonManager.js';
+import { selectAndPrioritizeServers } from './sourceSelector.js';
+import { resolveLatanimeSlug, getLatanimeEpisodeServers } from './soraDubProvider.js';
 
 const rawEnvUrl = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_STREAM_API_URL || '').trim() : '';
 const STREAM_BASE = (rawEnvUrl && !rawEnvUrl.includes('trycloudflare.com') && rawEnvUrl.startsWith('http'))
@@ -120,234 +122,227 @@ function extractDataNode(json) {
 }
 
 /**
- * Obtiene la reproducción de un episodio doblado en audio español.
- * Cumple con la selección inteligente del mejor servidor 1080p
- * y conserva la compatibilidad exacta con la interfaz de AnimePlayer.
+ * Obtiene la reproducción de un episodio doblado en audio español (Latino o Castellano).
+ * Integra selección inteligente de fuentes (StreamPlay) y proveedor Sora (Latanime).
  */
-export async function getDubEpisodePlayback({ animeId, malId, animeTitle, slug = null, episode = 1, episodeNumber = 1, language = 'latino' }) {
+export async function getDubEpisodePlayback({
+  animeId,
+  malId,
+  animeTitle,
+  slug = null,
+  episode = 1,
+  episodeNumber = 1,
+  language = 'latino'
+}) {
   const targetEpisode = episode || episodeNumber || 1;
-  let resolvedSlug = slug;
-  if (!resolvedSlug) {
-    const slugInfo = await resolveAnimeAV1Slug(malId || animeId, animeTitle);
-    if (!slugInfo?.slug) {
-      throw new Error('No se encontró fuente de doblaje para este anime.');
-    }
-    resolvedSlug = slugInfo.slug;
-  }
-
-  const epUrl = `${ANIMEAV1_BASE}/media/${resolvedSlug}/${targetEpisode}/__data.json`;
-  const res = await fetch(getProxiedUrl(epUrl));
-  if (!res.ok) {
-    throw new Error(`No se pudo obtener información del episodio ${episode} (HTTP ${res.status}).`);
-  }
-
-  const json = await res.json();
-  const d = extractDataNode(json);
-  if (!d) {
-    throw new Error('Estructura de datos de episodio no válida.');
-  }
-
-  // Localizar objeto embeds
-  let embedsObj = null;
-  for (const item of d) {
-    if (item && typeof item === 'object' && item.embeds !== undefined) {
-      embedsObj = item.embeds;
-      break;
-    }
-  }
-
-  const embedsD = typeof embedsObj === 'number' ? d[embedsObj] : embedsObj;
-  const dubArrayIdx = embedsD?.DUB;
-  if (dubArrayIdx === undefined) {
-    throw new Error(`El episodio ${episode} no tiene pista de audio doblado disponible.`);
-  }
-
-  const dubIndices = typeof dubArrayIdx === 'number' ? d[dubArrayIdx] : dubArrayIdx;
-  const rawServers = [];
-  if (Array.isArray(dubIndices)) {
-    for (const idx of dubIndices) {
-      const srv = typeof idx === 'number' ? d[idx] : idx;
-      if (!srv) continue;
-      const srvName = typeof srv.server === 'number' ? d[srv.server] : srv.server;
-      const srvUrl = typeof srv.url === 'number' ? d[srv.url] : srv.url;
-      if (srvName && srvUrl) {
-        rawServers.push({ server: srvName, url: srvUrl });
-      }
-    }
-  }
-
-  if (rawServers.length === 0) {
-    throw new Error('No se encontraron servidores de audio doblado para este episodio.');
-  }
-
+  const targetMalId = malId || animeId;
   const isMobile = isMobileOrTabletDevice();
-  const directServers = [];
-  const embedServers = [];
+  const rawCandidates = [];
 
-  // 1. StreamTape: 1080p H.264 de 8 bits (yuv420p) - Compatibilidad universal absoluta (iPad, iPhone, tablets y PC)
-  const stServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('streamtape'));
-  if (stServer) {
-    const directSt = await extractStreamTapeStream(stServer.url);
-    if (directSt) {
-      directServers.push({
-        id: 'dub-streamtape-h264',
-        name: isMobile ? '🇲🇽 Servidor (Latino 1080p Universal iPad/Móvil)' : '🇲🇽 Servidor (Latino 1080p Universal H.264)',
-        proxiedStreamUrl: directSt,
-        quality: '1080p',
-        sourceName: 'StreamTape (H.264 8-bit)',
-        isEmbed: false,
-        isUniversalH264: true
-      });
+  // ==========================================
+  // CASO 1: ESPAÑOL CASTELLANO (ESPAÑA)
+  // ==========================================
+  if (language === 'castellano') {
+    const castellanoSlug = await resolveLatanimeSlug(targetMalId, animeTitle, 'castellano');
+    if (!castellanoSlug) {
+      throw new Error('No se encontró fuente de doblaje en castellano para este anime.');
     }
-  }
 
-  // 2. MP4Upload: 10-bit AV1 (av01, yuv420p10le) - Bluray Ultra HD para PC y decodificadores AV1
-  const mp4Server = rawServers.find((s) => s.server && s.server.toLowerCase().includes('mp4upload') && !s.url.includes('undef'));
-  if (mp4Server) {
-    const directMp4 = await extractMP4UploadStream(mp4Server.url);
-    if (directMp4) {
-      const proxiedMp4 = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(directMp4)}&referer=${encodeURIComponent('https://www.mp4upload.com/')}`;
-      directServers.push({
-        id: 'dub-mp4upload',
-        name: isMobile ? '🇲🇽 Servidor (Latino 1080p AV1 - PC/M4)' : '🇲🇽 Servidor (Latino 1080p Bluray)',
-        proxiedStreamUrl: proxiedMp4,
-        quality: '1080p',
-        sourceName: 'MP4Upload',
-        isEmbed: false,
-        isAv1: true
-      });
+    const soraServers = await getLatanimeEpisodeServers(castellanoSlug, targetEpisode, 'castellano');
+    if (!soraServers || soraServers.length === 0) {
+      throw new Error(`El episodio ${targetEpisode} no tiene servidores disponibles en castellano.`);
     }
-  }
 
-  // 3. YourUpload: 10-bit H.264 (High 10, yuv420p10le)
-  const yuServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('yourupload'));
-  if (yuServer) {
-    const directYu = await extractYourUploadStream(yuServer.url);
-    if (directYu) {
-      const proxiedYu = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(directYu)}&referer=${encodeURIComponent('https://www.yourupload.com/')}`;
-      directServers.push({
-        id: 'dub-yourupload',
-        name: '🇲🇽 Servidor (Latino 1080p Direct Hi10P)',
-        proxiedStreamUrl: proxiedYu,
-        quality: '1080p',
-        sourceName: 'YourUpload',
-        isEmbed: false
-      });
+    const prioritized = selectAndPrioritizeServers(soraServers, { isMobile, language: 'castellano' });
+    if (prioritized.length === 0) {
+      throw new Error('No se pudo inicializar un servidor en castellano para este episodio.');
     }
+
+    const bestServer = prioritized[0];
+    return {
+      proxiedStreamUrl: bestServer.proxiedStreamUrl,
+      embedUrl: bestServer.embedUrl || null,
+      servers: prioritized,
+      subtitles: { tracks: [] },
+      audioLanguage: 'castellano',
+      isDub: true,
+      isEmbed: !!bestServer.isEmbed,
+      resolution: '1080p'
+    };
   }
 
-  // 4. Servidor Zilla / HLS Player (Incrustado oficial sin bloqueo WAF 403)
-  const hlsServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('hls'));
-  if (hlsServer && hlsServer.url) {
-    const playUrl = hlsServer.url.includes('/m3u8/')
-      ? hlsServer.url.replace('/m3u8/', '/play/')
-      : hlsServer.url;
-    embedServers.push({
-      id: 'dub-zilla-embed',
-      name: '🇲🇽 Servidor (Latino Player HD)',
-      proxiedStreamUrl: playUrl,
-      embedUrl: playUrl,
-      quality: '1080p',
-      sourceName: 'ZillaPlayer',
-      isEmbed: true
-    });
-  }
+  // ==========================================
+  // CASO 2: ESPAÑOL LATINO
+  // ==========================================
+  let animeAv1Error = null;
+  try {
+    let resolvedSlug = slug;
+    if (!resolvedSlug) {
+      const slugInfo = await resolveAnimeAV1Slug(targetMalId, animeTitle);
+      resolvedSlug = slugInfo?.slug || null;
+    }
 
-  // 5. Servidor VOE
-  const voeServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('voe'));
-  if (voeServer && voeServer.url) {
-    embedServers.push({
-      id: 'dub-voe-embed',
-      name: '🇲🇽 Servidor (Latino VOE)',
-      proxiedStreamUrl: voeServer.url,
-      embedUrl: voeServer.url,
-      quality: '1080p',
-      sourceName: 'VOE',
-      isEmbed: true
-    });
-  }
+    if (resolvedSlug) {
+      const epUrl = `${ANIMEAV1_BASE}/media/${resolvedSlug}/${targetEpisode}/__data.json`;
+      const res = await fetch(getProxiedUrl(epUrl));
+      if (res.ok) {
+        const json = await res.json();
+        const d = extractDataNode(json);
+        if (d) {
+          let embedsObj = null;
+          for (const item of d) {
+            if (item && typeof item === 'object' && item.embeds !== undefined) {
+              embedsObj = item.embeds;
+              break;
+            }
+          }
+          const embedsD = typeof embedsObj === 'number' ? d[embedsObj] : embedsObj;
+          const dubArrayIdx = embedsD?.DUB;
+          if (dubArrayIdx !== undefined) {
+            const dubIndices = typeof dubArrayIdx === 'number' ? d[dubArrayIdx] : dubArrayIdx;
+            const rawServers = [];
+            if (Array.isArray(dubIndices)) {
+              for (const idx of dubIndices) {
+                const srv = typeof idx === 'number' ? d[idx] : idx;
+                if (!srv) continue;
+                const srvName = typeof srv.server === 'number' ? d[srv.server] : srv.server;
+                const srvUrl = typeof srv.url === 'number' ? d[srv.url] : srv.url;
+                if (srvName && srvUrl) {
+                  rawServers.push({ server: srvName, url: srvUrl });
+                }
+              }
+            }
 
-  // 6. Servidor StreamTape Embed
-  if (stServer && stServer.url) {
-    embedServers.push({
-      id: 'dub-streamtape-embed',
-      name: '🇲🇽 Servidor (Latino StreamTape Player)',
-      proxiedStreamUrl: stServer.url,
-      embedUrl: stServer.url,
-      quality: '1080p',
-      sourceName: 'StreamTape',
-      isEmbed: true
-    });
-  }
+            // Extractores AnimeAV1
+            const stServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('streamtape'));
+            if (stServer) {
+              const directSt = await extractStreamTapeStream(stServer.url);
+              if (directSt) {
+                rawCandidates.push({
+                  id: 'dub-streamtape-h264',
+                  name: 'StreamTape (H.264 Universal)',
+                  proxiedStreamUrl: directSt,
+                  quality: '1080p',
+                  sourceName: 'StreamTape (H.264 8-bit)',
+                  isEmbed: false,
+                  isUniversalH264: true
+                });
+              }
+            }
 
-  // 7. Servidor Byse
-  const byseServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('byse'));
-  if (byseServer && byseServer.url) {
-    embedServers.push({
-      id: 'dub-byse-embed',
-      name: '🇲🇽 Servidor (Latino Byse)',
-      proxiedStreamUrl: byseServer.url,
-      embedUrl: byseServer.url,
-      quality: '1080p',
-      sourceName: 'Byse',
-      isEmbed: true
-    });
-  }
+            const mp4Server = rawServers.find((s) => s.server && s.server.toLowerCase().includes('mp4upload') && !s.url.includes('undef'));
+            if (mp4Server) {
+              const directMp4 = await extractMP4UploadStream(mp4Server.url);
+              if (directMp4) {
+                const proxiedMp4 = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(directMp4)}&referer=${encodeURIComponent('https://www.mp4upload.com/')}`;
+                rawCandidates.push({
+                  id: 'dub-mp4upload',
+                  name: 'MP4Upload Bluray',
+                  proxiedStreamUrl: proxiedMp4,
+                  quality: '1080p',
+                  sourceName: 'MP4Upload',
+                  isEmbed: false,
+                  isAv1: true
+                });
+              }
+            }
 
-  // Fallback si no hubo ningún extractor exitoso
-  if (directServers.length === 0 && embedServers.length === 0) {
-    for (const s of rawServers) {
-      if (s.url && !s.url.includes('undef')) {
-        embedServers.push({
-          id: `dub-${(s.server || 'alt').toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-          name: `🇲🇽 Servidor (${s.server || 'Latino'})`,
-          proxiedStreamUrl: s.url,
-          embedUrl: s.url,
-          quality: '1080p',
-          sourceName: s.server || 'Embed',
-          isEmbed: true
-        });
-        break;
+            const yuServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('yourupload'));
+            if (yuServer) {
+              const directYu = await extractYourUploadStream(yuServer.url);
+              if (directYu) {
+                const proxiedYu = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(directYu)}&referer=${encodeURIComponent('https://www.yourupload.com/')}`;
+                rawCandidates.push({
+                  id: 'dub-yourupload',
+                  name: 'YourUpload Direct',
+                  proxiedStreamUrl: proxiedYu,
+                  quality: '1080p',
+                  sourceName: 'YourUpload',
+                  isEmbed: false
+                });
+              }
+            }
+
+            const hlsServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('hls'));
+            if (hlsServer && hlsServer.url) {
+              const playUrl = hlsServer.url.includes('/m3u8/')
+                ? hlsServer.url.replace('/m3u8/', '/play/')
+                : hlsServer.url;
+              rawCandidates.push({
+                id: 'dub-zilla-embed',
+                name: 'ZillaPlayer HD',
+                proxiedStreamUrl: playUrl,
+                embedUrl: playUrl,
+                quality: '1080p',
+                sourceName: 'ZillaPlayer',
+                isEmbed: true
+              });
+            }
+
+            const voeServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('voe'));
+            if (voeServer && voeServer.url) {
+              rawCandidates.push({
+                id: 'dub-voe-embed',
+                name: 'VOE Player',
+                proxiedStreamUrl: voeServer.url,
+                embedUrl: voeServer.url,
+                quality: '1080p',
+                sourceName: 'VOE',
+                isEmbed: true
+              });
+            }
+
+            if (stServer && stServer.url) {
+              rawCandidates.push({
+                id: 'dub-streamtape-embed',
+                name: 'StreamTape Player',
+                proxiedStreamUrl: stServer.url,
+                embedUrl: stServer.url,
+                quality: '1080p',
+                sourceName: 'StreamTape',
+                isEmbed: true
+              });
+            }
+          }
+        }
       }
     }
+  } catch (err) {
+    animeAv1Error = err;
+    console.warn('[dubStreamAdapter] Aviso en AnimeAV1:', err.message);
   }
 
-  if (directServers.length === 0 && embedServers.length === 0) {
-    throw new Error('No se pudo extraer una fuente reproducible en 1080p para este episodio doblado.');
-  }
-
-  // Ordenamiento inteligente según dispositivo:
-  // En iPad / tablets / móviles:
-  // 1) Si hay StreamTape 8-bit, va de primero (se reproduce nativo con video y audio sin pantalla negra).
-  // 2) Si solo hay 10-bit AV1/Hi10P (que provocan pantalla negra en iPad), los reproductores embed (Zilla/VOE) van de primero para garantizar video funcional.
-  // En PC: los streams directos 1080p Bluray van primero.
-  let verifiedServers = [];
-  if (isMobile) {
-    const universalH264 = directServers.filter((s) => s.isUniversalH264);
-    const nonUniversal = directServers.filter((s) => !s.isUniversalH264);
-    if (universalH264.length > 0) {
-      verifiedServers = [...universalH264, ...embedServers, ...nonUniversal];
-    } else {
-      verifiedServers = [...embedServers, ...nonUniversal];
+  // 2. Si faltan fuentes (< 3 servidores) o falló AnimeAV1, consultar proveedor Sora (Latanime)
+  if (rawCandidates.length < 3) {
+    try {
+      const latinoSlug = await resolveLatanimeSlug(targetMalId, animeTitle, 'latino');
+      if (latinoSlug) {
+        const soraServers = await getLatanimeEpisodeServers(latinoSlug, targetEpisode, 'latino');
+        if (Array.isArray(soraServers) && soraServers.length > 0) {
+          rawCandidates.push(...soraServers);
+        }
+      }
+    } catch (err) {
+      console.warn('[dubStreamAdapter] Aviso en proveedor Sora:', err.message);
     }
-  } else {
-    verifiedServers = [...directServers, ...embedServers];
   }
 
-  // Renumerar servidores de manera intuitiva: Servidor 1, Servidor 2, etc.
-  verifiedServers.forEach((srv, idx) => {
-    const cleanLabel = srv.name.replace(/^🇲🇽 Servidor( Alternativo)? \(Latino /, '').replace(/\)$/, '');
-    srv.name = `🇲🇽 Servidor ${idx + 1} (${cleanLabel})`;
-  });
+  if (rawCandidates.length === 0) {
+    throw animeAv1Error || new Error(`No se encontraron servidores de audio latino disponibles para el episodio ${targetEpisode}.`);
+  }
 
-  const bestServer = verifiedServers[0];
+  const prioritized = selectAndPrioritizeServers(rawCandidates, { isMobile, language: 'latino' });
+  if (prioritized.length === 0) {
+    throw new Error('No se pudo inicializar un servidor de audio latino para este episodio.');
+  }
 
+  const bestServer = prioritized[0];
   return {
     proxiedStreamUrl: bestServer.proxiedStreamUrl,
     embedUrl: bestServer.embedUrl || null,
-    servers: verifiedServers,
-    subtitles: { tracks: [] }, // En DUB el audio ya es español
-    audioLanguage: language,
+    servers: prioritized,
+    subtitles: { tracks: [] },
+    audioLanguage: 'latino',
     isDub: true,
     isEmbed: !!bestServer.isEmbed,
     resolution: '1080p'
