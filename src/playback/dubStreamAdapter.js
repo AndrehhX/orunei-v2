@@ -115,22 +115,7 @@ export async function getDubEpisodePlayback({ animeId, malId, animeTitle, slug =
   // Extracción inteligente en paralelo con priorización de calidad Full HD 1080p
   const verifiedServers = [];
 
-  // 1. Prioridad: YourUpload (Direct 1080p MP4, CORS nativo)
-  const yuServer = rawServers.find((s) => s.server.toLowerCase().includes('yourupload'));
-  if (yuServer) {
-    const directYu = await extractYourUploadStream(yuServer.url);
-    if (directYu) {
-      verifiedServers.push({
-        id: 'dub-yourupload',
-        name: '🇲🇽 Servidor 1 (Latino 1080p Direct)',
-        proxiedStreamUrl: directYu,
-        quality: '1080p',
-        sourceName: 'YourUpload'
-      });
-    }
-  }
-
-  // 2. Prioridad: MP4Upload (Direct 1080p MP4 Bluray AV1/NVENC, servido vía proxy)
+  // 1. Prioridad: MP4Upload (Direct 1080p MP4 Bluray AV1/NVENC, servido vía proxy con referer oficial)
   const mp4Server = rawServers.find((s) => s.server.toLowerCase().includes('mp4upload'));
   if (mp4Server) {
     const directMp4 = await extractMP4UploadStream(mp4Server.url);
@@ -138,10 +123,26 @@ export async function getDubEpisodePlayback({ animeId, malId, animeTitle, slug =
       const proxiedMp4 = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(directMp4)}&referer=${encodeURIComponent('https://www.mp4upload.com/')}`;
       verifiedServers.push({
         id: 'dub-mp4upload',
-        name: '🇲🇽 Servidor 2 (Latino 1080p Bluray)',
+        name: '🇲🇽 Servidor 1 (Latino 1080p Bluray)',
         proxiedStreamUrl: proxiedMp4,
         quality: '1080p',
         sourceName: 'MP4Upload'
+      });
+    }
+  }
+
+  // 2. Prioridad: YourUpload (Direct 1080p MP4, servido vía proxy con referer oficial para evitar 500)
+  const yuServer = rawServers.find((s) => s.server.toLowerCase().includes('yourupload'));
+  if (yuServer) {
+    const directYu = await extractYourUploadStream(yuServer.url);
+    if (directYu) {
+      const proxiedYu = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(directYu)}&referer=${encodeURIComponent('https://www.yourupload.com/')}`;
+      verifiedServers.push({
+        id: 'dub-yourupload',
+        name: '🇲🇽 Servidor 2 (Latino 1080p Direct)',
+        proxiedStreamUrl: proxiedYu,
+        quality: '1080p',
+        sourceName: 'YourUpload'
       });
     }
   }

@@ -9,7 +9,12 @@ const gql = async (query, variables, signal) => {
   if (!j.data) throw new Error(j.errors?.[0]?.message || 'AniList error')
   return j.data
 }
-const json = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json() }
+const json = async (u, timeoutMs = 5000) => {
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined
+  const r = await fetch(u, { signal })
+  if (!r.ok) throw new Error(r.status)
+  return r.json()
+}
 
 export const GENRES = [['Acción', 'Action'], ['Aventura', 'Adventure'], ['Comedia', 'Comedy'], ['Drama', 'Drama'], ['Fantasía', 'Fantasy'], ['Romance', 'Romance'],
   ['Sci-Fi', 'Sci-Fi'], ['Slice of Life', 'Slice of Life'], ['Sobrenatural', 'Supernatural'], ['Misterio', 'Mystery'], ['Terror', 'Horror'], ['Deportes', 'Sports']]

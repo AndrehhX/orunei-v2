@@ -295,6 +295,18 @@ export default function AnimePlayer({
     setIsBuffering(false);
   };
 
+  const handleVideoError = () => {
+    console.warn('[AnimePlayer] Error en reproducción de video HTML5:', videoRef.current?.error);
+    if (servers.length > 1 && selectedServerIndex < servers.length - 1) {
+      console.warn('[AnimePlayer] Conmutando automáticamente al siguiente servidor disponible...');
+      setSelectedServerIndex((prev) => prev + 1);
+    } else if (servers.length > 1 && selectedServerIndex === servers.length - 1) {
+      setError('No se pudo reproducir en ninguno de los servidores disponibles para este episodio.');
+    } else {
+      setError('Error al reproducir el flujo multimedia.');
+    }
+  };
+
   // Inicializar Hls.js una vez cargada la fuente o cambiado el servidor
   useEffect(() => {
     const video = videoRef.current;
@@ -995,6 +1007,7 @@ export default function AnimePlayer({
           onWaiting={() => setIsBuffering(true)}
           onPlaying={() => { setIsBuffering(false); setBufferNotice(false); }}
           onCanPlay={() => setIsBuffering(false)}
+          onError={handleVideoError}
           onEnded={handleEnded}
         >
           {subTracks.map((tr) => (

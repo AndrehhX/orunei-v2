@@ -62,8 +62,8 @@ export async function fetchSkipTimes({ malId, episodeNumber, episodeLength = 0 }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
 
-    const lengthParam = episodeLength > 0 ? `&episodeLength=${Math.round(episodeLength)}` : '';
-    const url = `https://api.aniskip.com/v2/skip-times/${malId}/${episodeNumber}?types[]=op&types[]=ed${lengthParam}`;
+    const lengthVal = Math.round(Number(episodeLength) > 0 ? Number(episodeLength) : 1440);
+    const url = `https://api.aniskip.com/v2/skip-times/${malId}/${episodeNumber}?types[]=op&types[]=ed&episodeLength=${lengthVal}`;
 
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
