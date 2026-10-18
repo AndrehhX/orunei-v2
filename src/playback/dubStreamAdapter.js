@@ -341,19 +341,32 @@ export async function getDubEpisodePlayback({
               }
             }
 
-            const hlsServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('hls'));
-            if (hlsServer && hlsServer.url) {
-              const m3u8Url = hlsServer.url.includes('/play/')
-                ? hlsServer.url.replace('/play/', '/m3u8/')
-                : hlsServer.url;
-              const proxiedM3u8 = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(m3u8Url)}&referer=${encodeURIComponent('https://animeav1.com/')}`;
+            // Se omite deliberadamente ZillaPlayer (player.zilla-networks.com) ya que Cloudflare
+            // rechaza conexiones externas con SAMEORIGIN y devuelve 403 en los segmentos HLS.
+            const byseServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('byse'));
+            if (byseServer && byseServer.url) {
               rawCandidates.push({
-                id: 'dub-zilla-direct',
-                name: 'ZillaPlayer HD',
-                proxiedStreamUrl: proxiedM3u8,
+                id: 'dub-byse-embed',
+                name: 'Byse Player',
+                proxiedStreamUrl: byseServer.url,
+                embedUrl: byseServer.url,
                 quality: '1080p',
-                sourceName: 'ZillaPlayer',
-                isEmbed: false
+                sourceName: 'Byse',
+                isEmbed: true
+              });
+            }
+
+            const megaServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('mega') && !s.url.includes('undef'));
+            if (megaServer && megaServer.url) {
+              const embedUrl = megaServer.url.includes('/file/') ? megaServer.url.replace('/file/', '/embed/') : megaServer.url;
+              rawCandidates.push({
+                id: 'dub-mega-embed',
+                name: 'Mega Cloud',
+                proxiedStreamUrl: embedUrl,
+                embedUrl: embedUrl,
+                quality: '1080p',
+                sourceName: 'Mega',
+                isEmbed: true
               });
             }
 
@@ -422,11 +435,19 @@ export async function getDubEpisodePlayback({
     }
   }
 
-  if (rawCandidates.length === 0) {
+  // Filtrar estrictamente cualquier servidor hostil que rechace conexión como zilla-networks
+  const cleanCandidates = rawCandidates.filter((s) => {
+    if (!s) return false;
+    const url = (s.proxiedStreamUrl || s.embedUrl || '').toLowerCase();
+    const name = (s.sourceName || s.name || s.id || '').toLowerCase();
+    return !url.includes('zilla-networks') && !name.includes('zilla');
+  });
+
+  if (cleanCandidates.length === 0) {
     throw animeAv1Error || new Error(`No se encontraron servidores de audio latino disponibles para el episodio ${targetEpisode}.`);
   }
 
-  const prioritized = selectAndPrioritizeServers(rawCandidates, { isMobile, language: 'latino' });
+  const prioritized = selectAndPrioritizeServers(cleanCandidates, { isMobile, language: 'latino' });
   if (prioritized.length === 0) {
     throw new Error('No se pudo inicializar un servidor de audio latino para este episodio.');
   }
