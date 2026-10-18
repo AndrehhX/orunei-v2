@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
   Award,
   BookOpen,
   Check,
@@ -11,8 +13,10 @@ import {
   List,
   Lock,
   LockKeyhole,
+  MessageCircle,
   Palette,
   Shield,
+  Sliders,
   Sparkles,
   Tv,
   Upload,
@@ -23,6 +27,49 @@ import { useProfile } from '../profile/ProfileProvider'
 import { AVATAR_FRAMES, PROFILE_THEMES } from '../profile/model.js'
 import AvatarFrame from './AvatarFrame'
 import ProfileThemeBackground from './ProfileThemeBackground'
+
+const SECTION_ORDER_METADATA = {
+  showcase: {
+    id: 'showcase',
+    label: 'Vitrina de Obra Maestra',
+    desc: 'Tu anime predilecto destacado con póster, cita emblemática y veredicto.',
+    icon: Award,
+    badge: 'Estilo Steam',
+    color: 'text-amber-500',
+    bg: 'bg-amber-500/10',
+    border: 'border-amber-500/30',
+  },
+  comments: {
+    id: 'comments',
+    label: 'Muro de Comentarios',
+    desc: 'Firmas, notas y mensajes de la comunidad de Orunei en tu perfil.',
+    icon: MessageCircle,
+    badge: 'Comunidad',
+    color: 'text-brand',
+    bg: 'bg-brand/10',
+    border: 'border-brand/30',
+  },
+  animeList: {
+    id: 'animeList',
+    label: 'AnimeList & Biblioteca',
+    desc: 'Resumen de series viendo, completadas, favoritas y afinidad algorítmica.',
+    icon: BookOpen,
+    badge: 'Biblioteca',
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-500/10',
+    border: 'border-emerald-500/30',
+  },
+  activity: {
+    id: 'activity',
+    label: 'Actividad Reciente',
+    desc: 'Últimos episodios vistos y actualizaciones cronológicas del perfil.',
+    icon: Activity,
+    badge: 'Historial',
+    color: 'text-pink-500',
+    bg: 'bg-pink-500/10',
+    border: 'border-pink-500/30',
+  },
+}
 
 const privacySections = [
   { id: 'animeList', label: 'AnimeList (Biblioteca)', desc: 'Las series que estás viendo o completaste', icon: BookOpen },
@@ -208,9 +255,25 @@ export default function ProfileEditor({ onClose }) {
     return library.find((item) => item.q === draft.featuredAnimeId || item.id === draft.featuredAnimeId) || null
   }, [draft.featuredAnimeId, library])
 
+  const moveSection = (index, direction) => {
+    const defaultOrder = ['showcase', 'comments', 'animeList', 'activity']
+    const currentOrder = Array.isArray(draft.overviewOrder) && draft.overviewOrder.length > 0 ? draft.overviewOrder : defaultOrder
+    const nextIndex = index + direction
+    if (nextIndex < 0 || nextIndex >= currentOrder.length) return
+    const updated = [...currentOrder]
+    const [moved] = updated.splice(index, 1)
+    updated.splice(nextIndex, 0, moved)
+    setDraft((current) => ({ ...current, overviewOrder: updated }))
+  }
+
+  const setOrderPreset = (presetOrder) => {
+    setDraft((current) => ({ ...current, overviewOrder: presetOrder }))
+  }
+
   const TABS = [
     { id: 'steam', label: 'Estilo Steam', icon: Sparkles, badge: 'Fondos & Marcos' },
     { id: 'showcase', label: 'Vitrina', icon: Award, badge: 'Obra Maestra' },
+    { id: 'order', label: 'Orden del Perfil', icon: Sliders, badge: 'Secciones #1-#4' },
     { id: 'privacy', label: 'Privacidad', icon: LockKeyhole, badge: draft.visibility === 'public' ? 'Público' : 'Privado' },
     { id: 'identity', label: 'Identidad', icon: Shield, badge: 'Bio & Usuario' },
     { id: 'appearance', label: 'Multimedia', icon: Image, badge: 'Avatar & Banner' },
@@ -512,6 +575,152 @@ export default function ProfileEditor({ onClose }) {
                       placeholder="Ej: La evolución de los personajes, la dirección artística y la banda sonora en el clímax son insuperables..."
                       className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 bg-white dark:bg-white/5 px-3 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 text-slate-900 dark:text-slate-100"
                     />
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {/* PESTAÑA: ORDEN DEL PERFIL */}
+            {activeTab === 'order' && (
+              <div className="space-y-5 animate-fade">
+                <section className="card p-5">
+                  <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Sliders size={18} className="text-brand" />
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Orden Personalizado de Secciones</h3>
+                        <p className="text-xs text-slate-500">
+                          Define qué contenido se muestra primero en tu perfil debajo de la cabecera.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setOrderPreset(['showcase', 'comments', 'animeList', 'activity'])}
+                      className="text-xs font-semibold text-slate-500 hover:text-brand transition self-start sm:self-auto"
+                    >
+                      Restablecer orden por defecto
+                    </button>
+                  </div>
+
+                  {/* Presets Rápidos */}
+                  <div className="mb-5 rounded-2xl bg-slate-100/70 p-3.5 dark:bg-white/[0.02] border border-slate-200/70 dark:border-white/5">
+                    <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      Plantillas rápidas de disposición:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setOrderPreset(['showcase', 'comments', 'animeList', 'activity'])}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-white/10 border border-slate-200/80 dark:border-white/10 hover:border-brand transition shadow-xs"
+                      >
+                        ⭐ Vitrina primero
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOrderPreset(['comments', 'showcase', 'animeList', 'activity'])}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-white/10 border border-slate-200/80 dark:border-white/10 hover:border-brand transition shadow-xs"
+                      >
+                        💬 Comentarios primero
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOrderPreset(['animeList', 'showcase', 'comments', 'activity'])}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-white/10 border border-slate-200/80 dark:border-white/10 hover:border-brand transition shadow-xs"
+                      >
+                        📚 Biblioteca primero
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOrderPreset(['activity', 'showcase', 'comments', 'animeList'])}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-white/10 border border-slate-200/80 dark:border-white/10 hover:border-brand transition shadow-xs"
+                      >
+                        ⚡ Actividad primero
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lista Reordenable */}
+                  <div className="space-y-3">
+                    {(draft.overviewOrder || ['showcase', 'comments', 'animeList', 'activity']).map((sectionId, index, array) => {
+                      const def = SECTION_ORDER_METADATA[sectionId]
+                      if (!def) return null
+                      const Icon = def.icon
+                      const isFirst = index === 0
+                      const isLast = index === array.length - 1
+
+                      return (
+                        <div
+                          key={sectionId}
+                          className={`flex items-center justify-between gap-3 p-4 rounded-2xl border transition-all ${
+                            isFirst
+                              ? 'border-brand/40 bg-brand/[0.03] dark:bg-brand/[0.06] shadow-sm'
+                              : 'border-slate-200/80 bg-white/70 dark:bg-white/[0.02] dark:border-white/5'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            {/* Posición # */}
+                            <span
+                              className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl font-black text-xs ${
+                                isFirst
+                                  ? 'bg-brand text-white shadow-sm shadow-brand/30'
+                                  : 'bg-slate-200/70 text-slate-600 dark:bg-white/10 dark:text-slate-300'
+                              }`}
+                            >
+                              #{index + 1}
+                            </span>
+
+                            {/* Icono de la sección */}
+                            <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${def.bg} ${def.color}`}>
+                              <Icon size={18} />
+                            </span>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                                  {def.label}
+                                </h4>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${def.bg} ${def.color}`}>
+                                  {def.badge}
+                                </span>
+                                {isFirst && (
+                                  <span className="hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full font-bold bg-brand/10 text-brand border border-brand/20">
+                                    ⭐ Principal
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-0.5 text-xs text-slate-500 truncate">{def.desc}</p>
+                            </div>
+                          </div>
+
+                          {/* Botones de Reordenar (Arriba / Abajo) */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => moveSection(index, -1)}
+                              disabled={isFirst}
+                              aria-label={`Subir ${def.label}`}
+                              className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 transition hover:border-brand hover:text-brand disabled:opacity-30 disabled:pointer-events-none active:scale-95 shadow-xs"
+                            >
+                              <ArrowUp size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveSection(index, 1)}
+                              disabled={isLast}
+                              aria-label={`Bajar ${def.label}`}
+                              className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 transition hover:border-brand hover:text-brand disabled:opacity-30 disabled:pointer-events-none active:scale-95 shadow-xs"
+                            >
+                              <ArrowDown size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className="mt-4 rounded-xl bg-slate-100/60 dark:bg-white/[0.02] p-3 text-[11px] text-slate-500 border border-slate-200/60 dark:border-white/5">
+                    💡 <b>Privacidad inteligente:</b> Si tienes alguna sección marcada como «Privada» en la pestaña de Privacidad, los visitantes de tu perfil público directamente no la verán, y el resto de secciones mantendrán este orden preferido.
                   </div>
                 </section>
               </div>
@@ -885,6 +1094,38 @@ export default function ProfileEditor({ onClose }) {
                     {draft.status}
                   </div>
                 )}
+
+                {/* Mini lista de orden de secciones */}
+                <div className="mt-3 pt-3 border-t border-slate-200/70 dark:border-white/10">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 flex items-center justify-between">
+                    <span>Orden de Secciones</span>
+                    <span className="text-brand font-bold">#1 a #4</span>
+                  </p>
+                  <div className="space-y-1">
+                    {(draft.overviewOrder || ['showcase', 'comments', 'animeList', 'activity']).map((id, idx) => {
+                      const def = SECTION_ORDER_METADATA[id]
+                      if (!def) return null
+                      const Icon = def.icon
+                      return (
+                        <div
+                          key={id}
+                          className={`flex items-center justify-between px-2 py-1 rounded-md text-[11px] font-semibold ${
+                            idx === 0
+                              ? 'bg-brand/10 text-brand border border-brand/20'
+                              : 'bg-slate-100/70 dark:bg-white/5 text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="text-[9px] font-black text-slate-400">#{idx + 1}</span>
+                            <Icon size={11} className={idx === 0 ? 'text-brand' : 'text-slate-400'} />
+                            <span className="truncate">{def.label}</span>
+                          </div>
+                          {idx === 0 && <span className="text-[8px] font-black uppercase text-brand">Top</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
 

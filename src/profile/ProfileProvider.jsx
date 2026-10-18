@@ -47,6 +47,9 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
         profileTheme: (loaded.profile.profileTheme && loaded.profile.profileTheme !== 'default') ? loaded.profile.profileTheme : (local.profileTheme || 'default'),
         featuredQuote: loaded.profile.featuredQuote || local.featuredQuote || '',
         featuredReview: loaded.profile.featuredReview || local.featuredReview || '',
+        overviewOrder: (Array.isArray(loaded.profile.overviewOrder) && loaded.profile.overviewOrder.length > 0)
+          ? loaded.profile.overviewOrder
+          : (Array.isArray(local.overviewOrder) && local.overviewOrder.length > 0 ? local.overviewOrder : DEFAULT_PROFILE.overviewOrder),
         animeList: mergedAnimeList,
         customLists: mergedCustomLists,
         activity: mergedActivity,
@@ -111,6 +114,7 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
         profileTheme: safeNext.profileTheme,
         featuredQuote: safeNext.featuredQuote,
         featuredReview: safeNext.featuredReview,
+        overviewOrder: safeNext.overviewOrder,
         animeList: remoteAnimeList,
         customLists: remoteCustomLists,
         activity: remoteActivity,

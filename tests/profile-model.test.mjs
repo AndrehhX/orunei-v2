@@ -128,3 +128,21 @@ test('supports and normalizes steam-style profile customization (frames, themes,
   assert.equal(invalid.featuredQuote.length, 140)
 })
 
+test('normalizes customizable overview section order', () => {
+  const base = createProfile({ name: 'Alex' })
+  assert.deepEqual(base.overviewOrder, ['showcase', 'comments', 'animeList', 'activity'])
+
+  // Reordenamiento válido
+  const reordered = normalizeProfile({
+    overviewOrder: ['comments', 'showcase', 'activity', 'animeList'],
+  }, { name: 'Alex' })
+  assert.deepEqual(reordered.overviewOrder, ['comments', 'showcase', 'activity', 'animeList'])
+
+  // Lista con valores inválidos o faltantes se limpia y preserva todos los items requeridos
+  const partial = normalizeProfile({
+    overviewOrder: ['activity', 'unknown_section', 'comments'],
+  }, { name: 'Alex' })
+  assert.deepEqual(partial.overviewOrder, ['activity', 'comments', 'showcase', 'animeList'])
+})
+
+

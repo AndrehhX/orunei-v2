@@ -12,6 +12,7 @@ import { markAnimeWatched } from '../profile/model.js'
 import AvatarFrame from './AvatarFrame'
 import ProfileThemeBackground from './ProfileThemeBackground'
 import ProfileShowcase from './ProfileShowcase'
+import ProfileComments from './ProfileComments'
 
 const tabs = [
   ['overview', 'Resumen', Sparkles],
@@ -222,126 +223,163 @@ export default function ProfilePage({ onEdit, onOpenDonation }) {
       {[...tabs].sort(([a], [b]) => (profile.pinnedSections.includes(a) ? 0 : 1) - (profile.pinnedSections.includes(b) ? 0 : 1)).map(([id, label, Icon]) => <button key={id} onClick={() => setActive(id)} aria-pressed={active === id} className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${active === id ? 'bg-brand text-white shadow-md shadow-brand/25' : 'text-slate-500 hover:bg-slate-100 hover:text-brand dark:hover:bg-white/10'}`}><Icon size={15} />{label}</button>)}
     </nav>
 
-    {active === 'overview' && <div className="space-y-5">
-      {/* Vitrina de Obra Maestra (Showcase estilo Steam) */}
-      <ProfileShowcase
-        profile={profile}
-        library={profileLibrary}
-        isOwner
-        onEdit={onEdit}
-      />
+    {active === 'overview' && (
+      <div className="space-y-5">
+        {(profile.overviewOrder || ['showcase', 'comments', 'animeList', 'activity']).map((sectionId) => {
+          if (sectionId === 'showcase') {
+            return (
+              <ProfileShowcase
+                key="showcase"
+                profile={profile}
+                library={profileLibrary}
+                isOwner
+                onEdit={onEdit}
+              />
+            )
+          }
 
-      {/* Espacio privado de anime */}
-      <section className="card p-5 min-w-0">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold">Tu espacio de anime</h2>
-            <p className="text-xs text-slate-500">Una vista privada de lo que estás viendo.</p>
-          </div>
-          <button onClick={() => setActive('animelist')} className="text-xs font-semibold text-brand hover:underline">
-            Ver AnimeList <ChevronRight className="inline" size={14} />
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-          {groups.map(([id, label, Icon, color]) => (
-            <button
-              key={id}
-              onClick={() => setActive('animelist')}
-              className="rounded-2xl border border-slate-200/80 p-3 text-left transition hover:-translate-y-0.5 hover:border-brand/40 dark:border-white/10 min-w-0"
-            >
-              <Icon size={17} className={color} />
-              <p className="mt-3 text-2xl font-extrabold">{sections[id].length}</p>
-              <p className="text-xs text-slate-500 truncate" title={label}>{label}</p>
-            </button>
-          ))}
-        </div>
-      </section>
-      <section className="card p-5 lg:col-span-3 min-w-0">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 pb-4 dark:border-white/10">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-bold">Tus gustos & Algoritmo</h2>
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-bold text-brand">
-                <Sparkles size={12} className="text-brand" /> {metrics.archetype}
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              Estadísticas dinámicas sincronizadas con lo que ves, guardas en biblioteca, completas y marcas con me gusta.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 rounded-xl bg-slate-100 px-3.5 py-2 text-xs dark:bg-white/5">
-            <span className="text-slate-500">Calibración:</span>
-            <span className="font-extrabold text-brand">{metrics.calibrationPct}%</span>
-            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-              {metrics.calibrationLabel}
-            </span>
-          </div>
-        </div>
-
-        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-3.5 dark:border-white/5 dark:bg-white/5">
-            <p className="text-[11px] font-medium text-slate-500">Episodios vistos</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-800 dark:text-white">{metrics.totalEpisodes}</p>
-            <p className="mt-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Progreso activo</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-3.5 dark:border-white/5 dark:bg-white/5">
-            <p className="text-[11px] font-medium text-slate-500">Horas de anime</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-800 dark:text-white">~{metrics.watchHours} <span className="text-xs font-normal text-slate-500">hrs</span></p>
-            <p className="mt-1 text-[10px] text-slate-400">Estimado en Orunei</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-3.5 dark:border-white/5 dark:bg-white/5">
-            <p className="text-[11px] font-medium text-slate-500">Tasa de finalización</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-800 dark:text-white">{metrics.completionRate}%</p>
-            <p className="mt-1 text-[10px] font-semibold text-brand">{metrics.completedCount} completadas</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-3.5 dark:border-white/5 dark:bg-white/5">
-            <p className="text-[11px] font-medium text-slate-500">Género dominante</p>
-            <p className="mt-1 truncate text-lg font-extrabold text-brand">{metrics.dominantGenre}</p>
-            <p className="mt-1 text-[10px] text-slate-400">Afinidad principal</p>
-          </div>
-        </div>
-
-        {tasteGenres.length ? (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-              <span>Distribución de afinidad de géneros</span>
-              <span>Porcentaje relativo</span>
-            </div>
-            {tasteGenres.map((genre, idx) => (
-              <div key={genre.name} className="group">
-                <div className="mb-1.5 flex justify-between text-xs">
-                  <span className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                    <span className="grid h-4 w-4 place-items-center rounded bg-brand/10 text-[10px] font-bold text-brand">
-                      {idx + 1}
-                    </span>
-                    {genre.name}
-                  </span>
-                  <span className="text-slate-500">
-                    {genre.count} {genre.count === 1 ? 'obra' : 'obras'} · <b className="text-brand font-bold">{genre.pct}%</b>
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-200/70 dark:bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-brand via-purple-500 to-pink-400 transition-all duration-700 ease-spring"
-                    style={{ width: `${genre.pct}%` }}
-                  />
-                </div>
+          if (sectionId === 'comments') {
+            return (
+              <div key="comments">
+                <ProfileComments profile={profile} viewer={{ id: profile.id, profileId: profile.id, isOwner: true }} />
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center dark:border-white/10">
-            <p className="font-semibold text-slate-700 dark:text-slate-300">Algoritmo en fase inicial</p>
-            <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-slate-500">
-              {profileLibrary.length
-                ? 'Reproduce un episodio o marca como favoritos para que el motor calibre tus estadísticas.'
-                : 'Añade animes a tu AnimeList, reprodúcelos o dales "Me gusta" para ver tus estadísticas en tiempo real.'}
-            </p>
-          </div>
-        )}
-      </section>
-      <section className="card p-5 lg:col-span-3 min-w-0"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-bold">Actividad reciente</h2><button onClick={() => setActive('activity')} className="text-xs font-semibold text-brand">Ver todo <ChevronRight className="inline" size={14} /></button></div><ActivityList activity={activity.slice(0, 3)} /></section>
-    </div>}
+            )
+          }
+
+          if (sectionId === 'animeList') {
+            return (
+              <div key="animeList" className="space-y-5">
+                {/* Espacio privado de anime */}
+                <section className="card p-5 min-w-0">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-bold">Tu espacio de anime</h2>
+                      <p className="text-xs text-slate-500">Una vista privada de lo que estás viendo.</p>
+                    </div>
+                    <button onClick={() => setActive('animelist')} className="text-xs font-semibold text-brand hover:underline">
+                      Ver AnimeList <ChevronRight className="inline" size={14} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+                    {groups.map(([id, label, Icon, color]) => (
+                      <button
+                        key={id}
+                        onClick={() => setActive('animelist')}
+                        className="rounded-2xl border border-slate-200/80 p-3 text-left transition hover:-translate-y-0.5 hover:border-brand/40 dark:border-white/10 min-w-0"
+                      >
+                        <Icon size={17} className={color} />
+                        <p className="mt-3 text-2xl font-extrabold">{sections[id].length}</p>
+                        <p className="text-xs text-slate-500 truncate" title={label}>{label}</p>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <section className="card p-5 lg:col-span-3 min-w-0">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 pb-4 dark:border-white/10">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-lg font-bold">Tus gustos & Algoritmo</h2>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-bold text-brand">
+                          <Sparkles size={12} className="text-brand" /> {metrics.archetype}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Estadísticas dinámicas sincronizadas con lo que ves, guardas en biblioteca, completas y marcas con me gusta.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-xl bg-slate-100 px-3.5 py-2 text-xs dark:bg-white/5">
+                      <span className="text-slate-500">Calibración:</span>
+                      <span className="font-extrabold text-brand">{metrics.calibrationPct}%</span>
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        {metrics.calibrationLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-3.5 dark:border-white/5 dark:bg-white/5">
+                      <p className="text-[11px] font-medium text-slate-500">Episodios vistos</p>
+                      <p className="mt-1 text-2xl font-extrabold text-slate-800 dark:text-white">{metrics.totalEpisodes}</p>
+                      <p className="mt-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Progreso activo</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-3.5 dark:border-white/5 dark:bg-white/5">
+                      <p className="text-[11px] font-medium text-slate-500">Horas de anime</p>
+                      <p className="mt-1 text-2xl font-extrabold text-slate-800 dark:text-white">~{metrics.watchHours} <span className="text-xs font-normal text-slate-500">hrs</span></p>
+                      <p className="mt-1 text-[10px] text-slate-400">Estimado en Orunei</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-3.5 dark:border-white/5 dark:bg-white/5">
+                      <p className="text-[11px] font-medium text-slate-500">Tasa de finalización</p>
+                      <p className="mt-1 text-2xl font-extrabold text-slate-800 dark:text-white">{metrics.completionRate}%</p>
+                      <p className="mt-1 text-[10px] font-semibold text-brand">{metrics.completedCount} completadas</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/70 bg-slate-50/50 p-3.5 dark:border-white/5 dark:bg-white/5">
+                      <p className="text-[11px] font-medium text-slate-500">Género dominante</p>
+                      <p className="mt-1 truncate text-lg font-extrabold text-brand">{metrics.dominantGenre}</p>
+                      <p className="mt-1 text-[10px] text-slate-400">Afinidad principal</p>
+                    </div>
+                  </div>
+
+                  {tasteGenres.length ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+                        <span>Distribución de afinidad de géneros</span>
+                        <span>Porcentaje relativo</span>
+                      </div>
+                      {tasteGenres.map((genre, idx) => (
+                        <div key={genre.name} className="group">
+                          <div className="mb-1.5 flex justify-between text-xs">
+                            <span className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                              <span className="grid h-4 w-4 place-items-center rounded bg-brand/10 text-[10px] font-bold text-brand">
+                                {idx + 1}
+                              </span>
+                              {genre.name}
+                            </span>
+                            <span className="text-slate-500">
+                              {genre.count} {genre.count === 1 ? 'obra' : 'obras'} · <b className="text-brand font-bold">{genre.pct}%</b>
+                            </span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-slate-200/70 dark:bg-white/10">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-brand via-purple-500 to-pink-400 transition-all duration-700 ease-spring"
+                              style={{ width: `${genre.pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center dark:border-white/10">
+                      <p className="font-semibold text-slate-700 dark:text-slate-300">Algoritmo en fase inicial</p>
+                      <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-slate-500">
+                        {profileLibrary.length
+                          ? 'Reproduce un episodio o marca como favoritos para que el motor calibre tus estadísticas.'
+                          : 'Añade animes a tu AnimeList, reprodúcelos o dales "Me gusta" para ver tus estadísticas en tiempo real.'}
+                      </p>
+                    </div>
+                  )}
+                </section>
+              </div>
+            )
+          }
+
+          if (sectionId === 'activity') {
+            return (
+              <section key="activity" className="card p-5 lg:col-span-3 min-w-0">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-lg font-bold">Actividad reciente</h2>
+                  <button onClick={() => setActive('activity')} className="text-xs font-semibold text-brand">
+                    Ver todo <ChevronRight className="inline" size={14} />
+                  </button>
+                </div>
+                <ActivityList activity={activity.slice(0, 3)} />
+              </section>
+            )
+          }
+
+          return null
+        })}
+      </div>
+    )}
 
     {active === 'animelist' && <section className="space-y-5"><div><h2 className="text-2xl font-extrabold">AnimeList</h2><p className="text-sm text-slate-500">Tu biblioteca organizada por estado.</p></div>{groups.map(([id, label, Icon, color]) => <section key={id}><div className="mb-3 flex items-center gap-2"><Icon size={17} className={color} /><h3 className="font-bold">{label}</h3><span className="text-xs text-slate-500">{sections[id].length}</span></div>{sections[id].length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">{sections[id].map((item) => <AnimeCard key={item.q} item={item} onStatusChange={changeAnimeStatus} onMarkWatched={markWatched} onToggleFavorite={toggleFavorite} />)}</div> : <EmptyState title={`No tienes títulos en “${label}”`} detail="Cuando actualices tu biblioteca aparecerán aquí." />}</section>)}</section>}
 

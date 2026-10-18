@@ -32,6 +32,8 @@ export const PROFILE_THEMES = [
   { id: 'night-torii', label: 'Noche de Torii Zen', desc: 'Luna mística y luciérnagas flotando en la serenidad', color: '#38bdf8' },
 ]
 
+export const DEFAULT_OVERVIEW_ORDER = ['showcase', 'comments', 'animeList', 'activity']
+
 export const DEFAULT_PROFILE = {
   version: 1,
   displayName: 'Usuario de Orunei',
@@ -47,6 +49,7 @@ export const DEFAULT_PROFILE = {
   featuredAnimeId: '',
   featuredQuote: '',
   featuredReview: '',
+  overviewOrder: ['showcase', 'comments', 'animeList', 'activity'],
   pinnedSections: ['overview', 'animelist', 'favorites'],
   landingSection: 'overview',
   privacy: {
@@ -239,6 +242,12 @@ export function normalizeProfile(raw, user = {}) {
     featuredAnimeId: text(source.featuredAnimeId),
     featuredQuote: text(source.featuredQuote).slice(0, 140),
     featuredReview: text(source.featuredReview).slice(0, 400),
+    overviewOrder: (() => {
+      const defaultOrder = ['showcase', 'comments', 'animeList', 'activity']
+      const raw = Array.isArray(source.overviewOrder) ? source.overviewOrder : defaultOrder
+      const valid = raw.filter((id) => defaultOrder.includes(id))
+      return [...new Set([...valid, ...defaultOrder])]
+    })(),
     pinnedSections: pinned.length ? pinned : [...base.pinnedSections],
     landingSection: PROFILE_SECTIONS.includes(source.landingSection) ? source.landingSection : base.landingSection,
     privacy: normalizePrivacy(source.privacy),

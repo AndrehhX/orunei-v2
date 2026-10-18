@@ -143,46 +143,170 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
         </div>
       </section>
 
-      {active === 'overview' && <ProfileComments profile={profile} viewer={viewer} />}
+      <nav className="scroll-hide flex gap-1 overflow-x-auto rounded-2xl bg-white/70 p-1.5 shadow-sm dark:bg-white/5" aria-label="Secciones públicas del perfil">
+        {availableTabs.map(([id, label, Icon]) => (
+          <button
+            key={id}
+            onClick={() => setActive(id)}
+            aria-pressed={active === id}
+            className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${
+              active === id
+                ? 'bg-brand text-white shadow-md shadow-brand/25'
+                : 'text-slate-500 hover:bg-slate-100 hover:text-brand dark:hover:bg-white/10'
+            }`}
+          >
+            <Icon size={15} />
+            {label}
+          </button>
+        ))}
+      </nav>
 
-      <nav className="scroll-hide flex gap-1 overflow-x-auto rounded-2xl bg-white/70 p-1.5 shadow-sm dark:bg-white/5" aria-label="Secciones públicas del perfil">{availableTabs.map(([id, label, Icon]) => <button key={id} onClick={() => setActive(id)} aria-pressed={active === id} className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${active === id ? 'bg-brand text-white shadow-md shadow-brand/25' : 'text-slate-500 hover:bg-slate-100 hover:text-brand dark:hover:bg-white/10'}`}><Icon size={15} />{label}</button>)}</nav>
+      {/* Renderizado de secciones ordenables en el Resumen / Overview */}
+      {active === 'overview' && (
+        <div className="space-y-5">
+          {(profile.overviewOrder || ['showcase', 'comments', 'animeList', 'activity']).map((sectionId) => {
+            if (sectionId === 'showcase') {
+              const canShowShowcase = profile.visibility === 'public' || visibility.visibleSections.includes('favorites') || profile.featuredAnimeId || profile.featuredQuote
+              if (!canShowShowcase) return null
+              return (
+                <ProfileShowcase
+                  key="showcase"
+                  profile={profile}
+                  library={library}
+                  isOwner={false}
+                />
+              )
+            }
 
-      {active === 'overview' && <div className="space-y-5">
-        {/* Vitrina de Obra Maestra (Showcase estilo Steam) */}
-        {(profile.visibility === 'public' || visibility.visibleSections.includes('favorites') || profile.featuredAnimeId || profile.featuredQuote) && (
-          <ProfileShowcase
-            profile={profile}
-            library={library}
-            isOwner={false}
-          />
-        )}
+            if (sectionId === 'comments') {
+              return (
+                <div key="comments">
+                  {active === 'overview' && <ProfileComments profile={profile} viewer={viewer} />}
+                </div>
+              )
+            }
 
-        {/* AnimeList compartido */}
-        <section className="card p-5 min-w-0">
-          <div className="mb-4">
-            <h2 className="text-lg font-bold">AnimeList compartido</h2>
-            <p className="text-xs text-slate-500">Lo que este perfil ha decidido mostrar.</p>
-          </div>
-          {visibility.visibleSections.includes('animeList') ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {groups.map(([id, label, color]) => (
-                <div key={id} className="rounded-2xl border border-slate-200/80 p-3 dark:border-white/10 min-w-0">
-                  <span className={`text-xs font-semibold ${color}`}>●</span>
-                  <p className="mt-3 text-2xl font-extrabold">{sections[id].length}</p>
-                  <p className="text-xs text-slate-500 truncate" title={label}>{label}</p>
+            if (sectionId === 'animeList') {
+              // Directamente no se muestra si está privado
+              if (!visibility.visibleSections.includes('animeList')) return null
+              return (
+                <section key="animeList" className="card p-5 min-w-0">
+                  <div className="mb-4">
+                    <h2 className="text-lg font-bold">AnimeList compartido</h2>
+                    <p className="text-xs text-slate-500">Lo que este perfil ha decidido mostrar.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    {groups.map(([id, label, color]) => (
+                      <div key={id} className="rounded-2xl border border-slate-200/80 p-3 dark:border-white/10 min-w-0">
+                        <span className={`text-xs font-semibold ${color}`}>●</span>
+                        <p className="mt-3 text-2xl font-extrabold">{sections[id].length}</p>
+                        <p className="text-xs text-slate-500 truncate" title={label}>{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )
+            }
+
+            if (sectionId === 'activity') {
+              // Directamente no se muestra si está privado o vacío
+              if (!visibility.visibleSections.includes('activity') || !profile.activity?.length) return null
+              return (
+                <section key="activity" className="card p-5 min-w-0">
+                  <div className="mb-4">
+                    <h2 className="text-lg font-bold">Actividad reciente</h2>
+                    <p className="text-xs text-slate-500">Últimos movimientos compartidos.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {profile.activity.slice(0, 5).map((item) => (
+                      <div key={item.id} className="flex items-start gap-3 rounded-xl bg-white/60 p-3 dark:bg-white/5">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
+                          <Activity size={15} />
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium">{item.label}</p>
+                          <p className="mt-0.5 text-[11px] text-slate-500">{new Date(item.at).toLocaleDateString('es-GT')}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )
+            }
+
+            return null
+          })}
+        </div>
+      )}
+
+      {/* Pestañas individuales directas: nunca muestran cajas 'Restricted', simplemente no se despliegan si son privadas */}
+      {active === 'animeList' && visibility.visibleSections.includes('animeList') && (
+        <section className="space-y-5">
+          <div><h2 className="text-2xl font-extrabold">AnimeList</h2><p className="text-sm text-slate-500">La biblioteca que este perfil comparte.</p></div>
+          {groups.map(([id, label]) => (
+            <section key={id}>
+              <div className="mb-3 flex items-center gap-2">
+                <h3 className="font-bold">{label}</h3>
+                <span className="text-xs text-slate-500">{sections[id].length}</span>
+              </div>
+              {sections[id].length ? (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
+                  {sections[id].map((item) => <AnimeCard key={item.q} item={item} />)}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">No hay títulos compartidos en esta sección.</p>
+              )}
+            </section>
+          ))}
+        </section>
+      )}
+
+      {active === 'favorites' && visibility.visibleSections.includes('favorites') && (
+        <section>
+          <div className="mb-5"><h2 className="text-2xl font-extrabold">Favoritos</h2><p className="text-sm text-slate-500">Las historias que este perfil ha elegido compartir.</p></div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">{sections.favorites.map((item) => <AnimeCard key={item.q} item={item} />)}</div>
+        </section>
+      )}
+
+      {active === 'lists' && visibility.visibleSections.includes('lists') && (
+        <section>
+          <div className="mb-5"><h2 className="text-2xl font-extrabold">Listas</h2><p className="text-sm text-slate-500">Colecciones compartidas por este perfil.</p></div>
+          {profile.customLists?.length ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {profile.customLists.map((list) => (
+                <article key={list.id} className="card p-5" style={{ borderColor: `${list.accent}55` }}>
+                  <h3 className="font-bold">{list.title}</h3>
+                  <p className="mt-1 text-xs text-slate-500">{list.description || 'Sin descripción'}</p>
+                  <p className="mt-4 text-xs text-slate-500">{list.animeIds?.length || 0} obras</p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">Este perfil todavía no comparte listas.</p>
+          )}
+        </section>
+      )}
+
+      {active === 'activity' && visibility.visibleSections.includes('activity') && (
+        <section>
+          <div className="mb-5"><h2 className="text-2xl font-extrabold">Actividad</h2><p className="text-sm text-slate-500">Actividad que este perfil decidió compartir.</p></div>
+          {profile.activity?.length ? (
+            <div className="space-y-2">
+              {profile.activity.slice().reverse().map((item) => (
+                <div key={item.id} className="flex items-start gap-3 rounded-xl bg-white/60 p-3 dark:bg-white/5">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand"><Activity size={15} /></span>
+                  <div>
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">{new Date(item.at).toLocaleDateString('es-GT')}</p>
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
-            <Restricted section="su AnimeList" />
+            <p className="text-sm text-slate-500">Este perfil todavía no comparte actividad.</p>
           )}
         </section>
-      </div>}
-
-      {active === 'animeList' && (visibility.visibleSections.includes('animeList') ? <section className="space-y-5"><div><h2 className="text-2xl font-extrabold">AnimeList</h2><p className="text-sm text-slate-500">La biblioteca que este perfil comparte.</p></div>{groups.map(([id, label]) => <section key={id}><div className="mb-3 flex items-center gap-2"><h3 className="font-bold">{label}</h3><span className="text-xs text-slate-500">{sections[id].length}</span></div>{sections[id].length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">{sections[id].map((item) => <AnimeCard key={item.q} item={item} />)}</div> : <p className="text-sm text-slate-500">No hay títulos compartidos en esta sección.</p>}</section>)}</section> : <Restricted section="su AnimeList" />)}
-      {active === 'favorites' && (visibility.visibleSections.includes('favorites') ? <section><div className="mb-5"><h2 className="text-2xl font-extrabold">Favoritos</h2><p className="text-sm text-slate-500">Las historias que este perfil ha elegido compartir.</p></div><div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">{sections.favorites.map((item) => <AnimeCard key={item.q} item={item} />)}</div></section> : <Restricted section="sus favoritos" />)}
-      {active === 'lists' && (visibility.visibleSections.includes('lists') ? <section><div className="mb-5"><h2 className="text-2xl font-extrabold">Listas</h2><p className="text-sm text-slate-500">Colecciones compartidas por este perfil.</p></div>{profile.customLists.length ? <div className="grid gap-4 md:grid-cols-2">{profile.customLists.map((list) => <article key={list.id} className="card p-5" style={{ borderColor: `${list.accent}55` }}><h3 className="font-bold">{list.title}</h3><p className="mt-1 text-xs text-slate-500">{list.description || 'Sin descripción'}</p><p className="mt-4 text-xs text-slate-500">{list.animeIds.length} obras</p></article>)}</div> : <p className="text-sm text-slate-500">Este perfil todavía no comparte listas.</p>}</section> : <Restricted section="sus listas" />)}
-      {active === 'activity' && (visibility.visibleSections.includes('activity') ? <section><div className="mb-5"><h2 className="text-2xl font-extrabold">Actividad</h2><p className="text-sm text-slate-500">Actividad que este perfil decidió compartir.</p></div>{profile.activity?.length ? <div className="space-y-2">{profile.activity.slice().reverse().map((item) => <div key={item.id} className="flex items-start gap-3 rounded-xl bg-white/60 p-3 dark:bg-white/5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand"><Activity size={15} /></span><div><p className="text-sm font-medium">{item.label}</p><p className="mt-0.5 text-[11px] text-slate-500">{new Date(item.at).toLocaleDateString('es-GT')}</p></div></div>)}</div> : <p className="text-sm text-slate-500">Este perfil todavía no comparte actividad.</p>}</section> : <Restricted section="su actividad" />)}
+      )}
     </div>
   </div>
 }
