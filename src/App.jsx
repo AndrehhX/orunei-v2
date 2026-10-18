@@ -16,6 +16,7 @@ import { Library, Because, News } from './components/Rows'
 import { ProfileProvider, useProfile } from './profile/ProfileProvider'
 import DevelopmentNotice from './components/DevelopmentNotice'
 import OruneiLogo from './components/OruneiLogo'
+import AvatarFrame from './components/AvatarFrame'
 import AppSplash from './components/AppSplash'
 import SakuraPetals from './components/SakuraPetals'
 import { getPageScrollReset } from './ui/pageNavigation.js'
@@ -117,9 +118,13 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, theme = (dar
         type="button"
         onClick={onOpenProfile}
         aria-label="Ver perfil"
-        className="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-slate-600 to-slate-900 text-xs sm:text-sm font-bold text-white transition hover:ring-2 hover:ring-brand/50 active:scale-95"
+        className="shrink-0 transition hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
-        {profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : profile.displayName.slice(0, 1).toUpperCase()}
+        <AvatarFrame
+          profile={profile}
+          frameId={profile.avatarFrame}
+          size="sm"
+        />
       </button>
     </header>
   )

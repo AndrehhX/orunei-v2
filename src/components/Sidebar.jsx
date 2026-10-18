@@ -3,6 +3,7 @@ import { getMainDestination } from '../profile/navigation'
 import { useProfile } from '../profile/ProfileProvider'
 import { isNativeApp } from '../offline/platform'
 import OruneiLogo from './OruneiLogo'
+import AvatarFrame from './AvatarFrame'
 
 const main = [['Para ti', Home], ['Biblioteca', Library], ['Perfil', User], ['Amigos', Users]]
 const explore = [['Anime', Sparkles], ['Películas', Film], ['Series', MonitorPlay]]
@@ -90,7 +91,11 @@ export default function Sidebar({ dark, setDark, theme = (dark ? 'dark' : 'light
           </button>
         </div>
         <div className="flex items-center gap-3 border-t border-slate-200 dark:border-white/10 pt-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-slate-600 to-slate-900 text-sm font-bold text-white">{profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : profile.displayName.slice(0, 1).toUpperCase()}</div>
+          <AvatarFrame
+            profile={profile}
+            frameId={profile.avatarFrame}
+            size="sm"
+          />
           <div className="leading-tight"><p className="max-w-[90px] truncate font-bold text-sm">{profile.displayName || user.name}</p><p className="max-w-[90px] truncate text-xs text-slate-500">@{profile.username}</p></div>
           <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className="ml-auto grid h-8 w-8 place-items-center rounded-full text-slate-500 transition hover:bg-red-500/10 hover:text-red-500"><LogOut size={17} /></button>
         </div>

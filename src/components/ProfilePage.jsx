@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Activity, ArrowDown, ArrowUp, BookOpen, Check, ChevronRight, Eye, Heart, List, LockKeyhole, Pencil, PlayCircle, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { Activity, ArrowDown, ArrowUp, BookOpen, Check, ChevronRight, Eye, Globe, Heart, List, LockKeyhole, Pencil, PlayCircle, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import Poster from './Poster'
 import PublicProfilePage from './PublicProfilePage'
 import ProfileAnimeListManager from './ProfileAnimeListManager'
@@ -52,8 +52,20 @@ function Banner({ src, className = '' }) {
 function AnimeCard({ item, onStatusChange, onMarkWatched, onToggleFavorite }) {
   return <article className="group min-w-0">
     <Poster {...item} title={item.t} className="aspect-[3/3.7] rounded-2xl shadow-sm transition duration-500 ease-spring group-hover:-translate-y-1 group-hover:shadow-xl" />
-    <p className="mt-2 truncate text-sm font-bold">{item.t}</p>
-    <div className="mt-1 flex items-center gap-2"><select value={item.status || 'planned'} onChange={(event) => onStatusChange?.(item.id, event.target.value)} className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-transparent px-1.5 py-1 text-[10px] text-slate-500 outline-none dark:border-white/10"><option value="watching">Viendo</option><option value="planned">Planeo ver</option><option value="paused">En pausa</option><option value="completed">Terminado</option></select><button onClick={() => onToggleFavorite?.(item.id)} aria-label={item.favorite ? 'Quitar de favoritos' : 'Marcar como favorito'} className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg transition ${item.favorite ? 'bg-pink-500 text-white' : 'bg-slate-100 text-slate-400 dark:bg-white/10'}`}><Heart size={13} className={item.favorite ? 'fill-white' : ''} /></button></div>
+    <p className="mt-2 truncate text-sm font-bold text-slate-800 dark:text-slate-100">{item.t}</p>
+    <div className="mt-1 flex items-center gap-2">
+      <select
+        value={item.status || 'planned'}
+        onChange={(event) => onStatusChange?.(item.id, event.target.value)}
+        className="min-w-0 flex-1 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151522] px-1.5 py-1 text-[10px] font-semibold text-slate-700 dark:text-slate-200 outline-none"
+      >
+        <option value="watching" className="bg-white dark:bg-[#151522] text-slate-900 dark:text-slate-100">Viendo</option>
+        <option value="planned" className="bg-white dark:bg-[#151522] text-slate-900 dark:text-slate-100">Planeo ver</option>
+        <option value="paused" className="bg-white dark:bg-[#151522] text-slate-900 dark:text-slate-100">En pausa</option>
+        <option value="completed" className="bg-white dark:bg-[#151522] text-slate-900 dark:text-slate-100">Terminado</option>
+      </select>
+      <button onClick={() => onToggleFavorite?.(item.id)} aria-label={item.favorite ? 'Quitar de favoritos' : 'Marcar como favorito'} className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg transition ${item.favorite ? 'bg-pink-500 text-white' : 'bg-slate-100 text-slate-400 dark:bg-white/10'}`}><Heart size={13} className={item.favorite ? 'fill-white' : ''} /></button>
+    </div>
     {item.status !== 'completed' && <button onClick={() => onMarkWatched?.(item.id)} className="mt-2 inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600 transition hover:bg-emerald-500 hover:text-white"><Check size={12} />Marcar visto</button>}
   </article>
 }
@@ -155,9 +167,15 @@ export default function ProfilePage({ onEdit, onOpenDonation }) {
               <h1 className="min-w-0 break-words text-2xl font-black tracking-tight md:text-3xl bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                 {profile.displayName}
               </h1>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shadow-xs">
-                <LockKeyhole size={11} /> Solo tú
-              </span>
+              {profile.visibility === 'public' ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand/15 border border-brand/30 px-2.5 py-0.5 text-[10px] font-bold text-brand shadow-xs">
+                  <Globe size={11} /> Perfil público
+                </span>
+              ) : (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 shadow-xs">
+                  <LockKeyhole size={11} /> Perfil privado
+                </span>
+              )}
             </div>
             <p className="truncate text-xs sm:text-sm font-semibold text-slate-400">@{profile.username}</p>
           </div>
