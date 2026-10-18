@@ -9,6 +9,9 @@ import { addAnimeToList, createCustomList, deleteCustomList, moveCustomList, rem
 import { getProfileLayoutClasses } from '../ui/profileLayout.js'
 import { getAnime } from '../api/anime'
 import { markAnimeWatched } from '../profile/model.js'
+import AvatarFrame from './AvatarFrame'
+import ProfileThemeBackground from './ProfileThemeBackground'
+import ProfileShowcase from './ProfileShowcase'
 
 const tabs = [
   ['overview', 'Resumen', Sparkles],
@@ -26,13 +29,15 @@ const groups = [
 ]
 
 function Avatar({ profile, large = false }) {
-  const isGif = typeof profile?.avatar === 'string' && (profile.avatar.toLowerCase().includes('.gif') || profile.avatar.startsWith('data:image/gif'))
-  return <div className={`relative ${large ? 'h-24 w-24 sm:h-28 sm:w-28' : 'h-10 w-10'} ${large ? getProfileLayoutClasses().avatar : ''} group`}>
-    <div className="h-full w-full overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 via-brand/30 to-slate-900 shadow-xl dark:border-[#171723] ring-2 ring-brand/40 transition-transform duration-300 group-hover:scale-105">
-      {profile.avatar ? <img src={profile.avatar} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center text-2xl font-bold text-white">{profile.displayName.slice(0, 1).toUpperCase()}</span>}
+  return (
+    <div className={`relative ${large ? getProfileLayoutClasses().avatar : ''} group`}>
+      <AvatarFrame
+        profile={profile}
+        frameId={profile?.avatarFrame}
+        size={large ? 'lg' : 'sm'}
+      />
     </div>
-    {isGif && <span className="absolute bottom-0 right-0 px-1.5 py-0.2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-[8px] font-black uppercase text-white shadow-md border border-white/50 dark:border-slate-900 animate-pulse">GIF</span>}
-  </div>
+  )
 }
 
 function Banner({ src, className = '' }) {
@@ -130,9 +135,10 @@ export default function ProfilePage({ onEdit, onOpenDonation }) {
   return <div className={`${layout.shell} space-y-5 pb-10 animate-fade`}>
     {storageError && <p role="alert" className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600">{storageError}</p>}
     <ProfileAnimeListManager visible={active === 'animelist'} />
-    <section className="overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-lg shadow-black/5 dark:border-white/10 dark:bg-[#141523] transition-all">
-      <Banner src={profile.banner} className="h-36 bg-cover bg-center sm:h-44 lg:h-52" />
-      <div className="min-w-0 px-5 pb-6 md:px-8">
+    <section className="relative overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-lg shadow-black/5 dark:border-white/10 dark:bg-[#141523] transition-all">
+      <ProfileThemeBackground themeId={profile.profileTheme} />
+      <Banner src={profile.banner} className="h-36 bg-cover bg-center sm:h-44 lg:h-52 relative z-10" />
+      <div className="relative z-10 min-w-0 px-5 pb-6 md:px-8">
         <div className="-mt-14 flex min-w-0 flex-wrap items-end gap-4 md:-mt-16">
           <Avatar profile={profile} large />
           <div className={layout.identity}>
@@ -189,11 +195,20 @@ export default function ProfilePage({ onEdit, onOpenDonation }) {
       {[...tabs].sort(([a], [b]) => (profile.pinnedSections.includes(a) ? 0 : 1) - (profile.pinnedSections.includes(b) ? 0 : 1)).map(([id, label, Icon]) => <button key={id} onClick={() => setActive(id)} aria-pressed={active === id} className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${active === id ? 'bg-brand text-white shadow-md shadow-brand/25' : 'text-slate-500 hover:bg-slate-100 hover:text-brand dark:hover:bg-white/10'}`}><Icon size={15} />{label}</button>)}
     </nav>
 
-    {active === 'overview' && <div className="grid gap-5 lg:grid-cols-3">
-      <section className="card p-5 lg:col-span-2 min-w-0">
+    {active === 'overview' && <div className="space-y-5">
+      {/* Vitrina de Obra Maestra (Showcase estilo Steam) */}
+      <ProfileShowcase
+        profile={profile}
+        library={profileLibrary}
+        isOwner
+        onEdit={onEdit}
+      />
+
+      {/* Espacio privado de anime */}
+      <section className="card p-5 min-w-0">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold">Tu espacio</h2>
+            <h2 className="text-lg font-bold">Tu espacio de anime</h2>
             <p className="text-xs text-slate-500">Una vista privada de lo que estás viendo.</p>
           </div>
           <button onClick={() => setActive('animelist')} className="text-xs font-semibold text-brand hover:underline">
@@ -213,27 +228,6 @@ export default function ProfilePage({ onEdit, onOpenDonation }) {
             </button>
           ))}
         </div>
-      </section>
-      <section className="card p-5 lg:col-span-1 min-w-0">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold">Destacado</h2>
-            <p className="text-xs text-slate-500">Tu historia elegida.</p>
-          </div>
-          <Heart size={17} className="text-pink-500" />
-        </div>
-        {featured ? (
-          <div className="flex items-center gap-3 min-w-0">
-            <Poster {...featured} title={featured.t} className="h-28 w-20 shrink-0 rounded-xl" />
-            <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 font-bold text-sm" title={featured.t}>{featured.t}</p>
-              <p className="mt-1 text-xs text-slate-500">{featured.s}</p>
-              <p className="mt-3 text-xs leading-5 text-slate-500">Puedes cambiar este destacado desde Editar perfil.</p>
-            </div>
-          </div>
-        ) : (
-          <EmptyState title="Aún no tienes una obra destacada" detail="Añade una obra a tu AnimeList para verla aquí." />
-        )}
       </section>
       <section className="card p-5 lg:col-span-3 min-w-0">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 pb-4 dark:border-white/10">

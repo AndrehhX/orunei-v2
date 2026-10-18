@@ -12,6 +12,25 @@ const ANIME_STATUS_LABELS = { watching: 'Viendo', planned: 'Planeo ver', paused:
 const ANIME_STATUS_DOTS = { watching: 'bg-green-400', planned: 'bg-blue-500', paused: 'bg-yellow-400', completed: 'bg-emerald-500' }
 export const TASTE_STATUSES = ['watching', 'paused', 'completed']
 
+export const AVATAR_FRAMES = [
+  { id: 'none', label: 'Sin marco', desc: 'Borde limpio estándar', glow: 'transparent', previewGrad: 'from-slate-400 to-slate-600' },
+  { id: 'sakura', label: 'Cerezo en Flor', desc: 'Pétalos flotantes y aura floral rosada', glow: 'rgba(244,114,182,0.7)', previewGrad: 'from-pink-400 via-rose-300 to-pink-500' },
+  { id: 'cyber', label: 'Cyber Neon', desc: 'Circuitos HUD y pulso neón cian', glow: 'rgba(6,182,212,0.7)', previewGrad: 'from-cyan-400 via-sky-300 to-fuchsia-500' },
+  { id: 'flame', label: 'Llama Carmesí', desc: 'Fuego ardiente y ascuas de batalla', glow: 'rgba(239,68,68,0.7)', previewGrad: 'from-red-500 via-orange-400 to-amber-500' },
+  { id: 'cosmic', label: 'Nebulosa Cósmica', desc: 'Aura galáctica y polvo de estrellas', glow: 'rgba(139,92,246,0.7)', previewGrad: 'from-purple-500 via-indigo-400 to-cyan-400' },
+  { id: 'gold', label: 'Leyenda Dorada', desc: 'Oro imperial con destellos radiantes', glow: 'rgba(245,158,11,0.7)', previewGrad: 'from-amber-400 via-yellow-200 to-amber-600' },
+  { id: 'synthwave', label: 'Onda Retro', desc: 'Estética 80s con glitch y aberración', glow: 'rgba(217,70,239,0.7)', previewGrad: 'from-fuchsia-500 via-purple-600 to-pink-500' },
+]
+
+export const PROFILE_THEMES = [
+  { id: 'default', label: 'Obsidiana Clásica', desc: 'Diseño limpio y minimalista', color: '#6d5cff' },
+  { id: 'sakura-shrine', label: 'Santuario Sakura', desc: 'Pétalos cayendo con aura mística de atardecer', color: '#f472b6' },
+  { id: 'cyber-rain', label: 'Tokyo Cyber Rain', desc: 'Lluvia de luces digitales de neón en la metrópolis', color: '#06b6d4' },
+  { id: 'deep-cosmos', label: 'Cosmos Infinito', desc: 'Nebulosas en órbita y polvo de estrellas brillante', color: '#8b5cf6' },
+  { id: 'dark-abyss', label: 'Abismo Carmesí', desc: 'Ascuas volcánicas y humo etéreo de las profundidades', color: '#ef4444' },
+  { id: 'golden-dawn', label: 'Amanecer Dorado', desc: 'Rayos celestiales y destellos cálidos dorados', color: '#f59e0b' },
+]
+
 export const DEFAULT_PROFILE = {
   version: 1,
   displayName: 'Usuario de Orunei',
@@ -22,7 +41,11 @@ export const DEFAULT_PROFILE = {
   avatar: '',
   banner: '',
   accent: '#6d5cff',
+  avatarFrame: 'none',
+  profileTheme: 'default',
   featuredAnimeId: '',
+  featuredQuote: '',
+  featuredReview: '',
   pinnedSections: ['overview', 'animelist', 'favorites'],
   landingSection: 'overview',
   privacy: {
@@ -210,7 +233,11 @@ export function normalizeProfile(raw, user = {}) {
     avatar: text(source.avatar),
     banner: text(source.banner),
     accent: /^#[0-9a-f]{6}$/i.test(text(source.accent)) ? source.accent : base.accent,
+    avatarFrame: AVATAR_FRAMES.some((f) => f.id === source.avatarFrame) ? source.avatarFrame : base.avatarFrame,
+    profileTheme: PROFILE_THEMES.some((t) => t.id === source.profileTheme) ? source.profileTheme : base.profileTheme,
     featuredAnimeId: text(source.featuredAnimeId),
+    featuredQuote: text(source.featuredQuote).slice(0, 140),
+    featuredReview: text(source.featuredReview).slice(0, 400),
     pinnedSections: pinned.length ? pinned : [...base.pinnedSections],
     landingSection: PROFILE_SECTIONS.includes(source.landingSection) ? source.landingSection : base.landingSection,
     privacy: normalizePrivacy(source.privacy),

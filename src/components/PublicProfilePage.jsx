@@ -6,6 +6,9 @@ import { selectAnimeSections } from '../profile/profileData'
 import { selectVisibleProfile } from '../profile/publicProfile'
 import { getPublicProfileHash } from '../profile/navigation'
 import { getPublicProfileAvatarClass } from '../ui/profileLayout.js'
+import AvatarFrame from './AvatarFrame'
+import ProfileThemeBackground from './ProfileThemeBackground'
+import ProfileShowcase from './ProfileShowcase'
 
 const tabs = [
   ['overview', 'Resumen', Sparkles],
@@ -24,13 +27,15 @@ const groups = [
 ]
 
 function Avatar({ profile }) {
-  const isGif = typeof profile?.avatar === 'string' && (profile.avatar.toLowerCase().includes('.gif') || profile.avatar.startsWith('data:image/gif'))
-  return <div className={`relative h-24 w-24 shrink-0 ${getPublicProfileAvatarClass()} md:h-28 md:w-28 group`}>
-    <div className="h-full w-full overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 via-brand/30 to-slate-900 shadow-xl dark:border-[#171723] ring-2 ring-brand/40 transition-transform duration-300 group-hover:scale-105">
-      {profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} /> : <span className="grid h-full w-full place-items-center text-3xl font-bold text-white">{profile.displayName.slice(0, 1).toUpperCase()}</span>}
+  return (
+    <div className={`relative shrink-0 ${getPublicProfileAvatarClass()} group`}>
+      <AvatarFrame
+        profile={profile}
+        frameId={profile?.avatarFrame}
+        size="lg"
+      />
     </div>
-    {isGif && <span className="absolute bottom-0 right-0 px-1.5 py-0.2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-[8px] font-black uppercase text-white shadow-md border border-white/50 dark:border-slate-900 animate-pulse">GIF</span>}
-  </div>
+  )
 }
 
 function Banner({ profile }) {
@@ -109,9 +114,10 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
   }
 
   return <div className="space-y-5 pb-10 animate-fade">
-    <section className="overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
+    <section className="relative overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
+      <ProfileThemeBackground themeId={profile.profileTheme} />
       <Banner profile={profile} />
-      <div className="px-5 pb-5 md:px-8">
+      <div className="relative z-10 px-5 pb-5 md:px-8">
         <div className="-mt-12 flex flex-wrap items-end gap-4 md:-mt-14">
           <Avatar profile={profile} />
           <div className="min-w-[180px] flex-1 pb-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">{profile.displayName}</h1><span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-1 text-[10px] font-semibold text-brand"><Eye size={11} /> Perfil público</span></div><p className="text-sm text-slate-500">@{profile.username}</p></div>
@@ -132,8 +138,18 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
 
     <nav className="scroll-hide flex gap-1 overflow-x-auto rounded-2xl bg-white/70 p-1.5 shadow-sm dark:bg-white/5" aria-label="Secciones públicas del perfil">{availableTabs.map(([id, label, Icon]) => <button key={id} onClick={() => setActive(id)} aria-pressed={active === id} className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${active === id ? 'bg-brand text-white shadow-md shadow-brand/25' : 'text-slate-500 hover:bg-slate-100 hover:text-brand dark:hover:bg-white/10'}`}><Icon size={15} />{label}</button>)}</nav>
 
-    {active === 'overview' && <div className="grid gap-5 lg:grid-cols-3">
-      <section className="card p-5 lg:col-span-2 min-w-0">
+    {active === 'overview' && <div className="space-y-5">
+      {/* Vitrina de Obra Maestra (Showcase estilo Steam) */}
+      {visibility.visibleSections.includes('favorites') && (
+        <ProfileShowcase
+          profile={profile}
+          library={library}
+          isOwner={false}
+        />
+      )}
+
+      {/* AnimeList compartido */}
+      <section className="card p-5 min-w-0">
         <div className="mb-4">
           <h2 className="text-lg font-bold">AnimeList compartido</h2>
           <p className="text-xs text-slate-500">Lo que este perfil ha decidido mostrar.</p>
@@ -150,23 +166,6 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
           </div>
         ) : (
           <Restricted section="su AnimeList" />
-        )}
-      </section>
-      <section className="card p-5 lg:col-span-1 min-w-0">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold">Destacado</h2>
-          <p className="text-xs text-slate-500">Una historia elegida por este perfil.</p>
-        </div>
-        {visibility.visibleSections.includes('favorites') && featured ? (
-          <div className="flex items-center gap-3 min-w-0">
-            <Poster {...featured} title={featured.t} className="h-28 w-20 shrink-0 rounded-xl" />
-            <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 font-bold text-sm" title={featured.t}>{featured.t}</p>
-              <p className="mt-1 text-xs text-slate-500">{featured.s}</p>
-            </div>
-          </div>
-        ) : (
-          <Restricted section="este destacado" />
         )}
       </section>
     </div>}

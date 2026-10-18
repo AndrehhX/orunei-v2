@@ -95,3 +95,36 @@ test('creates bounded activity records and computes real profile stats', () => {
     tastes: 7,
   })
 })
+
+test('supports and normalizes steam-style profile customization (frames, themes, and showcase)', () => {
+  const base = createProfile({ name: 'Alex', email: 'alex@example.com' })
+  assert.equal(base.avatarFrame, 'none')
+  assert.equal(base.profileTheme, 'default')
+  assert.equal(base.featuredQuote, '')
+  assert.equal(base.featuredReview, '')
+
+  // Normaliza valores válidos
+  const customized = normalizeProfile({
+    avatarFrame: 'sakura',
+    profileTheme: 'cyber-rain',
+    featuredQuote: '  Una obra maestra inolvidable  ',
+    featuredReview: '  La animación y banda sonora son 10/10  ',
+  }, { name: 'Alex' })
+
+  assert.equal(customized.avatarFrame, 'sakura')
+  assert.equal(customized.profileTheme, 'cyber-rain')
+  assert.equal(customized.featuredQuote, 'Una obra maestra inolvidable')
+  assert.equal(customized.featuredReview, 'La animación y banda sonora son 10/10')
+
+  // Rechaza valores no válidos retornando los fallbacks seguros
+  const invalid = normalizeProfile({
+    avatarFrame: 'fake_frame_id',
+    profileTheme: 'unsupported_theme',
+    featuredQuote: 'x'.repeat(200), // Excede 140
+  }, { name: 'Alex' })
+
+  assert.equal(invalid.avatarFrame, 'none')
+  assert.equal(invalid.profileTheme, 'default')
+  assert.equal(invalid.featuredQuote.length, 140)
+})
+
