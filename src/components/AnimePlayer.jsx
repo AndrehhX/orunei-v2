@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Film } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Film, ShieldCheck } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getDubEpisodePlayback } from '../playback/dubStreamAdapter.js';
 import { setSeasonAudioPreference } from '../playback/audioPreference.js';
@@ -827,6 +827,16 @@ export default function AnimePlayer({
             </span>
           )}
 
+          {activeServer?.isEmbed && (
+            <span
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-semibold rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)]"
+              title="Escudo de Protección Activo: ventanas emergentes y redirecciones no deseadas bloqueadas"
+            >
+              <ShieldCheck size={12} className="text-cyan-400" />
+              <span className="hidden sm:inline">Escudo Anti-Popups</span>
+            </span>
+          )}
+
           <button
             onClick={onClose}
             className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-all duration-200 active:scale-95 shadow-sm"
@@ -1042,15 +1052,18 @@ export default function AnimePlayer({
         )}
 
         {activeServer?.isEmbed ? (
-          <iframe
-            src={activeServer.embedUrl || activeStreamUrl}
-            title={animeTitle || 'Reproductor de Video'}
-            className="w-full h-full border-0"
-            referrerPolicy="no-referrer"
-            loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-            allowFullScreen
-          />
+          <div className="relative w-full h-full overflow-hidden bg-black flex items-center justify-center">
+            <iframe
+              key={activeServer.embedUrl || activeStreamUrl}
+              src={activeServer.embedUrl || activeStreamUrl}
+              title={animeTitle || 'Reproductor de Video'}
+              className="w-full h-full border-0 select-none"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+            />
+          </div>
         ) : (
           <video
             ref={videoRef}

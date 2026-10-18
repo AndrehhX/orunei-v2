@@ -25,7 +25,10 @@ async function extractYourUploadStream(embedUrl) {
     const res = await fetch(fetchUrl);
     if (!res.ok) return null;
     const html = await res.text();
-    const match = html.match(/content="([^"]+)"\s*property="og:video"/i) || html.match(/property="og:video"\s*content="([^"]+)"/i);
+    const match = html.match(/content="([^"]+)"\s*property="og:video"/i)
+      || html.match(/property="og:video(?::secure_url)?"\s*content="([^"]+)"/i)
+      || html.match(/content="([^"]+)"\s*property="og:video:secure_url"/i)
+      || html.match(/(?:file|source\s+src):\s*["'](https?:\/\/[^"']+(?:yourupload\.com|\.mp4)[^"']*)["']/i);
     const videoUrl = match?.[1];
     if (videoUrl && !videoUrl.includes('novideo.mp4')) {
       return videoUrl;
@@ -123,6 +126,73 @@ function extractDataNode(json) {
 }
 
 /**
+ * Convierte servidores incrustados (embeds con anuncios) en streams directos limpios (sin anuncios)
+ * para MP4Upload, YourUpload y StreamTape cuando sea técnicamente posible.
+ */
+async function enhanceServerCandidates(servers = []) {
+  if (!Array.isArray(servers) || servers.length === 0) return [];
+  const enhanced = [];
+  for (const s of servers) {
+    if (!s) continue;
+    const url = s.embedUrl || s.proxiedStreamUrl || '';
+    const lowerUrl = url.toLowerCase();
+    const lowerName = (s.sourceName || s.name || '').toLowerCase();
+
+    // 1. Extraer MP4Upload directo si viene como embed
+    if (s.isEmbed && (lowerUrl.includes('mp4upload') || lowerName.includes('mp4upload')) && !lowerUrl.includes('undef')) {
+      const direct = await extractMP4UploadStream(url);
+      if (direct) {
+        const proxied = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(direct)}&referer=${encodeURIComponent('https://www.mp4upload.com/')}`;
+        enhanced.push({
+          ...s,
+          proxiedStreamUrl: proxied,
+          quality: '1080p',
+          sourceName: 'MP4Upload Bluray',
+          isEmbed: false,
+          isAv1: true
+        });
+        continue;
+      }
+    }
+
+    // 2. Extraer YourUpload directo si viene como embed
+    if (s.isEmbed && (lowerUrl.includes('yourupload') || lowerName.includes('yourupload'))) {
+      const direct = await extractYourUploadStream(url);
+      if (direct) {
+        const proxied = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(direct)}&referer=${encodeURIComponent('https://www.yourupload.com/')}`;
+        enhanced.push({
+          ...s,
+          proxiedStreamUrl: proxied,
+          quality: '1080p',
+          sourceName: 'YourUpload Direct',
+          isEmbed: false
+        });
+        continue;
+      }
+    }
+
+    // 3. Extraer StreamTape directo si viene como embed
+    if (s.isEmbed && (lowerUrl.includes('streamtape') || lowerName.includes('streamtape'))) {
+      const direct = await extractStreamTapeStream(url);
+      if (direct) {
+        enhanced.push({
+          ...s,
+          proxiedStreamUrl: direct,
+          quality: '1080p',
+          sourceName: 'StreamTape (H.264 Universal)',
+          isEmbed: false,
+          isUniversalH264: true
+        });
+        continue;
+      }
+    }
+
+    enhanced.push(s);
+  }
+  return enhanced;
+}
+
+/**
  * Obtiene la reproducción de un episodio doblado en audio español (Latino o Castellano).
  * Integra selección inteligente de fuentes (StreamPlay) y proveedor Sora (Latanime).
  */
@@ -160,7 +230,8 @@ export async function getDubEpisodePlayback({
       throw new Error(`El episodio ${targetEpisode} no tiene servidores disponibles en castellano.`);
     }
 
-    const prioritized = selectAndPrioritizeServers(soraServers, { isMobile, language: 'castellano' });
+    const enhancedCastellano = await enhanceServerCandidates(soraServers);
+    const prioritized = selectAndPrioritizeServers(enhancedCastellano, { isMobile, language: 'castellano' });
     if (prioritized.length === 0) {
       throw new Error('No se pudo inicializar un servidor en castellano para este episodio.');
     }
@@ -272,17 +343,17 @@ export async function getDubEpisodePlayback({
 
             const hlsServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('hls'));
             if (hlsServer && hlsServer.url) {
-              const playUrl = hlsServer.url.includes('/m3u8/')
-                ? hlsServer.url.replace('/m3u8/', '/play/')
+              const m3u8Url = hlsServer.url.includes('/play/')
+                ? hlsServer.url.replace('/play/', '/m3u8/')
                 : hlsServer.url;
+              const proxiedM3u8 = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(m3u8Url)}&referer=${encodeURIComponent('https://animeav1.com/')}`;
               rawCandidates.push({
-                id: 'dub-zilla-embed',
+                id: 'dub-zilla-direct',
                 name: 'ZillaPlayer HD',
-                proxiedStreamUrl: playUrl,
-                embedUrl: playUrl,
+                proxiedStreamUrl: proxiedM3u8,
                 quality: '1080p',
                 sourceName: 'ZillaPlayer',
-                isEmbed: true
+                isEmbed: false
               });
             }
 
@@ -326,7 +397,8 @@ export async function getDubEpisodePlayback({
       if (latinoSlug) {
         const soraServers = await getLatanimeEpisodeServers(latinoSlug, targetEpisode, 'latino');
         if (Array.isArray(soraServers) && soraServers.length > 0) {
-          rawCandidates.push(...soraServers);
+          const enhanced = await enhanceServerCandidates(soraServers);
+          rawCandidates.push(...enhanced);
         }
       }
     } catch (err) {
@@ -341,7 +413,8 @@ export async function getDubEpisodePlayback({
       if (monoSlug) {
         const monoServers = await getMonoschinosEpisodeServers(monoSlug, targetEpisode, 'latino');
         if (Array.isArray(monoServers) && monoServers.length > 0) {
-          rawCandidates.push(...monoServers);
+          const enhanced = await enhanceServerCandidates(monoServers);
+          rawCandidates.push(...enhanced);
         }
       }
     } catch (err) {

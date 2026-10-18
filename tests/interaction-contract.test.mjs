@@ -35,10 +35,10 @@ test('makes home library and recommendation cards open anime detail', () => {
   assert.match(rows, /onClick=\{\(\) => onOpenAnime\?\.\(i\)\}/)
 })
 
-test('operates player embeds without sandbox attribute to prevent anti-adblock rejections like zilla while shielding referrers', () => {
+test('operates player embeds with smart anti-popup shield sandbox allowing scripts and same-origin while defusing rogue popups and tab hijacking', () => {
   const animePlayer = fs.readFileSync(new URL('../src/components/AnimePlayer.jsx', import.meta.url), 'utf8')
-  assert.doesNotMatch(animePlayer, /sandbox=/)
-  assert.match(animePlayer, /referrerPolicy="no-referrer"/)
+  assert.match(animePlayer, /sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"/)
+  assert.doesNotMatch(animePlayer, /allow-popups/)
   assert.match(animePlayer, /allow="[^"]*fullscreen/)
 })
 
