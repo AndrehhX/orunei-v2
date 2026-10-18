@@ -145,4 +145,23 @@ test('normalizes customizable overview section order', () => {
   assert.deepEqual(partial.overviewOrder, ['activity', 'comments', 'showcase', 'animeList'])
 })
 
+test('normalizes glassOpacity within bounds and provides standard fallback', () => {
+  const base = createProfile({ name: 'Alex' })
+  assert.equal(base.glassOpacity, 75)
+
+  const custom = normalizeProfile({ glassOpacity: 55 }, { name: 'Alex' })
+  assert.equal(custom.glassOpacity, 55)
+
+  // Respeta límites [25, 95]
+  const tooLow = normalizeProfile({ glassOpacity: 5 }, { name: 'Alex' })
+  assert.equal(tooLow.glassOpacity, 25)
+
+  const tooHigh = normalizeProfile({ glassOpacity: 120 }, { name: 'Alex' })
+  assert.equal(tooHigh.glassOpacity, 95)
+
+  const notNumber = normalizeProfile({ glassOpacity: 'invalid' }, { name: 'Alex' })
+  assert.equal(notNumber.glassOpacity, 75)
+})
+
+
 

@@ -144,8 +144,24 @@ export default function ProfilePage({ onEdit, onOpenDonation }) {
   if (profileStatus === 'loading') return <div className="card grid min-h-64 place-items-center p-8 text-sm text-slate-500">Cargando tu perfil…</div>
 
   const hasCustomTheme = profile.profileTheme && profile.profileTheme !== 'default'
+  const glassOpacity = typeof profile.glassOpacity === 'number' ? profile.glassOpacity : 75
+  const glassAlpha = (glassOpacity / 100).toFixed(2)
+  const glassBlur = glassOpacity <= 45 ? '24px' : glassOpacity <= 70 ? '16px' : '10px'
+  const borderAlphaLight = Math.max(0.18, (100 - glassOpacity * 0.4) / 100).toFixed(2)
+  const borderAlphaDark = Math.max(0.08, (100 - glassOpacity * 0.6) / 200).toFixed(2)
 
-  return <div className={`relative ${hasCustomTheme ? 'rounded-[32px] p-2 sm:p-4 lg:p-6 overflow-hidden' : ''} ${layout.shell} space-y-5 pb-10 animate-fade`}>
+  const glassStyle = hasCustomTheme ? {
+    '--profile-glass-bg-light': `rgba(255, 255, 255, ${glassAlpha})`,
+    '--profile-glass-bg-dark': `rgba(20, 21, 35, ${glassAlpha})`,
+    '--profile-glass-blur': glassBlur,
+    '--profile-glass-border': `rgba(255, 255, 255, ${borderAlphaLight})`,
+    '--profile-glass-border-dark': `rgba(255, 255, 255, ${borderAlphaDark})`,
+  } : undefined
+
+  return <div
+    className={`relative ${hasCustomTheme ? 'rounded-[32px] p-2 sm:p-4 lg:p-6 overflow-hidden profile-glass-scope' : ''} ${layout.shell} space-y-5 pb-10 animate-fade`}
+    style={glassStyle}
+  >
     {/* Fondo Temático Animado estilo Steam que cubre todo el perfil */}
     <ProfileThemeBackground themeId={profile.profileTheme} className="opacity-95" />
 
@@ -154,7 +170,7 @@ export default function ProfilePage({ onEdit, onOpenDonation }) {
       <ProfileAnimeListManager visible={active === 'animelist'} />
       <section className={`overflow-hidden rounded-[28px] border transition-all ${
         hasCustomTheme
-          ? 'border-white/40 bg-white/80 dark:border-white/10 dark:bg-[#141523]/80 backdrop-blur-xl shadow-2xl'
+          ? 'glass-card shadow-2xl'
           : 'border-white/80 bg-white/95 dark:border-white/10 dark:bg-[#141523] shadow-lg shadow-black/5'
       }`}>
         <Banner src={profile.banner} className="h-36 bg-cover bg-center sm:h-44 lg:h-52 relative z-10" />

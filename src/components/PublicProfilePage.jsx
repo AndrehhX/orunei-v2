@@ -112,15 +112,31 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
   }
 
   const hasCustomTheme = profile.profileTheme && profile.profileTheme !== 'default'
+  const glassOpacity = typeof profile.glassOpacity === 'number' ? profile.glassOpacity : 75
+  const glassAlpha = (glassOpacity / 100).toFixed(2)
+  const glassBlur = glassOpacity <= 45 ? '24px' : glassOpacity <= 70 ? '16px' : '10px'
+  const borderAlphaLight = Math.max(0.18, (100 - glassOpacity * 0.4) / 100).toFixed(2)
+  const borderAlphaDark = Math.max(0.08, (100 - glassOpacity * 0.6) / 200).toFixed(2)
 
-  return <div className={`relative ${hasCustomTheme ? 'rounded-[32px] p-2 sm:p-4 lg:p-6 overflow-hidden' : ''} space-y-5 pb-10 animate-fade`}>
+  const glassStyle = hasCustomTheme ? {
+    '--profile-glass-bg-light': `rgba(255, 255, 255, ${glassAlpha})`,
+    '--profile-glass-bg-dark': `rgba(20, 21, 35, ${glassAlpha})`,
+    '--profile-glass-blur': glassBlur,
+    '--profile-glass-border': `rgba(255, 255, 255, ${borderAlphaLight})`,
+    '--profile-glass-border-dark': `rgba(255, 255, 255, ${borderAlphaDark})`,
+  } : undefined
+
+  return <div
+    className={`relative ${hasCustomTheme ? 'rounded-[32px] p-2 sm:p-4 lg:p-6 overflow-hidden profile-glass-scope' : ''} space-y-5 pb-10 animate-fade`}
+    style={glassStyle}
+  >
     {/* Fondo Temático Animado estilo Steam para todo el perfil público */}
     <ProfileThemeBackground themeId={profile.profileTheme} className="opacity-95" />
 
     <div className="relative z-10 space-y-5">
       <section className={`overflow-hidden rounded-[26px] border transition-all ${
         hasCustomTheme
-          ? 'border-white/40 bg-white/80 dark:border-white/10 dark:bg-[#171723]/80 backdrop-blur-xl shadow-2xl'
+          ? 'glass-card shadow-2xl'
           : 'border-white/80 bg-white/90 dark:border-white/5 dark:bg-[#171723] shadow-sm'
       }`}>
         <Banner profile={profile} />

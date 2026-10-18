@@ -43,6 +43,25 @@ body { @apply bg-[#f4f4fb] text-slate-900 antialiased transition-colors duration
   box-shadow: 0 0 35px 2px rgba(109, 92, 255, 0.75);
 }
 
+/* Soporte dinámico para Glassmorphism Adaptable en el Perfil */
+.profile-glass-scope .card,
+.profile-glass-scope section.card,
+.profile-glass-scope article.card,
+.profile-glass-scope .glass-card {
+  background-color: var(--profile-glass-bg-light, rgba(255, 255, 255, 0.85)) !important;
+  backdrop-filter: blur(var(--profile-glass-blur, 16px));
+  -webkit-backdrop-filter: blur(var(--profile-glass-blur, 16px));
+  border-color: var(--profile-glass-border, rgba(255, 255, 255, 0.35)) !important;
+}
+
+.dark .profile-glass-scope .card,
+.dark .profile-glass-scope section.card,
+.dark .profile-glass-scope article.card,
+.dark .profile-glass-scope .glass-card {
+  background-color: var(--profile-glass-bg-dark, rgba(20, 21, 35, 0.8)) !important;
+  border-color: var(--profile-glass-border-dark, rgba(255, 255, 255, 0.1)) !important;
+}
+
 .animate-page-enter { animation: page-enter .45s cubic-bezier(.16,1,.3,1) both; }
 @keyframes page-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .scroll-hide::-webkit-scrollbar { display: none; }

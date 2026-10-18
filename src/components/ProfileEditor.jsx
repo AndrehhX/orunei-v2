@@ -236,6 +236,7 @@ export default function ProfileEditor({ onClose }) {
       accent: '#6d5cff',
       avatarFrame: 'none',
       profileTheme: 'default',
+      glassOpacity: 75,
     }))
     setFileNames({ avatar: '', banner: '' })
   }
@@ -437,6 +438,73 @@ export default function ProfileEditor({ onClose }) {
                             )}
                           </div>
                           <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{theme.desc}</p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </section>
+
+                {/* 3. TRANSPARENCIA DE TARJETAS / CRISTAL ESMERILADO (FROSTED GLASS) */}
+                <section className="card p-5">
+                  <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={18} className="text-cyan-400" />
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white">
+                          Cristal Esmerilado de Paneles (Frosted Glass)
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          Ajusta la transparencia de las tarjetas para fusionar el contenido con el fondo animado.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                        {draft.glassOpacity ?? 75}% opacidad
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Slider de control continuo */}
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+                      <span>🧊 Ultra Translúcido (30%)</span>
+                      <span className="text-brand">Equilibrado (75%)</span>
+                      <span>🛡️ Sólido (95%)</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={30}
+                      max={95}
+                      step={5}
+                      value={draft.glassOpacity ?? 75}
+                      onChange={(e) => setDraft((curr) => ({ ...curr, glassOpacity: Number(e.target.value) }))}
+                      className="w-full h-2.5 bg-slate-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-brand transition-all"
+                    />
+                  </div>
+
+                  {/* Presets Rápidos */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { label: '🧊 Cristal Puro', value: 40, desc: 'Máximo fondo visible' },
+                      { label: '🔮 Translúcido', value: 60, desc: 'Fusión atmosférica' },
+                      { label: '✨ Esmerilado', value: 75, desc: 'Equilibrio ideal' },
+                      { label: '🛡️ Sólido', value: 95, desc: 'Máxima lectura' },
+                    ].map((preset) => {
+                      const isSelected = (draft.glassOpacity ?? 75) === preset.value
+                      return (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => setDraft((curr) => ({ ...curr, glassOpacity: preset.value }))}
+                          className={`p-2.5 rounded-xl border text-left transition-all ${
+                            isSelected
+                              ? 'border-brand bg-brand/10 shadow-xs ring-1 ring-brand/30'
+                              : 'border-slate-200/80 bg-white/60 dark:border-white/5 dark:bg-white/[0.02] hover:border-slate-300'
+                          }`}
+                        >
+                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{preset.label}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">{preset.desc}</p>
                         </button>
                       )
                     })}
@@ -1054,7 +1122,14 @@ export default function ProfileEditor({ onClose }) {
               </div>
 
               {/* Contenido del usuario */}
-              <div className="px-4 pb-5 relative z-10">
+              <div
+                className="px-4 pb-5 relative z-10 transition-all duration-300"
+                style={{
+                  backgroundColor: `rgba(20, 21, 35, ${((draft.glassOpacity ?? 75) / 100).toFixed(2)})`,
+                  backdropFilter: `blur(${(draft.glassOpacity ?? 75) <= 45 ? '24px' : (draft.glassOpacity ?? 75) <= 70 ? '16px' : '10px'})`,
+                  WebkitBackdropFilter: `blur(${(draft.glassOpacity ?? 75) <= 45 ? '24px' : (draft.glassOpacity ?? 75) <= 70 ? '16px' : '10px'})`,
+                }}
+              >
                 <div className="-mt-10">
                   <AvatarFrame
                     profile={draft}
@@ -1077,6 +1152,9 @@ export default function ProfileEditor({ onClose }) {
                   </span>
                   <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-[10px] font-bold text-purple-600 dark:text-purple-400">
                     Fondo: {PROFILE_THEMES.find((t) => t.id === draft.profileTheme)?.label || 'Clásico'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-[10px] font-bold text-cyan-600 dark:text-cyan-400">
+                    Cristal: {draft.glassOpacity ?? 75}%
                   </span>
                 </div>
 

@@ -45,6 +45,7 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
         ...loaded.profile,
         avatarFrame: (loaded.profile.avatarFrame && loaded.profile.avatarFrame !== 'none') ? loaded.profile.avatarFrame : (local.avatarFrame || 'none'),
         profileTheme: (loaded.profile.profileTheme && loaded.profile.profileTheme !== 'default') ? loaded.profile.profileTheme : (local.profileTheme || 'default'),
+        glassOpacity: typeof loaded.profile.glassOpacity === 'number' ? loaded.profile.glassOpacity : (typeof local.glassOpacity === 'number' ? local.glassOpacity : 75),
         featuredQuote: loaded.profile.featuredQuote || local.featuredQuote || '',
         featuredReview: loaded.profile.featuredReview || local.featuredReview || '',
         overviewOrder: (Array.isArray(loaded.profile.overviewOrder) && loaded.profile.overviewOrder.length > 0)
@@ -112,6 +113,7 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
         ...result.data,
         avatarFrame: safeNext.avatarFrame,
         profileTheme: safeNext.profileTheme,
+        glassOpacity: safeNext.glassOpacity,
         featuredQuote: safeNext.featuredQuote,
         featuredReview: safeNext.featuredReview,
         overviewOrder: safeNext.overviewOrder,

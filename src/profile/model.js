@@ -46,6 +46,7 @@ export const DEFAULT_PROFILE = {
   accent: '#6d5cff',
   avatarFrame: 'none',
   profileTheme: 'default',
+  glassOpacity: 75,
   featuredAnimeId: '',
   featuredQuote: '',
   featuredReview: '',
@@ -239,6 +240,11 @@ export function normalizeProfile(raw, user = {}) {
     accent: /^#[0-9a-f]{6}$/i.test(text(source.accent)) ? source.accent : base.accent,
     avatarFrame: AVATAR_FRAMES.some((f) => f.id === source.avatarFrame) ? source.avatarFrame : base.avatarFrame,
     profileTheme: PROFILE_THEMES.some((t) => t.id === source.profileTheme) ? source.profileTheme : base.profileTheme,
+    glassOpacity: (() => {
+      const num = Number(source.glassOpacity)
+      if (isNaN(num)) return 75
+      return Math.min(95, Math.max(25, Math.round(num)))
+    })(),
     featuredAnimeId: text(source.featuredAnimeId),
     featuredQuote: text(source.featuredQuote).slice(0, 140),
     featuredReview: text(source.featuredReview).slice(0, 400),
