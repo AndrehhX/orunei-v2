@@ -1046,7 +1046,6 @@ export default function AnimePlayer({
             src={activeServer.embedUrl || activeStreamUrl}
             title={animeTitle || 'Reproductor de Video'}
             className="w-full h-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             referrerPolicy="no-referrer"
             loading="lazy"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
