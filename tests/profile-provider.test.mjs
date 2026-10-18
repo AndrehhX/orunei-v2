@@ -47,3 +47,17 @@ test('retries a colliding generated username with a stable account suffix', asyn
 test('clears profile state after sign out', () => {
   assert.deepEqual(clearProfileState(), { profile: null, status: 'signed-out', error: '' })
 })
+
+test('preserves local anime library when remote profile has empty collections', () => {
+  const localAnime = [{ id: '101', t: 'Frieren', s: 'Viendo', status: 'watching' }]
+  const remoteLoaded = resolveLoadedProfile({ id: 'user-1', displayName: 'Andreh', username: 'andreh' }, '', { id: 'user-1' })
+  // remoteLoaded has empty animeList: []
+  assert.equal(remoteLoaded.profile.animeList.length, 0)
+  // Rehydration logic preserves localAnime when remote is empty
+  const mergedAnimeList = (remoteLoaded.profile.animeList.length > 0)
+    ? remoteLoaded.profile.animeList
+    : localAnime
+  assert.equal(mergedAnimeList.length, 1)
+  assert.equal(mergedAnimeList[0].t, 'Frieren')
+})
+

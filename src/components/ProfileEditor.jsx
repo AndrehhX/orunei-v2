@@ -65,7 +65,13 @@ export default function ProfileEditor({ onClose }) {
   const togglePinned = (section) => setDraft((current) => ({ ...current, pinnedSections: current.pinnedSections.includes(section) ? current.pinnedSections.filter((item) => item !== section) : [...current.pinnedSections, section] }))
   const save = async () => {
     setSaving(true)
-    const result = await saveProfile((current) => ({ ...current, ...draft, activity: current.activity }))
+    const result = await saveProfile((current) => ({
+      ...current,
+      ...draft,
+      animeList: (draft.animeList && draft.animeList.length > 0) ? draft.animeList : (current.animeList || []),
+      customLists: (draft.customLists && draft.customLists.length > 0) ? draft.customLists : (current.customLists || []),
+      activity: (draft.activity && draft.activity.length > 0) ? draft.activity : (current.activity || []),
+    }))
     if (!result.ok) {
       setSaving(false)
       setError(result.error)
