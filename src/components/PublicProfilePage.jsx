@@ -149,7 +149,7 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
 
       {active === 'overview' && <div className="space-y-5">
         {/* Vitrina de Obra Maestra (Showcase estilo Steam) */}
-        {visibility.visibleSections.includes('favorites') && (
+        {(profile.visibility === 'public' || visibility.visibleSections.includes('favorites') || profile.featuredAnimeId || profile.featuredQuote) && (
           <ProfileShowcase
             profile={profile}
             library={library}
