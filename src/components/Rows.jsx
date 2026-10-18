@@ -33,7 +33,7 @@ const Dots = ({ onClick }) => (
   </button>
 )
 
-const Empty = ({ q, message }) => <div className="col-span-full rounded-2xl border border-dashed border-slate-300/80 px-5 py-7 text-center text-sm leading-6 text-slate-500 dark:border-white/10">{message || `Sin resultados para “${q}”`}</div>
+const Empty = ({ q, message }) => <div className="col-span-full rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-100/60 dark:bg-white/[0.02] backdrop-blur-sm px-6 py-8 text-center text-sm leading-relaxed text-slate-500 dark:text-slate-400 shadow-sm">{message || `Sin resultados para “${q}”`}</div>
 const ok = (t = '', q) => String(t).toLowerCase().includes((q || '').toLowerCase())
 export function Library({ query, onMore, onOpenAnime }) {
   const { profile } = useProfile()
@@ -97,7 +97,7 @@ export function Library({ query, onMore, onOpenAnime }) {
                 {/* Barra de progreso de reproducción del episodio */}
                 <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/60 overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-brand to-purple-400 rounded-r-full transition-all duration-300"
+                    className="h-full bg-gradient-to-r from-brand via-purple-400 to-pink-400 rounded-r-full shadow-[0_0_8px_rgba(109,92,255,0.7)] transition-all duration-300"
                     style={{ width: `${Math.min(100, Math.max(a.percent > 0 ? a.percent : 6, 0))}%` }}
                   />
                 </div>

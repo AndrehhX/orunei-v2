@@ -8,9 +8,9 @@ const years = Array.from({ length: 14 }, (_, i) => String(new Date().getFullYear
 const init = { genres: [], tags: [], format: '', status: '', year: '', sort: 'Popular' }
 
 const Select = ({ label, value, onChange, options }) => (
-  <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs shadow-sm transition focus-within:ring-2 focus-within:ring-brand/40 dark:bg-white/5">
-    <span className="text-slate-500">{label}</span>
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="bg-transparent font-semibold outline-none dark:[&>option]:bg-slate-800">
+  <label className="flex items-center gap-2 rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 px-3 py-2 text-xs shadow-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-brand/40">
+    <span className="text-slate-500 font-medium">{label}</span>
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="bg-transparent font-bold outline-none text-slate-800 dark:text-slate-200 dark:[&>option]:bg-slate-800 cursor-pointer">
       {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
     </select>
   </label>
@@ -24,15 +24,15 @@ export function AnimeCard({ m, onOpen }) {
     <article role="button" tabIndex="0" aria-label={`Ver ficha de ${title(m)}`} onClick={open} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open() } }} className="group cursor-pointer transition-transform duration-200 ease-out hover:-translate-y-1" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 420px' }}>
       <div className="relative aspect-[2/3] overflow-hidden rounded-2xl shadow-md transition-shadow duration-200 group-hover:shadow-xl" style={{ background: bg }}>
           <img src={m.coverImage.extraLarge} alt={title(m)} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105" />
-          {m.averageScore > 0 && <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur"><Star size={11} className="fill-yellow-400 text-yellow-400" />{(m.averageScore / 10).toFixed(1)}</span>}
+          {m.averageScore > 0 && <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/60 border border-white/15 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur shadow-sm"><Star size={11} className="fill-yellow-400 text-yellow-400" />{(m.averageScore / 10).toFixed(1)}</span>}
           {hasDub && (
-            <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-600/95 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-extrabold text-white backdrop-blur shadow-md z-10 animate-fade">
+            <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-600/95 border border-emerald-400/40 px-2 py-0.5 text-[10px] font-extrabold text-white backdrop-blur shadow-md z-10 animate-fade">
               🇲🇽 DUB
             </span>
           )}
           <div className="absolute inset-0 flex flex-col justify-end gap-1.5 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-            <div className="flex flex-wrap gap-1">{m.genres.slice(0, 3).map((g) => <span key={g} className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] text-white backdrop-blur">{g}</span>)}</div>
-            <span className="flex w-fit translate-y-1 items-center gap-1 rounded-full bg-brand px-3 py-1 text-[11px] font-semibold text-white transition-transform duration-200 group-hover:translate-y-0"><Play size={11} className="fill-white" />Ver ficha</span>
+            <div className="flex flex-wrap gap-1">{m.genres.slice(0, 3).map((g) => <span key={g} className="rounded-full bg-white/20 border border-white/10 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur">{g}</span>)}</div>
+            <span className="flex w-fit translate-y-1 items-center gap-1.5 rounded-full bg-brand px-3 py-1 text-[11px] font-bold text-white shadow-md shadow-brand/40 transition-transform duration-200 group-hover:translate-y-0"><Play size={11} className="fill-white" />Ver ficha</span>
           </div>
       </div>
       <p className="mt-2 line-clamp-2 text-[13px] font-semibold leading-snug">{title(m)}</p>

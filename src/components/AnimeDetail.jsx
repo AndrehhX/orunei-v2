@@ -790,7 +790,7 @@ export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, on
                   <button
                     type="button"
                     onClick={() => handlePlayEpisode(currentEpToPlay)}
-                    className="flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand/30 transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:scale-95"
+                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand via-[#7968ff] to-[#9d8eff] px-5 py-2.5 text-sm font-bold text-white shadow-[0_4px_20px_rgba(109,92,255,0.38)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_28px_rgba(109,92,255,0.6)] hover:brightness-110 active:scale-95"
                   >
                     <Play size={15} className="fill-white" />
                     {continueLabel}

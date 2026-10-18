@@ -62,23 +62,23 @@ export default function Hero({ onOpenDetail }) {
           return (
             <Poster key={s.title} {...s} wide title={s.title}
               className={`absolute inset-0 transition-all duration-[900ms] ease-out ${on ? 'opacity-100 scale-100' : 'pointer-events-none opacity-0 scale-[1.04]'}`}>
-              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent sm:bg-gradient-to-r sm:from-black/95 sm:via-black/60 sm:to-transparent pointer-events-none" />
               <div className={`relative flex h-full max-w-[430px] flex-col justify-start gap-2 px-6 pb-12 pt-6 text-white transition-all duration-700 delay-150 ${on ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex w-fit items-center gap-1.5 rounded-full bg-black/45 border border-white/15 px-3 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm"><Sparkles size={13} className="text-yellow-300" />{heroLabel}</span>
+                  <span className="flex w-fit items-center gap-1.5 rounded-full bg-black/50 border border-white/20 px-3 py-1 text-xs font-semibold text-white/95 backdrop-blur-md shadow-sm"><Sparkles size={13} className="text-yellow-300" />{heroLabel}</span>
                   {isMalIdDubbedInSpanish(s.idMal || s.id) && (
-                    <span className="flex w-fit items-center gap-1.5 rounded-full bg-emerald-950/70 border border-emerald-400/35 px-2.5 py-1 text-xs font-bold text-emerald-300 backdrop-blur-md shadow-sm animate-fade">
+                    <span className="flex w-fit items-center gap-1.5 rounded-full bg-emerald-950/80 border border-emerald-400/40 px-2.5 py-1 text-xs font-bold text-emerald-300 backdrop-blur-md shadow-sm animate-fade">
                       🇲🇽 DUB Latino
                     </span>
                   )}
                 </div>
-                <h2 className="line-clamp-2 h-[80px] shrink-0 overflow-hidden text-4xl font-extrabold leading-[1.05] tracking-tight">{formatHeroTitle(s.title)}</h2>
-                <p className="text-xs text-white/80">{s.meta}</p>
+                <h2 className="line-clamp-2 h-[80px] shrink-0 overflow-hidden text-3xl sm:text-4xl font-black leading-tight sm:leading-[1.08] tracking-tight drop-shadow-sm">{formatHeroTitle(s.title)}</h2>
+                <p className="text-xs font-medium text-white/80">{s.meta}</p>
                 <p className="line-clamp-2 h-12 shrink-0 overflow-hidden text-sm leading-6 text-white/85">{s.desc}</p>
                 <div className="mt-auto flex gap-2">
-                  <button onClick={() => onOpenDetail?.(s)} className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand via-[#7968ff] to-[#9d8eff] shadow-[0_4px_20px_rgba(109,92,255,0.45)] hover:shadow-[0_6px_30px_rgba(109,92,255,0.7)] hover:brightness-110 px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 text-white"><Info size={15} />Ver detalles</button>
+                  <button onClick={() => onOpenDetail?.(s)} className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand via-[#7968ff] to-[#9d8eff] shadow-[0_4px_20px_rgba(109,92,255,0.45)] hover:shadow-[0_6px_30px_rgba(109,92,255,0.7)] hover:brightness-110 px-4 py-2 text-sm font-bold tracking-tight transition-all duration-300 hover:-translate-y-0.5 active:scale-95 text-white"><Info size={15} />Ver detalles</button>
                   <button onClick={() => toggleLibrary(s)}
-                    className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-medium backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${inLibrary(s) ? 'bg-emerald-500/25 border-emerald-400/40 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]' : 'border-white/20 bg-white/10 hover:bg-white/20 text-white'}`}>
+                    className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-semibold backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${inLibrary(s) ? 'bg-emerald-500/25 border-emerald-400/40 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]' : 'border-white/20 bg-white/10 hover:bg-white/20 text-white'}`}>
                     {inLibrary(s) ? <Check size={16} /> : <Plus size={16} />}{inLibrary(s) ? 'En mi lista' : 'Agregar'}</button>
                   <button onClick={() => setSaved((a) => ({ ...a, [n]: !a[n] }))} aria-label="Guardar" className="grid w-10 place-items-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-md transition-all duration-300 hover:bg-white/20 hover:border-white/40 active:scale-90"><Bookmark size={16} className={`transition-all ${saved[n] ? 'fill-white' : ''}`} /></button>
                 </div>
@@ -91,23 +91,30 @@ export default function Hero({ onOpenDetail }) {
             <button key={d} onClick={() => go(d)} aria-label={d < 0 ? 'Anterior' : 'Siguiente'} className="grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur-md border border-white/10 transition hover:scale-110 hover:bg-black/70 active:scale-90"><I size={18} /></button>
           ))}
         </div>
-        <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
-          {currentSlides.map((_, n) => <i key={n} className={`h-1.5 rounded-full transition-all duration-500 ${n === i ? 'w-6 opacity-100 bg-brand shadow-[0_0_10px_rgba(109,92,255,0.8)]' : 'w-1.5 opacity-35 bg-white'}`} />)}
+        <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 p-1 rounded-full bg-black/25 backdrop-blur-sm border border-white/10">
+          {currentSlides.map((_, n) => (
+            <button
+              key={n}
+              onClick={() => setI(n)}
+              aria-label={`Ir a la diapositiva ${n + 1}`}
+              className={`h-1.5 rounded-full transition-all duration-500 ${n === i ? 'w-6 opacity-100 bg-brand shadow-[0_0_10px_rgba(109,92,255,0.85)]' : 'w-1.5 opacity-40 bg-white hover:opacity-75'}`}
+            />
+          ))}
         </div>
       </div>
-      <Poster {...currentTrending} onClick={() => onOpenDetail?.(currentTrending)} className="group hidden h-[360px] cursor-pointer rounded-2xl shadow-sm md:h-[340px] xl:h-[320px] md:block border border-white/5 hover:border-brand/30 transition-all duration-300">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/20" />
-        <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1 text-xs text-white backdrop-blur-md border border-white/10"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
+      <Poster {...currentTrending} onClick={() => onOpenDetail?.(currentTrending)} className="group hidden h-[360px] cursor-pointer rounded-2xl shadow-sm md:h-[340px] xl:h-[320px] md:block border border-white/5 hover:border-brand/40 transition-all duration-300 hover:shadow-xl">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/20" />
+        <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-white/15 shadow-sm"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
         {isMalIdDubbedInSpanish(currentTrending.idMal || currentTrending.id) && (
-          <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-emerald-950/70 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-extrabold text-emerald-300 backdrop-blur-md shadow-md z-10 animate-fade">
+          <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-emerald-950/80 border border-emerald-400/40 px-2 py-0.5 text-[10px] font-extrabold text-emerald-300 backdrop-blur-md shadow-md z-10 animate-fade">
             DUB
           </span>
         )}
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
           <h3 className="line-clamp-2 h-[48px] overflow-hidden text-lg font-bold leading-6 transition-colors duration-200 group-hover:text-brand">{formatHeroTitle(currentTrending.title, 34)}</h3>
-          <p className="text-[11px] text-white/80">{currentTrending.meta}</p>
-          <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
-            <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300 border border-amber-500/25">
+          <p className="text-[11px] font-medium text-white/80">{currentTrending.meta}</p>
+          <p className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold">
+            <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-300 border border-amber-500/30">
               <Star size={12} className="fill-amber-400 text-amber-400" />
               {currentTrending.rating}
             </span>

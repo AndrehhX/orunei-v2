@@ -64,9 +64,9 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, theme = (dar
       <div className="flex lg:hidden items-center shrink-0">
         <OruneiLogo size={28} withText={true} textClassName="text-base font-extrabold tracking-tight" />
       </div>
-      <label className="flex h-10 sm:h-11 flex-1 max-w-[540px] items-center gap-2.5 sm:gap-3 rounded-xl bg-slate-200/60 dark:bg-white/5 px-3 sm:px-4 text-slate-500 transition focus-within:bg-white dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-brand/40">
-        <Search size={18} className="shrink-0" />
-        <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-xs sm:text-sm outline-none" placeholder="Buscar anime, películas, series..." />
+      <label className="flex h-10 sm:h-11 flex-1 max-w-[540px] items-center gap-2.5 sm:gap-3 rounded-xl bg-slate-200/50 dark:bg-white/[0.04] border border-slate-300/40 dark:border-white/[0.07] px-3 sm:px-4 text-slate-500 transition-all duration-200 focus-within:bg-white dark:focus-within:bg-white/[0.08] focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/25 focus-within:shadow-[0_0_20px_rgba(109,92,255,0.18)]">
+        <Search size={18} className="shrink-0 transition-colors group-focus-within:text-brand" />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-xs sm:text-sm outline-none text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" placeholder="Buscar anime, películas, series..." />
       </label>
       {onOpenDonation && (() => {
         const donationStyle = getDonationThemeStyles(theme);
