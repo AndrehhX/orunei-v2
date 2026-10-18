@@ -32,3 +32,24 @@ test('togglePiP invoca requestPictureInPicture cuando está habilitado en docume
   // Limpiar mock
   delete globalThis.document;
 });
+
+test('togglePiP conmuta modo picture-in-picture nativo de WebKit en iOS Safari', async () => {
+  let presentationMode = 'inline';
+  const fakeIosVideo = {
+    webkitSupportsPresentationMode: (mode) => mode === 'picture-in-picture',
+    get webkitPresentationMode() { return presentationMode; },
+    webkitSetPresentationMode: (mode) => { presentationMode = mode; },
+  };
+
+  assert.equal(isPiPSupported(fakeIosVideo), true);
+
+  // Activar PiP en iOS
+  const entered = await togglePiP(fakeIosVideo);
+  assert.equal(entered, true);
+  assert.equal(presentationMode, 'picture-in-picture');
+
+  // Desactivar PiP en iOS
+  const exited = await togglePiP(fakeIosVideo);
+  assert.equal(exited, false);
+  assert.equal(presentationMode, 'inline');
+});

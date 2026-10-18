@@ -669,16 +669,31 @@ export default function AnimePlayer({
   };
 
   const handleToggleFullscreen = () => {
-    const el = containerRef.current || videoRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.().catch(() => {});
-    } else {
-      el.requestFullscreen?.().catch(() => {
-        if (videoRef.current?.webkitEnterFullscreen) {
-          videoRef.current.webkitEnterFullscreen();
+    const video = videoRef.current;
+    const container = containerRef.current || video;
+    if (!container && !video) return;
+
+    const isStandardFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    if (isStandardFs) {
+      if (typeof document.exitFullscreen === 'function') {
+        document.exitFullscreen().catch(() => {});
+      } else if (typeof document.webkitExitFullscreen === 'function') {
+        document.webkitExitFullscreen();
+      }
+      return;
+    }
+
+    if (typeof container.requestFullscreen === 'function') {
+      container.requestFullscreen().catch(() => {
+        if (typeof video?.webkitEnterFullscreen === 'function') {
+          video.webkitEnterFullscreen();
         }
       });
+      return;
+    }
+
+    if (typeof video?.webkitEnterFullscreen === 'function') {
+      video.webkitEnterFullscreen();
     }
   };
 

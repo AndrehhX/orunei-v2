@@ -5,20 +5,30 @@
 
 import { useState, useRef, useCallback } from 'react';
 
-export function isPiPSupported() {
-  if (typeof document === 'undefined') return false;
-  return Boolean(document.pictureInPictureEnabled);
+export function isPiPSupported(video = null) {
+  const standard = typeof document !== 'undefined' && Boolean(document.pictureInPictureEnabled);
+  const webkit = Boolean(video?.webkitSupportsPresentationMode && typeof video.webkitSetPresentationMode === 'function');
+  return standard || webkit;
 }
 
 export async function togglePiP(video) {
   if (!video) return false;
   try {
-    if (document.pictureInPictureElement) {
+    const hasDoc = typeof document !== 'undefined';
+    // 1. Estándar W3C (Chrome, Edge, Firefox, Safari macOS)
+    if (hasDoc && document.pictureInPictureElement) {
       await document.exitPictureInPicture();
       return false;
-    } else if (document.pictureInPictureEnabled) {
+    } else if (hasDoc && document.pictureInPictureEnabled && typeof video.requestPictureInPicture === 'function') {
       await video.requestPictureInPicture();
       return true;
+    }
+
+    // 2. Modo nativo WebKit para iOS Safari (iPhone y iPad)
+    if (typeof video.webkitSetPresentationMode === 'function') {
+      const isCurrentlyPiP = video.webkitPresentationMode === 'picture-in-picture';
+      video.webkitSetPresentationMode(isCurrentlyPiP ? 'inline' : 'picture-in-picture');
+      return !isCurrentlyPiP;
     }
   } catch (err) {
     console.warn('[PiP] Error toggling picture-in-picture:', err);
