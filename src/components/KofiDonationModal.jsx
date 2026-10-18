@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, Sparkles, Coffee, ShieldCheck, Zap, Radio, X, ExternalLink, Copy, Check } from 'lucide-react';
+import { Coffee, ShieldCheck, Zap, Radio, X, ArrowUpRight, Copy, Check, Sparkles } from 'lucide-react';
 import { KOFI_DONATION_URL, KOFI_TIERS } from '../config/donation';
 
 export default function KofiDonationModal({ isOpen, onClose }) {
@@ -19,50 +19,41 @@ export default function KofiDonationModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade overflow-y-auto">
-      <div className="relative w-full max-w-lg rounded-3xl bg-[#13141f] border border-amber-500/30 p-6 sm:p-8 text-white shadow-[0_0_50px_rgba(245,158,11,0.2)] space-y-6 animate-rise my-auto">
-        {/* Botón cerrar */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade overflow-y-auto">
+      <div className="relative w-full max-w-lg rounded-2xl bg-[#0d0f17] border border-white/10 p-6 sm:p-8 text-white shadow-[0_24px_60px_rgba(0,0,0,0.7)] space-y-6 animate-rise my-auto">
+        {/* Botón de cierre */}
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition active:scale-95 z-10"
-          aria-label="Cerrar ventana de donaciones"
+          className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition active:scale-95"
+          aria-label="Cerrar modal"
         >
-          <X size={20} />
+          <X size={18} />
         </button>
 
-        {/* Encabezado animado con aura de café */}
-        <div className="text-center space-y-2.5">
-          <div className="relative inline-flex items-center justify-center">
-            {/* Anillo de resplandor animado */}
-            <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-amber-500 via-rose-500 to-brand opacity-60 blur-lg animate-pulse" />
-            <div className="relative h-20 w-20 rounded-3xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 grid place-items-center shadow-xl shadow-amber-500/30">
-              <span className="text-4xl animate-bounce select-none" role="img" aria-label="Café">☕</span>
-              <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-md border-2 border-[#13141f]">
-                <Heart size={12} className="fill-white animate-ping" />
-              </span>
-            </div>
+        {/* Encabezado Editorial Minimalista */}
+        <div className="space-y-3">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-mono tracking-widest uppercase bg-white/[0.04] text-slate-300 border border-white/10">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span>Fondo de Infraestructura Independiente</span>
           </div>
 
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30">
-              <Sparkles size={12} />
-              <span>Espacio de Donaciones Oficial</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Invítanos a un café en <span className="bg-gradient-to-r from-amber-400 via-rose-400 to-purple-400 bg-clip-text text-transparent">Ko-fi</span>
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
-              Orunei se mantiene como un proyecto 100% independiente y sin anuncios molestos. Tu donación nos ayuda a costear los servidores y seguir mejorando la plataforma.
-            </p>
-          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+            Sostén la independencia de Orunei
+          </h2>
+
+          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+            Orunei se mantiene sin publicidad comercial, ventanas emergentes ni venta de datos. Tu contribución financia directamente el ancho de banda CDN, los servidores dedicados 1080p y el mantenimiento del catálogo.
+          </p>
         </div>
 
-        {/* Selector interactivo de aportes */}
-        <div className="space-y-2">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-            <span>Elige cómo deseas apoyar</span>
-            <span className="text-amber-400 font-semibold">{activeTier.label} ({activeTier.amount})</span>
-          </label>
+        {/* Selector Bento de Aportes */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-slate-400">
+            <span>Modalidad de aporte</span>
+            <span className="text-white font-medium">{activeTier.label} ({activeTier.amount})</span>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {KOFI_TIERS.map((tier) => {
               const isSelected = selectedTier === tier.id;
@@ -71,107 +62,95 @@ export default function KofiDonationModal({ isOpen, onClose }) {
                   key={tier.id}
                   type="button"
                   onClick={() => setSelectedTier(tier.id)}
-                  className={`relative p-3 rounded-2xl border text-center transition-all duration-200 active:scale-95 flex flex-col items-center justify-center gap-1 ${
+                  className={`relative p-3.5 rounded-xl border text-left transition-all duration-150 active:scale-[0.98] flex flex-col justify-between min-h-[96px] ${
                     isSelected
-                      ? 'bg-gradient-to-b from-amber-500/20 to-rose-500/20 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.25)]'
-                      : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                      ? 'bg-white/[0.08] border-white text-white'
+                      : 'bg-white/[0.02] border-white/10 text-slate-400 hover:text-white hover:border-white/25 hover:bg-white/[0.04]'
                   }`}
                 >
-                  {tier.popular && (
-                    <span className="absolute -top-2 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow">
-                      Popular
-                    </span>
-                  )}
-                  <span className="text-lg">{tier.coffees ? '☕'.repeat(tier.coffees) : '✨'}</span>
-                  <span className="text-xs font-bold">{tier.amount}</span>
-                  <span className="text-[10px] text-slate-400">{tier.label}</span>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-sm font-mono font-bold text-white tracking-tight">{tier.amount}</span>
+                    {tier.popular && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider bg-white/15 text-white">
+                        Común
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-200">{tier.label}</p>
+                    <p className="text-[10px] text-slate-400 line-clamp-1">{tier.coffees ? `${tier.coffees} café${tier.coffees > 1 ? 's' : ''}` : 'Monto libre'}</p>
+                  </div>
                 </button>
               );
             })}
           </div>
-          <p className="text-[11px] text-center text-slate-400 italic pt-0.5">
-            "{activeTier.description}"
+
+          <p className="text-[11px] text-slate-400 font-mono pt-1">
+            Impacto: <span className="text-slate-300">{activeTier.description}</span>
           </p>
         </div>
 
-        {/* Razones de apoyo */}
-        <div className="grid gap-2.5 sm:grid-cols-2 text-left">
-          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-start gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 shrink-0">
-              <Zap size={16} />
-            </div>
+        {/* Desglose de Transparencia Editorial */}
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 divide-y divide-white/5 space-y-3">
+          <div className="flex items-start gap-3 pt-0">
+            <span className="text-[10px] font-mono text-slate-400 mt-0.5">01</span>
             <div>
-              <p className="text-xs font-bold text-slate-200">Servidores 1080p sin cortes</p>
-              <p className="text-[11px] text-slate-400">Ancho de banda rápido para ver anime en máxima calidad.</p>
+              <p className="text-xs font-semibold text-slate-200">Servidores 1080p dedicados</p>
+              <p className="text-[11px] text-slate-400">Ancho de banda mensual para reproducción fluida sin cortes ni sobrecarga.</p>
             </div>
           </div>
 
-          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-start gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0">
-              <ShieldCheck size={16} />
-            </div>
+          <div className="flex items-start gap-3 pt-3">
+            <span className="text-[10px] font-mono text-slate-400 mt-0.5">02</span>
             <div>
-              <p className="text-xs font-bold text-slate-200">100% Libre de Anuncios</p>
-              <p className="text-[11px] text-slate-400">Cero ventanas emergentes, acortadores ni rastreadores.</p>
+              <p className="text-xs font-semibold text-slate-200">Cero anuncios comerciales</p>
+              <p className="text-[11px] text-slate-400">Compromiso total sin pop-ups, acortadores de enlaces ni rastreadores.</p>
             </div>
           </div>
 
-          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-start gap-2.5">
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 shrink-0">
-              <Radio size={16} />
-            </div>
+          <div className="flex items-start gap-3 pt-3">
+            <span className="text-[10px] font-mono text-slate-400 mt-0.5">03</span>
             <div>
-              <p className="text-xs font-bold text-slate-200">Más Doblaje Latino & Castellano</p>
-              <p className="text-[11px] text-slate-400">Ampliación e indexación constante de temporadas dobladas.</p>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-start gap-2.5">
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 shrink-0">
-              <Coffee size={16} />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-200">Desarrollo de la App Móvil</p>
-              <p className="text-[11px] text-slate-400">Actualizaciones continuas y soporte de descargas offline.</p>
+              <p className="text-xs font-semibold text-slate-200">Indexación y doblaje constante</p>
+              <p className="text-[11px] text-slate-400">Actualización diaria de episodios con subtítulos y audio en español latino.</p>
             </div>
           </div>
         </div>
 
         {/* Acciones principales */}
-        <div className="space-y-2.5 pt-1">
+        <div className="space-y-2 pt-1">
           <a
             href={KOFI_DONATION_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex items-center justify-center gap-2.5 w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white font-extrabold text-sm shadow-xl shadow-amber-500/25 hover:brightness-110 active:scale-95 transition-all duration-200"
+            className="flex items-center justify-center gap-2 w-full py-3 px-5 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-bold text-sm transition-all duration-150 active:scale-[0.98]"
           >
-            <span className="text-base group-hover:scale-110 transition-transform">☕</span>
-            <span>Apoyar en Ko-fi ({activeTier.amount})</span>
-            <ExternalLink size={15} className="opacity-80" />
+            <span>Respaldar en Ko-fi ({activeTier.amount})</span>
+            <ArrowUpRight size={16} />
           </a>
 
           <button
             type="button"
             onClick={handleCopyLink}
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-semibold transition active:scale-95"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-white/10 hover:border-white/20 bg-transparent hover:bg-white/[0.03] text-slate-300 font-mono text-xs transition active:scale-[0.98]"
           >
             {copied ? (
               <>
                 <Check size={14} className="text-emerald-400" />
-                <span className="text-emerald-400 font-bold">¡Enlace copiado al portapapeles!</span>
+                <span className="text-emerald-400 font-bold">Enlace copiado al portapapeles</span>
               </>
             ) : (
               <>
-                <Copy size={14} />
-                <span>Copiar enlace de Ko-fi</span>
+                <Copy size={13} />
+                <span>Copiar enlace directo de Ko-fi</span>
               </>
             )}
           </button>
         </div>
 
-        <div className="text-center">
-          <p className="text-[10px] text-slate-500">
-            Cualquier aporte, por pequeño que sea, significa un mundo para mantener Orunei vivo ❤️
+        <div className="text-center pt-1">
+          <p className="text-[10px] font-mono text-slate-500">
+            Transacciones procesadas de forma segura y externa mediante la plataforma oficial de Ko-fi.
           </p>
         </div>
       </div>

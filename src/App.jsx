@@ -2,7 +2,6 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import { Search, Sparkles, Sun, Moon, WifiOff } from 'lucide-react'
 import { checkForUpdate } from './offline/appUpdater'
 import UpdateModal from './components/UpdateModal'
-import DownloadAppModal from './components/DownloadAppModal'
 import KofiDonationModal from './components/KofiDonationModal'
 import ActiveDownloadBar from './components/ActiveDownloadBar'
 import { isNativeApp } from './offline/platform'
@@ -58,7 +57,7 @@ function GlobalTasteSync() {
 
 const tabs = ['Anime', 'Noticias']
 
-function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, theme = (dark ? 'dark' : 'light'), setTheme, onOpenDownloadApp, onOpenDonation, isOffline, onOpenOfflineDownloads }) {
+function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, theme = (dark ? 'dark' : 'light'), setTheme, onOpenDonation, isOffline, onOpenOfflineDownloads }) {
   const { profile } = useProfile()
   return (
     <header className="flex items-center gap-2.5 sm:gap-4 animate-fade">
@@ -155,7 +154,6 @@ export default function App() {
   const [selectedAnimeId, setSelectedAnimeId] = useState(null)
   const [selectedPlayEpisode, setSelectedPlayEpisode] = useState(null)
   const [developmentNotice, setDevelopmentNotice] = useState(null)
-  const [showDownloadApp, setShowDownloadApp] = useState(false)
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [updateInfo, setUpdateInfo] = useState(null)
   const [showSplash, setShowSplash] = useState(() => {
@@ -274,7 +272,7 @@ export default function App() {
       )}
       <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
         {theme === 'sakura' && <SakuraPetals />}
-        <Sidebar dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} user={user} onLogout={handleLogout} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} />
+        <Sidebar dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} user={user} onLogout={handleLogout} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
         <main className="min-w-0 flex-1 space-y-6 px-3.5 sm:px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 lg:pb-8 lg:px-8">
           <AppHeader
             query={query}
@@ -284,7 +282,6 @@ export default function App() {
             setDark={setDark}
             theme={theme}
             setTheme={setTheme}
-            onOpenDownloadApp={() => setShowDownloadApp(true)}
             onOpenDonation={() => setShowDonationModal(true)}
             isOffline={isOffline}
             onOpenOfflineDownloads={() => navigatePage('library')}
@@ -340,7 +337,6 @@ export default function App() {
         <MobileNav page={page} setPage={navigatePage} />
         <DevelopmentNotice notice={developmentNotice} onClose={() => setDevelopmentNotice(null)} />
         <UpdateModal updateInfo={updateInfo} onClose={() => setUpdateInfo(null)} />
-        <DownloadAppModal isOpen={showDownloadApp} onClose={() => setShowDownloadApp(false)} />
         <KofiDonationModal isOpen={showDonationModal} onClose={() => setShowDonationModal(false)} />
       </div>
     </Suspense>

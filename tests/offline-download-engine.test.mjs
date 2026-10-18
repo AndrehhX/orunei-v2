@@ -46,14 +46,13 @@ test('anime detail includes episode download controls only for native app', () =
   assert.match(animeDetail, /CheckCircle2/)
 })
 
-test('app header and sidebar include Android APK download actions and platform isolation', () => {
-  assert.match(app, /onOpenDownloadApp/)
+test('app shell maintains native platform isolation and update manager', () => {
   assert.match(app, /isNativeApp/)
-  assert.match(app, /DownloadAppModal/)
   assert.match(app, /ActiveDownloadBar/)
   assert.match(app, /UpdateModal/)
   assert.match(app, /checkForUpdate/)
 })
+
 
 test('offline engine guarantees background downloads, persistent storage, and subtitle preservation', () => {
   assert.match(downloadEngine, /ensurePersistentStorage/)
