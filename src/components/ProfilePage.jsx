@@ -42,11 +42,9 @@ function Avatar({ profile, large = false }) {
 }
 
 function Banner({ src, className = '' }) {
-  const isGif = typeof src === 'string' && (src.toLowerCase().includes('.gif') || src.startsWith('data:image/gif'))
   return <div className={`relative overflow-hidden bg-gradient-to-r from-[#22153d] via-brand/90 to-[#f08ab8] ${className}`}>
     {src && <img src={src} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="absolute inset-0 h-full w-full object-cover" />}
     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10 pointer-events-none" />
-    {isGif && <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[9px] font-black tracking-wider uppercase text-pink-300 border border-pink-400/30 shadow-md">GIF animado</span>}
   </div>
 }
 

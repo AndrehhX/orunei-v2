@@ -104,11 +104,6 @@ function UploadButton({ kind, onChange, current, fileName, onReset, uploading })
     <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 transition hover:border-brand/40 shadow-xs">
       <div className={`${kind === 'avatar' ? 'h-16 w-16 rounded-full' : 'h-16 w-28 rounded-xl'} relative overflow-hidden bg-gradient-to-br from-brand to-pink-400 shadow-md ring-2 ring-white/50 dark:ring-white/10 shrink-0`}>
         <img key={current || 'empty'} src={current || undefined} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" />
-        {isGif && (
-          <span className="absolute bottom-1 right-1 px-1.5 py-0.2 rounded-md bg-black/80 text-[8px] font-black uppercase text-pink-400 backdrop-blur border border-pink-500/30">
-            GIF
-          </span>
-        )}
       </div>
       <div className="min-w-0 flex-1">
         <label htmlFor={id} aria-disabled={uploading} className={`inline-flex items-center gap-2 rounded-xl bg-white dark:bg-white/10 border border-slate-200/80 px-3.5 py-2 text-xs font-bold transition hover:border-brand hover:text-brand dark:border-white/10 shadow-xs active:scale-95 ${uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>

@@ -39,11 +39,9 @@ function Avatar({ profile }) {
 }
 
 function Banner({ profile }) {
-  const isGif = typeof profile?.banner === 'string' && (profile.banner.toLowerCase().includes('.gif') || profile.banner.startsWith('data:image/gif'))
   return <div className="relative h-36 overflow-hidden bg-gradient-to-r from-[#22153d] via-brand/90 to-[#f08ab8] md:h-52">
     {profile.banner && <img src={profile.banner} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10 pointer-events-none" />
-    {isGif && <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[9px] font-black tracking-wider uppercase text-pink-300 border border-pink-400/30 shadow-md">GIF animado</span>}
   </div>
 }
 

@@ -346,13 +346,6 @@ export default function AvatarFrame({
           </span>
         )}
       </div>
-
-      {/* Badge GIF si aplica */}
-      {showGifBadge && isGif && (
-        <span className="absolute bottom-0 right-0 z-20 px-1.5 py-0.2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-[8px] font-black uppercase text-white shadow-md border border-white/50 dark:border-slate-900 animate-pulse">
-          GIF
-        </span>
-      )}
     </div>
   )
 }
