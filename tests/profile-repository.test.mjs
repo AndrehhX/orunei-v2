@@ -133,3 +133,87 @@ test('loads private lists and activity and writes new remote activity', async ()
   assert.equal(recorded.error, '')
   assert.equal(recorded.data.label, 'Creó una lista')
 })
+
+test('persists avatarFrame, profileTheme, glassOpacity, and overviewOrder across remote save and load round-trip', async () => {
+  let savedPayload = null
+  const client = {
+    calls: [],
+    from(table) {
+      if (table === 'profiles') {
+        return {
+          upsert(payload) {
+            savedPayload = payload
+            return {
+              select() {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { ...payload, id: payload.id }, error: null })
+                  }
+                }
+              }
+            }
+          },
+          select() {
+            return {
+              eq() {
+                return {
+                  maybeSingle() {
+                    return Promise.resolve({ data: savedPayload, error: null })
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      if (table === 'profile_privacy') {
+        return {
+          select() { return this },
+          eq() { return Promise.resolve({ data: [], error: null }) },
+          upsert() { return Promise.resolve({ error: null }) }
+        }
+      }
+      return {
+        select() { return this },
+        eq() { return this },
+        order() { return this },
+        then(resolve) { return Promise.resolve({ data: [], error: null }).then(resolve) }
+      }
+    }
+  }
+
+  const repo = createProfileRepository(client)
+  const saveResult = await repo.saveProfile('user-42', {
+    username: 'andreh-pro',
+    displayName: 'Andreh Master',
+    avatarFrame: 'sakura',
+    profileTheme: 'sakura-shrine',
+    glassOpacity: 45,
+    overviewOrder: ['comments', 'showcase', 'activity', 'animeList'],
+    featuredQuote: 'Never give up',
+    featuredReview: 'Masterpiece anime',
+  })
+
+  assert.equal(saveResult.error, '')
+  assert.equal(saveResult.data.avatarFrame, 'sakura')
+  assert.equal(saveResult.data.profileTheme, 'sakura-shrine')
+  assert.equal(saveResult.data.glassOpacity, 45)
+  assert.deepEqual(saveResult.data.overviewOrder, ['comments', 'showcase', 'activity', 'animeList'])
+  assert.equal(saveResult.data.featuredQuote, 'Never give up')
+
+  // Verificar que el payload hacia Supabase empaquetó las opciones en JSONB pinned_sections
+  assert.equal(savedPayload.pinned_sections.avatarFrame, 'sakura')
+  assert.equal(savedPayload.pinned_sections.profileTheme, 'sakura-shrine')
+  assert.equal(savedPayload.pinned_sections.glassOpacity, 45)
+  assert.deepEqual(savedPayload.pinned_sections.overviewOrder, ['comments', 'showcase', 'activity', 'animeList'])
+
+  // Simular recarga remota en un navegador completamente nuevo (sin estado local)
+  const loadedOnFreshBrowser = await repo.getOwnProfile('user-42')
+  assert.equal(loadedOnFreshBrowser.error, '')
+  assert.equal(loadedOnFreshBrowser.data.avatarFrame, 'sakura')
+  assert.equal(loadedOnFreshBrowser.data.profileTheme, 'sakura-shrine')
+  assert.equal(loadedOnFreshBrowser.data.glassOpacity, 45)
+  assert.deepEqual(loadedOnFreshBrowser.data.overviewOrder, ['comments', 'showcase', 'activity', 'animeList'])
+  assert.equal(loadedOnFreshBrowser.data.featuredQuote, 'Never give up')
+  assert.equal(loadedOnFreshBrowser.data.featuredReview, 'Masterpiece anime')
+})

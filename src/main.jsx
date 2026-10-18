@@ -7,7 +7,10 @@ import { RecProvider } from './rec/rec.jsx'
 import { ImagesProvider } from './images.jsx'
 import { AuthProvider } from './auth/AuthProvider.jsx'
 import { SocialProvider } from './social/SocialProvider.jsx'
+import { initRuntimeSecurity } from './security/runtimeSecurity.js'
 import './index.css'
+
+initRuntimeSecurity()
 // Manejo global para chunks dinamicos obsoletos tras un nuevo despliegue
 function handleChunkError() {
   try {

@@ -18,14 +18,28 @@ function privacyObject(rows) {
 
 export function normalizeRemoteProfile(row, user = {}) {
   if (!row) return null
+  const pinnedRaw = row.pinnedSections ?? row.pinned_sections
+  const isObject = pinnedRaw && typeof pinnedRaw === 'object' && !Array.isArray(pinnedRaw)
+  const pinnedList = isObject && Array.isArray(pinnedRaw.sections)
+    ? pinnedRaw.sections
+    : (Array.isArray(pinnedRaw) ? pinnedRaw : ['overview', 'animelist', 'favorites'])
+  const meta = isObject ? pinnedRaw : {}
+
   return normalizeProfile({
     ...row,
     visibility: row.visibility ?? row.profile_visibility,
     displayName: row.displayName ?? row.display_name,
     avatar: row.avatar ?? row.avatar_url,
     banner: row.banner ?? row.banner_url,
+    accent: row.accent,
+    avatarFrame: row.avatar_frame ?? row.avatarFrame ?? meta.avatarFrame,
+    profileTheme: row.profile_theme ?? row.profileTheme ?? meta.profileTheme,
+    glassOpacity: row.glass_opacity ?? row.glassOpacity ?? meta.glassOpacity,
+    overviewOrder: row.overview_order ?? row.overviewOrder ?? meta.overviewOrder,
+    featuredQuote: row.featured_quote ?? row.featuredQuote ?? meta.featuredQuote,
+    featuredReview: row.featured_review ?? row.featuredReview ?? meta.featuredReview,
     featuredAnimeId: row.featuredAnimeId ?? row.featured_anime_id,
-    pinnedSections: row.pinnedSections ?? row.pinned_sections,
+    pinnedSections: pinnedList,
     landingSection: row.landingSection ?? row.landing_section,
     updatedAt: row.updatedAt ?? row.updated_at,
     privacy: privacyObject(row.privacy),
@@ -33,6 +47,16 @@ export function normalizeRemoteProfile(row, user = {}) {
 }
 
 function profilePayload(userId, patch) {
+  const sections = Array.isArray(patch.pinnedSections) ? patch.pinnedSections : ['overview', 'animelist', 'favorites']
+  const customMeta = {
+    avatarFrame: patch.avatarFrame || 'none',
+    profileTheme: patch.profileTheme || 'default',
+    glassOpacity: typeof patch.glassOpacity === 'number' ? patch.glassOpacity : 75,
+    overviewOrder: Array.isArray(patch.overviewOrder) ? patch.overviewOrder : ['showcase', 'comments', 'animeList', 'activity'],
+    featuredQuote: text(patch.featuredQuote),
+    featuredReview: text(patch.featuredReview),
+  }
+
   return {
     id: userId,
     username: text(patch.username),
@@ -44,7 +68,10 @@ function profilePayload(userId, patch) {
     banner_url: text(patch.banner),
     accent: text(patch.accent),
     featured_anime_id: text(patch.featuredAnimeId),
-    pinned_sections: Array.isArray(patch.pinnedSections) ? patch.pinnedSections : [],
+    pinned_sections: {
+      sections,
+      ...customMeta,
+    },
     landing_section: text(patch.landingSection),
     updated_at: new Date().toISOString(),
   }
@@ -118,12 +145,26 @@ export function createProfileRepository(client = supabase) {
       const payload = profilePayload(userId, patch)
       const { data, error } = await client.from('profiles').upsert(payload).select('*').single()
       if (error) return { data: null, error: resultError(error) }
+
+      try {
+        if (client?.auth?.updateUser && typeof client.auth.updateUser === 'function') {
+          client.auth.updateUser({
+            data: {
+              avatarFrame: patch.avatarFrame,
+              profileTheme: patch.profileTheme,
+              glassOpacity: patch.glassOpacity,
+              overviewOrder: patch.overviewOrder,
+            }
+          }).catch(() => {})
+        }
+      } catch {}
+
       const rows = privacyPayload(userId, patch.privacy)
       if (rows.length) {
         const privacyResult = await client.from('profile_privacy').upsert(rows, { onConflict: 'profile_id,section' })
         if (privacyResult.error) return { data: null, error: resultError(privacyResult.error) }
       }
-      return { data: normalizeRemoteProfile({ ...data, privacy: rows }, { id: userId }), error: '' }
+      return { data: normalizeRemoteProfile({ ...data, pinned_sections: payload.pinned_sections, privacy: rows }, { id: userId }), error: '' }
     },
 
     async saveAnimeList(userId, entries) {

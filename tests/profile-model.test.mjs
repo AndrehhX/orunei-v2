@@ -163,5 +163,43 @@ test('normalizes glassOpacity within bounds and provides standard fallback', () 
   assert.equal(notNumber.glassOpacity, 75)
 })
 
+test('user-scoped profile storage isolates accounts and falls back smoothly', async () => {
+  const { getUserProfileKey, readProfileStorage, writeProfileStorage, clearProfileStorage } = await import('../src/profile/profileStorage.js')
+
+  const map = new Map()
+  const mockStorage = {
+    getItem(k) { return map.get(k) ?? null },
+    setItem(k, v) { map.set(k, String(v)) },
+    removeItem(k) { map.delete(k) },
+  }
+
+  assert.equal(getUserProfileKey('usr-1'), 'orunei-profile-v1-usr-1')
+  assert.equal(getUserProfileKey(''), 'orunei-profile-v1')
+
+  // Guardar perfil para el usuario 1
+  writeProfileStorage(mockStorage, { displayName: 'User One', avatarFrame: 'flame', glassOpacity: 50 }, { id: 'usr-1' })
+
+  // Usuario 1 lee sus datos específicos
+  const readUser1 = readProfileStorage(mockStorage, { id: 'usr-1' })
+  assert.equal(readUser1.displayName, 'User One')
+  assert.equal(readUser1.avatarFrame, 'flame')
+  assert.equal(readUser1.glassOpacity, 50)
+
+  // Guardar perfil para usuario 2
+  writeProfileStorage(mockStorage, { displayName: 'User Two', avatarFrame: 'cyber', glassOpacity: 80 }, { id: 'usr-2' })
+
+  // Usuario 1 y usuario 2 mantienen sus perfiles aislados en el mismo almacenamiento
+  const reReadUser1 = readProfileStorage(mockStorage, { id: 'usr-1' })
+  const readUser2 = readProfileStorage(mockStorage, { id: 'usr-2' })
+  assert.equal(reReadUser1.displayName, 'User One')
+  assert.equal(reReadUser1.avatarFrame, 'flame')
+  assert.equal(readUser2.displayName, 'User Two')
+  assert.equal(readUser2.avatarFrame, 'cyber')
+
+  // Limpiar sesión del usuario 1 elimina su clave sin alterar claves no relacionadas
+  clearProfileStorage(mockStorage, 'usr-1')
+  assert.equal(mockStorage.getItem('orunei-profile-v1-usr-1'), null)
+})
+
 
 

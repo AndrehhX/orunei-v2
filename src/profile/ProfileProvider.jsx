@@ -57,7 +57,7 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
       }, user)
       profileRef.current = merged
       setProfile(merged)
-      writeProfileStorage(browserStorage(), merged)
+      writeProfileStorage(browserStorage(), merged, user)
       setStorageError(loaded.error)
       setProfileStatus(loaded.status)
       if (remote && mergedAnimeList.length > (loaded.profile.animeList?.length || 0)) {
@@ -94,7 +94,7 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
     }
 
     // Guardar inmediatamente en almacenamiento local para retener personalización y biblioteca sin latencia
-    writeProfileStorage(browserStorage(), safeNext)
+    writeProfileStorage(browserStorage(), safeNext, user)
     profileRef.current = safeNext
     setProfile(safeNext)
 
@@ -104,6 +104,15 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
         setStorageError(result.error)
         return { ok: false, error: result.error }
       }
+
+      // Sincronizar colecciones de manera resiliente con Supabase
+      if (effectiveAnimeList.length > 0) {
+        repository.saveAnimeList(user.id, effectiveAnimeList).catch(() => {})
+      }
+      if (effectiveCustomLists.length > 0) {
+        repository.saveCustomLists(user.id, effectiveCustomLists).catch(() => {})
+      }
+
       const remoteAnimeList = (Array.isArray(result.data?.animeList) && result.data.animeList.length > 0) ? result.data.animeList : effectiveAnimeList
       const remoteCustomLists = (Array.isArray(result.data?.customLists) && result.data.customLists.length > 0) ? result.data.customLists : effectiveCustomLists
       const remoteActivity = (Array.isArray(result.data?.activity) && result.data.activity.length > 0) ? result.data.activity : effectiveActivity
@@ -123,7 +132,7 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
       }, user)
       profileRef.current = persisted
       setProfile(persisted)
-      writeProfileStorage(browserStorage(), persisted)
+      writeProfileStorage(browserStorage(), persisted, user)
       setStorageError('')
       return { ok: true, error: '' }
     }
@@ -156,12 +165,12 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
       const nextActivity = [...profileRef.current.activity, result.data].filter(Boolean).slice(-MAX_ACTIVITY)
       profileRef.current = { ...profileRef.current, activity: nextActivity }
       setProfile(profileRef.current)
-      writeProfileStorage(browserStorage(), profileRef.current)
+      writeProfileStorage(browserStorage(), profileRef.current, user)
       setStorageError('')
       return { ok: true, error: '' }
     }
     return saveProfile((current) => ({ ...current, activity: [...current.activity, makeActivity(type, label)].slice(-MAX_ACTIVITY) }))
-  }, [remote, repository, saveProfile, user?.id])
+  }, [remote, repository, saveProfile, user])
   const updateCustomLists = useCallback(async (nextOrUpdater) => {
     const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(profileRef.current.customLists) : nextOrUpdater
     if (remote) {
@@ -169,12 +178,12 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
       if (result.error) { setStorageError(result.error); return { ok: false, error: result.error } }
       profileRef.current = { ...profileRef.current, customLists: result.data || next }
       setProfile(profileRef.current)
-      writeProfileStorage(browserStorage(), profileRef.current)
+      writeProfileStorage(browserStorage(), profileRef.current, user)
       setStorageError('')
       return { ok: true, error: '' }
     }
     return saveProfile((current) => ({ ...current, customLists: next }))
-  }, [remote, repository, saveProfile, user?.id])
+  }, [remote, repository, saveProfile, user])
   const updateAnimeList = useCallback(async (nextOrUpdater) => {
     const next = normalizeAnimeList(typeof nextOrUpdater === 'function' ? nextOrUpdater(profileRef.current.animeList) : nextOrUpdater)
     if (remote) {
@@ -182,7 +191,7 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
       const persisted = normalizeAnimeList(result.data || next)
       profileRef.current = { ...profileRef.current, animeList: persisted }
       setProfile(profileRef.current)
-      writeProfileStorage(browserStorage(), profileRef.current)
+      writeProfileStorage(browserStorage(), profileRef.current, user)
       if (result.error) {
         setStorageError(result.error)
         return { ok: false, error: result.error }
@@ -191,7 +200,7 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
       return { ok: true, error: '' }
     }
     return saveProfile((current) => ({ ...current, animeList: next }))
-  }, [remote, repository, saveProfile, user?.id])
+  }, [remote, repository, saveProfile, user])
 
   const value = useMemo(() => ({ profile, profileStatus, saveProfile, updateProfile, resetVisuals, recordActivity, updateCustomLists, updateAnimeList, uploadProfileImage, storageError, clearProfileState }), [profile, profileStatus, saveProfile, updateProfile, resetVisuals, recordActivity, updateCustomLists, updateAnimeList, uploadProfileImage, storageError])
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>

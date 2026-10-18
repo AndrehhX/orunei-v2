@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Search, Sparkles, Sun, Moon, WifiOff } from 'lucide-react'
 import { checkForUpdate } from './offline/appUpdater'
 import UpdateModal from './components/UpdateModal'
@@ -248,6 +248,16 @@ export default function App() {
     setTab(nextTab)
   }
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut()
+    } finally {
+      try {
+        sessionStorage.clear()
+      } catch {}
+    }
+  }, [signOut])
+
   if (authStatus === 'loading') return <div className="grid min-h-screen place-items-center text-sm text-slate-500">Cargando tu sesión…</div>
   if (!user) return <Login onSignIn={signIn} onSignUp={signUp} authStatus={authStatus} authError={authError} dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} />
   return (
@@ -264,7 +274,7 @@ export default function App() {
       )}
       <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
         {theme === 'sakura' && <SakuraPetals />}
-        <Sidebar dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} />
+        <Sidebar dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} user={user} onLogout={handleLogout} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} />
         <main className="min-w-0 flex-1 space-y-6 px-3.5 sm:px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 lg:pb-8 lg:px-8">
           <AppHeader
             query={query}
