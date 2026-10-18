@@ -34,3 +34,12 @@ test('makes home library and recommendation cards open anime detail', () => {
   assert.match(rows, /function RecCard\(\{ i, rec, onOpenAnime \}\)/)
   assert.match(rows, /onClick=\{\(\) => onOpenAnime\?\.\(i\)\}/)
 })
+
+test('sandboxes embedded player iframes against ads, pop-ups, and malicious redirects', () => {
+  const animePlayer = fs.readFileSync(new URL('../src/components/AnimePlayer.jsx', import.meta.url), 'utf8')
+  assert.match(animePlayer, /sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"/)
+  assert.doesNotMatch(animePlayer, /sandbox="[^"]*allow-popups/)
+  assert.doesNotMatch(animePlayer, /sandbox="[^"]*allow-top-navigation/)
+  assert.match(animePlayer, /referrerPolicy="no-referrer"/)
+})
+
