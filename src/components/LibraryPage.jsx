@@ -33,7 +33,7 @@ const statusIcon = { watching: Clock3, planned: BookOpen, paused: Pause, complet
 
 function LibraryCard({ item, onStatusChange, onMarkWatched, onToggleFavorite, onRemove }) {
   const StatusIcon = statusIcon[item.status] || BookOpen
-  return <article className="group min-w-0 rounded-2xl border border-slate-200/80 bg-white/80 p-2.5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-white/5">
+  return <article className="group min-w-0 rounded-2xl border border-slate-200/80 bg-white/80 p-2.5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-white/5" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 320px' }}>
     <Poster {...item} title={item.t} className="aspect-[3/4] rounded-xl" />
     <div className="px-0.5 pt-2">
       <p className="truncate text-sm font-bold" title={item.t}>{item.t}</p>
@@ -255,12 +255,15 @@ export default function LibraryPage({ query = '', onDiscover }) {
               <article
                 key={item.id}
                 className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white/80 p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-white/5"
+                style={{ contentVisibility: 'auto', containIntrinsicSize: '0 160px' }}
               >
                 <div className="flex gap-3">
                   <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-800">
                     <img
                       src={item.animeCover}
                       alt={item.animeTitle}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover"
                     />
                     <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-white">

@@ -27,7 +27,8 @@ function SakuraAmbientBackground() {
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none sakura-ambient-container"
+      className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none sakura-ambient-container transform-gpu"
+      style={{ contain: 'strict' }}
     >
       {/* Orbe Aurora 1: Rosa cerezo suave superior izquierdo */}
       <div

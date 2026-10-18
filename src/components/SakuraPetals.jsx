@@ -48,33 +48,49 @@ function SakuraPetals() {
     { id: 24, type: 'blossom', left: '3%', delay: '16.4s', duration: '24s', swayDuration: '6.8s', size: 14, driftX: '-40px', flutter: 'sakura-flutter-spin', layer: 'opacity-55 blur-[1px] z-10' },
   ];
 
-  // Interacción sutil con el cursor: brisa reactiva amortiguada
+  // Interacción sutil con el cursor: brisa reactiva amortiguada optimizada para 120Hz
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (isReduced) return;
 
     let prevX = 0;
-    const handleMouseMove = (e) => {
-      const deltaX = e.clientX - prevX;
-      prevX = e.clientX;
-      // Clamp suave de impulso de viento horizontal
-      targetWindRef.current = Math.max(-35, Math.min(35, deltaX * 0.4));
-    };
+    let isRunning = false;
 
     const updatePhysics = () => {
       // Amortiguación hacia cero cuando se detiene el cursor
-      targetWindRef.current *= 0.94;
+      targetWindRef.current *= 0.92;
       windOffsetRef.current += (targetWindRef.current - windOffsetRef.current) * 0.08;
 
       if (containerRef.current) {
         containerRef.current.style.setProperty('--cursor-wind-x', `${windOffsetRef.current.toFixed(1)}px`);
       }
-      rafIdRef.current = requestAnimationFrame(updatePhysics);
+
+      // Detener el bucle RAF si la oscilación ya es imperceptible (< 0.08px)
+      if (Math.abs(windOffsetRef.current) > 0.08 || Math.abs(targetWindRef.current) > 0.08) {
+        rafIdRef.current = requestAnimationFrame(updatePhysics);
+      } else {
+        if (containerRef.current) {
+          containerRef.current.style.setProperty('--cursor-wind-x', '0px');
+        }
+        windOffsetRef.current = 0;
+        targetWindRef.current = 0;
+        isRunning = false;
+        rafIdRef.current = null;
+      }
+    };
+
+    const handleMouseMove = (e) => {
+      const deltaX = e.clientX - prevX;
+      prevX = e.clientX;
+      targetWindRef.current = Math.max(-35, Math.min(35, deltaX * 0.4));
+      if (!isRunning) {
+        isRunning = true;
+        rafIdRef.current = requestAnimationFrame(updatePhysics);
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    rafIdRef.current = requestAnimationFrame(updatePhysics);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);

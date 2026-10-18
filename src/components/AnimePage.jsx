@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo, memo } from 'react'
 import { Star, X, SlidersHorizontal, Play, ChevronDown } from 'lucide-react'
 import AnimeDetail from './AnimeDetail'
 import { GENRES, EXTRA_CATEGORIES, FORMATS, STATUS, SORTS, T, title, searchAnime } from '../api/anime'
@@ -16,7 +16,7 @@ const Select = ({ label, value, onChange, options }) => (
   </label>
 )
 
-export function AnimeCard({ m, onOpen }) {
+export const AnimeCard = memo(function AnimeCard({ m, onOpen }) {
   const open = () => onOpen(m.id)
   const bg = m.coverImage.color || '#6d5cff'
   const hasDub = isMalIdDubbedInSpanish(m.idMal || m.id)
@@ -39,7 +39,7 @@ export function AnimeCard({ m, onOpen }) {
       <p className="text-[11px] text-slate-500">{T[m.format] || m.format}{m.seasonYear ? ` · ${m.seasonYear}` : ''}{m.episodes ? ` · ${m.episodes} eps` : ''}</p>
     </article>
   )
-}
+})
 
 export default function AnimePage({ query, initialOpenId = null, initialPlayEpisode = null, onCloseDetail }) {
   const [f, setF] = useState(init)

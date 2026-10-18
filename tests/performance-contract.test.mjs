@@ -37,3 +37,23 @@ test('defers authenticated pages until their route is needed', () => {
   }
   assert.match(app, /<Suspense fallback=/)
 })
+
+test('guarantees 120Hz smooth rendering via content-visibility, paint containment, and scoped transitions', () => {
+  const library = fs.readFileSync(new URL('../src/components/LibraryPage.jsx', import.meta.url), 'utf8')
+  const detail = fs.readFileSync(new URL('../src/components/AnimeDetail.jsx', import.meta.url), 'utf8')
+  const css = fs.readFileSync(new URL('../src/index.css', import.meta.url), 'utf8')
+  const petals = fs.readFileSync(new URL('../src/components/SakuraPetals.jsx', import.meta.url), 'utf8')
+
+  // Content visibility en colecciones extensas
+  assert.match(library, /contentVisibility:\s*'auto'/)
+  assert.match(detail, /contentVisibility:\s*'auto'/)
+
+  // Paint containment y transiciones acotadas en CSS
+  assert.match(css, /contain:\s*paint/)
+  assert.doesNotMatch(css, /\*\s*\{\s*transition-timing-function/)
+
+  // Pausa de física RAF en estado inactivo para evitar invalidación constante a 120Hz
+  assert.match(petals, /isRunning/)
+  assert.match(petals, /cancelAnimationFrame/)
+})
+

@@ -322,6 +322,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
                   className={`group card text-left overflow-hidden transition-all duration-300 cursor-pointer ${
                     isCurrent ? 'ring-2 ring-brand shadow-lg bg-brand/5 dark:bg-brand/10' : 'hover:-translate-y-0.5 hover:shadow-md'
                   }`}
+                  style={{ contentVisibility: 'auto', containIntrinsicSize: '0 180px' }}
                 >
                   <div className="relative aspect-video overflow-hidden bg-slate-300 dark:bg-slate-800">
                     {thumbnail ? (

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { ArrowRight, Flame, Users, UserRound, Sparkles } from 'lucide-react'
 import Poster from './Poster'
 import { useNews, NewsLink } from '../news'
@@ -20,7 +21,7 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
   const tasteGenres = selectTasteGenres(profile.animeList)
   const metrics = selectTasteMetrics(profile.animeList, tasteGenres, profile)
   const newsItems = newsStatus === 'loading' && !items.length ? [0, 1] : items.slice(2, 5)
-  const trendRows = liveTrends.map((item) => ({ ...item, q: item.title, t: item.title, y: item.year || '—', v: formatCount(item.trend), grad: 'linear-gradient(135deg,#d9405a,#2a0f3a)' }))
+  const trendRows = useMemo(() => liveTrends.map((item) => ({ ...item, q: item.title, t: item.title, y: item.year || '—', v: formatCount(item.trend), grad: 'linear-gradient(135deg,#d9405a,#2a0f3a)' })), [liveTrends])
   return (
     <aside className="scroll-hide sticky top-0 hidden h-screen w-[328px] shrink-0 space-y-5 self-start overflow-y-auto py-5 pr-6 xl:block animate-fade">
       <div className="card p-4">
