@@ -18,6 +18,7 @@ import OruneiLogo from './components/OruneiLogo'
 import AvatarFrame from './components/AvatarFrame'
 import AppSplash from './components/AppSplash'
 import SakuraPetals from './components/SakuraPetals'
+import SakuraAmbientBackground from './components/SakuraAmbientBackground'
 import { getPageScrollReset } from './ui/pageNavigation.js'
 import { getHomeTabClass } from './ui/homeTabs.js'
 import { getDonationThemeStyles } from './ui/donationButton.js'
@@ -270,7 +271,8 @@ export default function App() {
           }}
         />
       )}
-      <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
+      <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade relative">
+        {theme === 'sakura' && <SakuraAmbientBackground />}
         {theme === 'sakura' && <SakuraPetals />}
         <Sidebar dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} user={user} onLogout={handleLogout} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
         <main className="min-w-0 flex-1 space-y-6 px-3.5 sm:px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 lg:pb-8 lg:px-8">
@@ -327,7 +329,7 @@ export default function App() {
                 {tabs.map((t) => <button key={t} onClick={() => handleTabChange(t)} className={getHomeTabClass(t, tab)}>{t}</button>)}
               </div>
             </div>
-            {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero onOpenDetail={openAnime} /><Library query={query} onMore={() => navigatePage('library')} onOpenAnime={openAnime} /><Because query={query} onOpenAnime={openAnime} /><News query={query} onMore={() => setTab('Noticias')} /></>}
+            {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero onOpenDetail={openAnime} theme={theme} /><Library query={query} onMore={() => navigatePage('library')} onOpenAnime={openAnime} /><Because query={query} onOpenAnime={openAnime} /><News query={query} onMore={() => setTab('Noticias')} /></>}
             </>}
           </div>
         </main>

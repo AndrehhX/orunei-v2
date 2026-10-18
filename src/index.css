@@ -329,14 +329,14 @@ video::cue {
     transform: translateY(-8vh) translateX(0);
     opacity: 0;
   }
-  12% {
+  10% {
     opacity: 0.95;
   }
   88% {
     opacity: 0.95;
   }
   100% {
-    transform: translateY(108vh) translateX(var(--drift-x, 80px));
+    transform: translateY(108vh) translateX(calc(var(--drift-x, 80px) + var(--cursor-wind-x, 0px)));
     opacity: 0;
   }
 }
@@ -379,6 +379,30 @@ video::cue {
   }
 }
 
+@keyframes sakuraFlutter3 {
+  0%, 100% {
+    transform: rotate3d(1, 0, 1, 10deg) rotateZ(15deg) translateX(0);
+  }
+  35% {
+    transform: rotate3d(0, 1, 1, 95deg) rotateZ(-30deg) translateX(24px) scale(0.95);
+  }
+  70% {
+    transform: rotate3d(1, 1, 0, 210deg) rotateZ(25deg) translateX(-18px) scale(1.05);
+  }
+}
+
+@keyframes sakuraFlutterSpin {
+  0% {
+    transform: rotate(0deg) rotate3d(1, 1, 0, 0deg) scale(0.95);
+  }
+  50% {
+    transform: rotate(180deg) rotate3d(1, 1, 0, 45deg) scale(1.05);
+  }
+  100% {
+    transform: rotate(360deg) rotate3d(1, 1, 0, 0deg) scale(0.95);
+  }
+}
+
 .sakura-sway-petal {
   will-change: transform;
   animation-timing-function: ease-in-out;
@@ -394,9 +418,66 @@ video::cue {
   animation-name: sakuraFlutter2;
 }
 
+.sakura-flutter-3 {
+  animation-name: sakuraFlutter3;
+}
+
+.sakura-flutter-spin {
+  animation-name: sakuraFlutterSpin;
+}
+
+/* Animaciones para Fondo Ambiental Sakura (Orbes y Motas de Luz) */
+@keyframes sakuraAuroraDrift1 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(5vw, 4vh, 0) scale(1.1); }
+}
+@keyframes sakuraAuroraDrift2 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-4vw, 5vh, 0) scale(1.12); }
+}
+@keyframes sakuraAuroraDrift3 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(6vw, -4vh, 0) scale(1.08); }
+}
+@keyframes sakuraAuroraDrift4 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-5vw, -3vh, 0) scale(1.06); }
+}
+
+.sakura-aurora-orb-1 { animation: sakuraAuroraDrift1 26s ease-in-out infinite; will-change: transform; }
+.sakura-aurora-orb-2 { animation: sakuraAuroraDrift2 30s ease-in-out infinite; will-change: transform; }
+.sakura-aurora-orb-3 { animation: sakuraAuroraDrift3 28s ease-in-out infinite; will-change: transform; }
+.sakura-aurora-orb-4 { animation: sakuraAuroraDrift4 24s ease-in-out infinite; will-change: transform; }
+
+@keyframes sakuraMoteRise {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-105vh) translateX(var(--mote-drift, 20px));
+    opacity: 0;
+  }
+}
+
+.sakura-light-mote {
+  will-change: transform, opacity;
+  animation-name: sakuraMoteRise;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation-iteration-count: infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sakura-falling-petal,
-  .sakura-sway-petal {
+  .sakura-sway-petal,
+  .sakura-aurora-orb,
+  .sakura-light-mote {
     animation: none !important;
     display: none !important;
   }
