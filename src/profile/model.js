@@ -26,9 +26,10 @@ export const PROFILE_THEMES = [
   { id: 'default', label: 'Obsidiana Clásica', desc: 'Diseño limpio y minimalista', color: '#6d5cff' },
   { id: 'sakura-shrine', label: 'Santuario Sakura', desc: 'Pétalos cayendo con aura mística de atardecer', color: '#f472b6' },
   { id: 'cyber-rain', label: 'Tokyo Cyber Rain', desc: 'Lluvia de luces digitales de neón en la metrópolis', color: '#06b6d4' },
-  { id: 'deep-cosmos', label: 'Cosmos Infinito', desc: 'Nebulosas en órbita y polvo de estrellas brillante', color: '#8b5cf6' },
+  { id: 'deep-cosmos', label: 'Cosmos Infinito', desc: 'Nebulosas en órbita y lluvia de estrellas fugaces', color: '#8b5cf6' },
   { id: 'dark-abyss', label: 'Abismo Carmesí', desc: 'Ascuas volcánicas y humo etéreo de las profundidades', color: '#ef4444' },
   { id: 'golden-dawn', label: 'Amanecer Dorado', desc: 'Rayos celestiales y destellos cálidos dorados', color: '#f59e0b' },
+  { id: 'night-torii', label: 'Noche de Torii Zen', desc: 'Luna mística y luciérnagas flotando en la serenidad', color: '#38bdf8' },
 ]
 
 export const DEFAULT_PROFILE = {

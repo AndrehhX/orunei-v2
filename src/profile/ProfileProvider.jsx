@@ -17,7 +17,8 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
 
   useEffect(() => {
     let active = true
-    const initial = remote ? createProfile(user) : readProfileStorage(browserStorage(), user)
+    const local = readProfileStorage(browserStorage(), user)
+    const initial = remote ? normalizeProfile({ ...createProfile(user), ...local }, user) : local
     profileRef.current = initial
     setProfile(initial)
     setStorageError('')
@@ -27,8 +28,17 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
     loadOrCreateRemoteProfile(repository, user).then((result) => {
       if (!active) return
       const loaded = resolveLoadedProfile(result?.data, result?.error, user)
-      profileRef.current = loaded.profile
-      setProfile(loaded.profile)
+      const merged = normalizeProfile({
+        ...local,
+        ...loaded.profile,
+        avatarFrame: (loaded.profile.avatarFrame && loaded.profile.avatarFrame !== 'none') ? loaded.profile.avatarFrame : (local.avatarFrame || 'none'),
+        profileTheme: (loaded.profile.profileTheme && loaded.profile.profileTheme !== 'default') ? loaded.profile.profileTheme : (local.profileTheme || 'default'),
+        featuredQuote: loaded.profile.featuredQuote || local.featuredQuote || '',
+        featuredReview: loaded.profile.featuredReview || local.featuredReview || '',
+      }, user)
+      profileRef.current = merged
+      setProfile(merged)
+      writeProfileStorage(browserStorage(), merged)
       setStorageError(loaded.error)
       setProfileStatus(loaded.status)
     }).catch((error) => {
@@ -42,6 +52,8 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
   const saveProfile = useCallback(async (nextOrUpdater) => {
     const source = typeof nextOrUpdater === 'function' ? nextOrUpdater(profileRef.current) : nextOrUpdater
     const next = normalizeProfile({ ...source, updatedAt: new Date().toISOString() }, user)
+    // Guardar inmediatamente en almacenamiento local para reflejar y retener personalización
+    writeProfileStorage(browserStorage(), next)
     if (remote) {
       const result = await persistRemoteProfile(repository, user.id, next)
       if (!result.ok) {
@@ -49,13 +61,19 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
         return { ok: false, error: result.error }
       }
       const persisted = normalizeProfile({
+        ...next,
         ...result.data,
+        avatarFrame: next.avatarFrame,
+        profileTheme: next.profileTheme,
+        featuredQuote: next.featuredQuote,
+        featuredReview: next.featuredReview,
         animeList: result.data?.animeList ?? profileRef.current.animeList,
         customLists: result.data?.customLists ?? profileRef.current.customLists,
         activity: result.data?.activity ?? profileRef.current.activity,
       }, user)
       profileRef.current = persisted
       setProfile(persisted)
+      writeProfileStorage(browserStorage(), persisted)
       setStorageError('')
       return { ok: true, error: '' }
     }

@@ -3,6 +3,7 @@ import { Award, Check, Image, LockKeyhole, Palette, Shield, Sparkles, Upload, X 
 import { useProfile } from '../profile/ProfileProvider'
 import { AVATAR_FRAMES, PROFILE_THEMES } from '../profile/model.js'
 import AvatarFrame from './AvatarFrame'
+import ProfileThemeBackground from './ProfileThemeBackground'
 
 const privacyLabels = { animeList: 'AnimeList', favorites: 'Favoritos', activity: 'Actividad', lists: 'Listas' }
 const pinLabels = { overview: 'Resumen', animelist: 'AnimeList', favorites: 'Favoritos', lists: 'Listas', activity: 'Actividad' }
@@ -231,11 +232,12 @@ export default function ProfileEditor({ onClose }) {
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <div className="card overflow-hidden" style={{ '--profile-accent': draft.accent }}>
-            <div className="relative h-24 overflow-hidden bg-gradient-to-br from-brand to-pink-400">
+          <div className="card overflow-hidden relative shadow-xl" style={{ '--profile-accent': draft.accent }}>
+            <ProfileThemeBackground themeId={draft.profileTheme} />
+            <div className="relative h-24 overflow-hidden bg-gradient-to-br from-brand to-pink-400 z-10">
               {draft.banner && <img src={draft.banner} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="absolute inset-0 h-full w-full object-cover" />}
             </div>
-            <div className="px-4 pb-5">
+            <div className="px-4 pb-5 relative z-10">
               <div className="-mt-10">
                 <AvatarFrame
                   profile={draft}

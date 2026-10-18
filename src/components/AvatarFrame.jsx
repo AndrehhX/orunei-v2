@@ -118,32 +118,32 @@ export default function AvatarFrame({
           {/* SAKURA BLOSSOM FRAME */}
           {activeFrame === 'sakura' && (
             <g style={{ filter: 'url(#glow-sakura)' }}>
-              {/* Anillo de aura exterior */}
+              {/* Anillo de aura exterior adherido al círculo */}
               <circle
                 cx="50"
                 cy="50"
-                r="46"
+                r="41.7"
                 fill="none"
                 stroke="url(#sakura-grad)"
-                strokeWidth="2.5"
-                opacity="0.9"
+                strokeWidth="3.2"
+                opacity="0.95"
                 style={{ animation: 'frame-pulse-glow 3s ease-in-out infinite' }}
               />
               {/* Anillo orbital de pétalos girando suavemente */}
               <g style={{ transformOrigin: '50px 50px', animation: 'frame-spin-slow 22s linear infinite' }}>
-                <circle cx="50" cy="50" r="48" fill="none" stroke="#fda4af" strokeWidth="1" strokeDasharray="4 16" opacity="0.7" />
-                {/* 4 pétalos estilizados en órbita */}
-                <path d="M 50 1 A 4 4 0 0 1 54 5 C 54 8 50 11 50 11 C 50 11 46 8 46 5 A 4 4 0 0 1 50 1 Z" fill="#f472b6" />
-                <path d="M 99 50 A 4 4 0 0 1 95 54 C 92 54 89 50 89 50 C 89 50 92 46 95 46 A 4 4 0 0 1 99 50 Z" fill="#fda4af" />
-                <path d="M 50 99 A 4 4 0 0 1 46 95 C 46 92 50 89 50 89 C 50 89 54 92 54 95 A 4 4 0 0 1 50 99 Z" fill="#f472b6" />
-                <path d="M 1 50 A 4 4 0 0 1 5 46 C 8 46 11 50 11 50 C 11 50 8 54 5 54 A 4 4 0 0 1 1 50 Z" fill="#fda4af" />
+                <circle cx="50" cy="50" r="43" fill="none" stroke="#fda4af" strokeWidth="1" strokeDasharray="3 14" opacity="0.6" />
+                {/* 4 pétalos estilizados en órbita pegados al borde */}
+                <path d="M 50 6 A 3.5 3.5 0 0 1 53.5 9.5 C 53.5 12 50 14.5 50 14.5 C 50 14.5 46.5 12 46.5 9.5 A 3.5 3.5 0 0 1 50 6 Z" fill="#f472b6" />
+                <path d="M 94 50 A 3.5 3.5 0 0 1 90.5 53.5 C 88 53.5 85.5 50 85.5 50 C 85.5 50 88 46.5 90.5 46.5 A 3.5 3.5 0 0 1 94 50 Z" fill="#fda4af" />
+                <path d="M 50 94 A 3.5 3.5 0 0 1 46.5 90.5 C 46.5 88 50 85.5 50 85.5 C 50 85.5 53.5 88 53.5 90.5 A 3.5 3.5 0 0 1 50 94 Z" fill="#f472b6" />
+                <path d="M 6 50 A 3.5 3.5 0 0 1 9.5 46.5 C 12 46.5 14.5 50 14.5 50 C 14.5 50 12 53.5 9.5 53.5 A 3.5 3.5 0 0 1 6 50 Z" fill="#fda4af" />
               </g>
               {/* Pétalos florales adicionales con giro inverso */}
               <g style={{ transformOrigin: '50px 50px', animation: 'frame-spin-reverse 15s linear infinite' }}>
-                <circle cx="20" cy="20" r="2.5" fill="#f472b6" opacity="0.9" />
-                <circle cx="80" cy="80" r="2.5" fill="#fda4af" opacity="0.9" />
-                <circle cx="80" cy="20" r="2" fill="#fb7185" opacity="0.8" />
-                <circle cx="20" cy="80" r="2" fill="#fb7185" opacity="0.8" />
+                <circle cx="21" cy="21" r="2.2" fill="#f472b6" opacity="0.9" />
+                <circle cx="79" cy="79" r="2.2" fill="#fda4af" opacity="0.9" />
+                <circle cx="79" cy="21" r="2" fill="#fb7185" opacity="0.8" />
+                <circle cx="21" cy="79" r="2" fill="#fb7185" opacity="0.8" />
               </g>
             </g>
           )}
@@ -151,118 +151,118 @@ export default function AvatarFrame({
           {/* CYBER NEON FRAME */}
           {activeFrame === 'cyber' && (
             <g style={{ filter: 'url(#glow-cyber)' }}>
-              {/* Anillo exterior segmentado rotativo */}
+              {/* Anillo exterior segmentado rotativo pegado al círculo */}
               <g style={{ transformOrigin: '50px 50px', animation: 'frame-spin-slow 10s linear infinite' }}>
                 <circle
                   cx="50"
                   cy="50"
-                  r="46.5"
+                  r="42.5"
                   fill="none"
                   stroke="url(#cyber-grad)"
-                  strokeWidth="2.5"
-                  strokeDasharray="22 14 6 14"
+                  strokeWidth="2.8"
+                  strokeDasharray="20 12 6 12"
                 />
               </g>
-              {/* Anillo interior en contragiro */}
+              {/* Anillo interior de pulso */}
               <g style={{ transformOrigin: '50px 50px', animation: 'frame-spin-reverse 7s linear infinite' }}>
                 <circle
                   cx="50"
                   cy="50"
-                  r="44"
+                  r="40.8"
                   fill="none"
                   stroke="#06b6d4"
                   strokeWidth="1.2"
-                  strokeDasharray="6 26"
-                  opacity="0.8"
+                  strokeDasharray="6 22"
+                  opacity="0.85"
                 />
               </g>
-              {/* 4 Brackets esquineros de interfaz tecnológica */}
-              <path d="M 4 22 L 4 4 L 22 4" fill="none" stroke="#06b6d4" strokeWidth="2.2" strokeLinecap="round" />
-              <path d="M 96 22 L 96 4 L 78 4" fill="none" stroke="#d946ef" strokeWidth="2.2" strokeLinecap="round" />
-              <path d="M 4 78 L 4 96 L 22 96" fill="none" stroke="#d946ef" strokeWidth="2.2" strokeLinecap="round" />
-              <path d="M 96 78 L 96 96 L 78 96" fill="none" stroke="#06b6d4" strokeWidth="2.2" strokeLinecap="round" />
-              {/* Puntos pulsantes de red en los 4 ejes */}
-              <circle cx="50" cy="2" r="2" fill="#06b6d4" />
-              <circle cx="98" cy="50" r="2" fill="#d946ef" />
-              <circle cx="50" cy="98" r="2" fill="#06b6d4" />
-              <circle cx="2" cy="50" r="2" fill="#d946ef" />
+              {/* 4 Brackets esquineros de interfaz tecnológica cercanos */}
+              <path d="M 10 24 L 10 10 L 24 10" fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" />
+              <path d="M 90 24 L 90 10 L 76 10" fill="none" stroke="#d946ef" strokeWidth="2" strokeLinecap="round" />
+              <path d="M 10 76 L 10 90 L 24 90" fill="none" stroke="#d946ef" strokeWidth="2" strokeLinecap="round" />
+              <path d="M 90 76 L 90 90 L 76 90" fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" />
+              {/* Puntos pulsantes en los ejes */}
+              <circle cx="50" cy="7" r="1.8" fill="#06b6d4" />
+              <circle cx="93" cy="50" r="1.8" fill="#d946ef" />
+              <circle cx="50" cy="93" r="1.8" fill="#06b6d4" />
+              <circle cx="7" cy="50" r="1.8" fill="#d946ef" />
             </g>
           )}
 
           {/* CRIMSON FLAME FRAME */}
           {activeFrame === 'flame' && (
             <g style={{ transformOrigin: '50px 50px', animation: 'frame-flame-flicker 2.4s ease-in-out infinite' }}>
-              {/* Corona de fuego exterior */}
+              {/* Corona de fuego envolviendo el círculo */}
               <circle
                 cx="50"
                 cy="50"
-                r="46"
+                r="41.7"
                 fill="none"
                 stroke="url(#flame-grad)"
-                strokeWidth="3.2"
+                strokeWidth="3.4"
               />
               {/* Llamas dinámicas superiores */}
               <path
-                d="M 42 6 Q 46 -3 50 2 Q 54 -4 58 6 Q 64 2 68 12 Q 50 8 42 6 Z"
+                d="M 44 9 Q 47 2 50 5 Q 53 1 56 9 Q 60 5 64 13 Q 50 10 44 9 Z"
                 fill="url(#flame-grad)"
                 opacity="0.95"
               />
               {/* Lenguas de fuego laterales */}
               <path
-                d="M 6 42 Q -2 48 3 52 Q -4 56 6 60 Q 8 50 6 42 Z"
+                d="M 9 44 Q 3 48 7 51 Q 2 54 9 57 Q 10 49 9 44 Z"
                 fill="#f97316"
                 opacity="0.9"
               />
               <path
-                d="M 94 42 Q 102 48 97 52 Q 104 56 94 60 Q 92 50 94 42 Z"
+                d="M 91 44 Q 97 48 93 51 Q 98 54 91 57 Q 90 49 91 44 Z"
                 fill="#f97316"
                 opacity="0.9"
               />
               {/* Chispas flotantes */}
-              <circle cx="48" cy="-1" r="1.5" fill="#fef08a" />
-              <circle cx="62" cy="3" r="1.2" fill="#facc15" />
-              <circle cx="8" cy="38" r="1.3" fill="#f97316" />
-              <circle cx="92" cy="65" r="1.4" fill="#facc15" />
+              <circle cx="49" cy="2" r="1.4" fill="#fef08a" />
+              <circle cx="58" cy="4" r="1.2" fill="#facc15" />
+              <circle cx="10" cy="40" r="1.3" fill="#f97316" />
+              <circle cx="90" cy="61" r="1.3" fill="#facc15" />
             </g>
           )}
 
           {/* COSMIC NEBULA FRAME */}
           {activeFrame === 'cosmic' && (
-            <g style={{ filter: 'drop-shadow(0 0 10px rgba(139,92,246,0.8))' }}>
-              {/* Anillo de constelación exterior */}
+            <g style={{ filter: 'drop-shadow(0 0 8px rgba(139,92,246,0.8))' }}>
+              {/* Anillo exterior adherido */}
               <circle
                 cx="50"
                 cy="50"
-                r="46"
+                r="41.7"
                 fill="none"
                 stroke="url(#cosmic-grad)"
-                strokeWidth="2.5"
+                strokeWidth="2.8"
                 style={{ animation: 'frame-pulse-glow 3.5s ease-in-out infinite' }}
               />
               {/* Órbita estelar giratoria */}
               <g style={{ transformOrigin: '50px 50px', animation: 'frame-spin-slow 16s linear infinite' }}>
-                <circle cx="50" cy="50" r="48" fill="none" stroke="#a78bfa" strokeWidth="0.8" strokeDasharray="3 15" opacity="0.6" />
+                <circle cx="50" cy="50" r="43.5" fill="none" stroke="#a78bfa" strokeWidth="0.8" strokeDasharray="3 14" opacity="0.6" />
                 {/* 4 estrellas de cuatro puntas en órbita */}
-                <path d="M 50 2 L 51.5 6 L 55 7.5 L 51.5 9 L 50 13 L 48.5 9 L 45 7.5 L 48.5 6 Z" fill="#e0e7ff" />
-                <path d="M 98 50 L 94 51.5 L 92.5 55 L 91 51.5 L 87 50 L 91 48.5 L 92.5 45 L 94 48.5 Z" fill="#c084fc" />
-                <path d="M 50 98 L 48.5 94 L 45 92.5 L 48.5 91 L 50 87 L 51.5 91 L 55 92.5 L 51.5 94 Z" fill="#e0e7ff" />
-                <path d="M 2 50 L 6 48.5 L 7.5 45 L 9 48.5 L 13 50 L 9 51.5 L 7.5 55 L 6 51.5 Z" fill="#38bdf8" />
+                <path d="M 50 6 L 51.2 9.5 L 54.5 10.7 L 51.2 11.9 L 50 15 L 48.8 11.9 L 45.5 10.7 L 48.8 9.5 Z" fill="#e0e7ff" />
+                <path d="M 94 50 L 90.5 51.2 L 89.3 54.5 L 88.1 51.2 L 85 50 L 88.1 48.8 L 89.3 45.5 L 90.5 48.8 Z" fill="#c084fc" />
+                <path d="M 50 94 L 48.8 90.5 L 45.5 89.3 L 48.8 88.1 L 50 85 L 51.2 88.1 L 54.5 89.3 L 51.2 90.5 Z" fill="#e0e7ff" />
+                <path d="M 6 50 L 9.5 48.8 L 10.7 45.5 L 11.9 48.8 L 15 50 L 11.9 51.2 L 10.7 54.5 L 9.5 51.2 Z" fill="#38bdf8" />
               </g>
               {/* Polvo estelar centelleante */}
-              <circle cx="22" cy="24" r="1.8" fill="#ffffff" style={{ animation: 'star-twinkle 2s ease-in-out infinite' }} />
-              <circle cx="78" cy="76" r="1.5" fill="#67e8f9" style={{ animation: 'star-twinkle 2.5s ease-in-out 0.7s infinite' }} />
-              <circle cx="76" cy="22" r="1.6" fill="#f472b6" style={{ animation: 'star-twinkle 2.2s ease-in-out 1.2s infinite' }} />
+              <circle cx="23" cy="24" r="1.6" fill="#ffffff" style={{ animation: 'star-twinkle 2s ease-in-out infinite' }} />
+              <circle cx="77" cy="76" r="1.4" fill="#67e8f9" style={{ animation: 'star-twinkle 2.5s ease-in-out 0.7s infinite' }} />
+              <circle cx="76" cy="24" r="1.5" fill="#f472b6" style={{ animation: 'star-twinkle 2.2s ease-in-out 1.2s infinite' }} />
             </g>
           )}
 
           {/* IMPERIAL GOLD FRAME */}
           {activeFrame === 'gold' && (
             <g style={{ animation: 'frame-gold-shimmer 3s ease-in-out infinite' }}>
-              {/* Anillo biselado exterior */}
+              {/* Anillo de oro pegado al borde */}
               <circle
                 cx="50"
                 cy="50"
-                r="46.5"
+                r="42"
                 fill="none"
                 stroke="url(#gold-grad)"
                 strokeWidth="3.2"
@@ -270,7 +270,7 @@ export default function AvatarFrame({
               <circle
                 cx="50"
                 cy="50"
-                r="43.5"
+                r="40"
                 fill="none"
                 stroke="#fef08a"
                 strokeWidth="1"
@@ -278,17 +278,17 @@ export default function AvatarFrame({
               />
               {/* Corona Imperial en la parte superior */}
               <path
-                d="M 40 4 L 44 9 L 50 2 L 56 9 L 60 4 L 58 13 L 42 13 Z"
+                d="M 42 7 L 45 11 L 50 6 L 55 11 L 58 7 L 57 14 L 43 14 Z"
                 fill="url(#gold-grad)"
                 stroke="#78350f"
-                strokeWidth="0.6"
+                strokeWidth="0.5"
               />
-              <circle cx="50" cy="4" r="1.5" fill="#fef08a" />
-              {/* Sellos de gemas doradas en las 4 esquinas */}
-              <polygon points="12,12 16,8 20,12 16,16" fill="url(#gold-grad)" stroke="#fef08a" strokeWidth="0.5" />
-              <polygon points="88,12 92,8 96,12 92,16" fill="url(#gold-grad)" stroke="#fef08a" strokeWidth="0.5" />
-              <polygon points="12,88 16,84 20,88 16,92" fill="url(#gold-grad)" stroke="#fef08a" strokeWidth="0.5" />
-              <polygon points="88,88 92,84 96,88 92,92" fill="url(#gold-grad)" stroke="#fef08a" strokeWidth="0.5" />
+              <circle cx="50" cy="7" r="1.3" fill="#fef08a" />
+              {/* Sellos de gemas doradas */}
+              <polygon points="16,16 19,13 22,16 19,19" fill="url(#gold-grad)" stroke="#fef08a" strokeWidth="0.5" />
+              <polygon points="84,16 87,13 90,16 87,19" fill="url(#gold-grad)" stroke="#fef08a" strokeWidth="0.5" />
+              <polygon points="16,84 19,81 22,84 19,87" fill="url(#gold-grad)" stroke="#fef08a" strokeWidth="0.5" />
+              <polygon points="84,84 87,81 90,84 87,87" fill="url(#gold-grad)" stroke="#fef08a" strokeWidth="0.5" />
             </g>
           )}
 
@@ -299,7 +299,7 @@ export default function AvatarFrame({
               <circle
                 cx="50"
                 cy="50"
-                r="46"
+                r="41.7"
                 fill="none"
                 stroke="url(#synth-grad)"
                 strokeWidth="2.8"
@@ -308,18 +308,18 @@ export default function AvatarFrame({
                 <circle
                   cx="50"
                   cy="50"
-                  r="48.5"
+                  r="43.5"
                   fill="none"
                   stroke="#06b6d4"
-                  strokeWidth="1.2"
-                  strokeDasharray="10 18"
+                  strokeWidth="1"
+                  strokeDasharray="8 16"
                 />
               </g>
               {/* Ticks laterales de sintetizador */}
-              <line x1="2" y1="48" x2="10" y2="48" stroke="#ec4899" strokeWidth="2" />
-              <line x1="2" y1="52" x2="10" y2="52" stroke="#06b6d4" strokeWidth="2" />
-              <line x1="90" y1="48" x2="98" y2="48" stroke="#06b6d4" strokeWidth="2" />
-              <line x1="90" y1="52" x2="98" y2="52" stroke="#ec4899" strokeWidth="2" />
+              <line x1="6" y1="48" x2="13" y2="48" stroke="#ec4899" strokeWidth="1.8" />
+              <line x1="6" y1="52" x2="13" y2="52" stroke="#06b6d4" strokeWidth="1.8" />
+              <line x1="87" y1="48" x2="94" y2="48" stroke="#06b6d4" strokeWidth="1.8" />
+              <line x1="87" y1="52" x2="94" y2="52" stroke="#ec4899" strokeWidth="1.8" />
             </g>
           )}
         </svg>
