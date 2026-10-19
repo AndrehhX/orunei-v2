@@ -13,10 +13,11 @@
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     touch-action: manipulation;
+    font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   }
 }
 
-/* Scroll nativo táctil de alta velocidad y fluidez (120Hz) para Android */
+/* Scroll nativo táctil de alta velocidad y máxima fluidez (120Hz) para Android */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -27,16 +28,24 @@
   overscroll-behavior-y: contain;
   touch-action: pan-y;
   transform: translateZ(0);
+  will-change: scroll-position;
 }
 
 .overflow-y-auto {
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior-y: contain !important;
   touch-action: pan-y !important;
+  transform: translateZ(0);
 }
 
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior-x: contain !important;
   touch-action: pan-x !important;
+  transform: translateZ(0);
+}
+
+/* Optimización de rendimiento para renderizado de pósters en Android */
+img {
+  content-visibility: auto;
 }
