@@ -51,8 +51,30 @@ const HOME_QUERY = `query {
   }
 }`;
 
+import { LATINO_CATALOG } from './animeApi';
+
 function mapAniListToAnimeItem(m: any): AnimeItem {
-  const displayTitle = getAnimeTitle(m);
+  if (!m) {
+    return {
+      id: '0',
+      malId: 0,
+      title: 'Anime',
+      originalTitle: '',
+      romajiTitle: 'Anime',
+      coverImage: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg',
+      bannerImage: 'https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587-ivXNJ23SM1xB.jpg',
+      rating: 8.5,
+      year: '2024',
+      episodesCount: 12,
+      genres: ['Anime'],
+      format: 'TV',
+      isDubbed: false,
+      synopsis: 'Sin descripción disponible.',
+      studio: 'Estudio Oficial',
+    };
+  }
+
+  const displayTitle = getAnimeTitle(m) || m.title?.romaji || m.title?.english || 'Anime';
   const isDubbed = Boolean(isMalIdDubbedInSpanish(m.idMal || m.id));
   const cover = m.coverImage?.extraLarge || m.coverImage?.large || '';
   const banner = m.bannerImage || cover;
@@ -62,8 +84,8 @@ function mapAniListToAnimeItem(m: any): AnimeItem {
   const synopsis = cleanText(m.description || 'Sin descripción disponible.');
 
   return {
-    id: String(m.id),
-    malId: m.idMal || m.id,
+    id: String(m.id || '0'),
+    malId: m.idMal || m.id || 0,
     title: displayTitle,
     originalTitle: m.title?.native || '',
     romajiTitle: m.title?.romaji || displayTitle,
@@ -150,8 +172,19 @@ export const realAnimeService = {
         },
       }));
 
+      if (trendingItems.length === 0) {
+        const fallbackList = LATINO_CATALOG || [];
+        const fallbackPayload = {
+          hero: fallbackList[0],
+          trending: fallbackList,
+          latino: fallbackList,
+          continueWatching: fallbackList.slice(0, 3),
+        };
+        return fallbackPayload;
+      }
+
       const homePayload = {
-        hero: hero || continueWatching[0],
+        hero: hero || continueWatching[0] || LATINO_CATALOG[0],
         trending: trendingItems.slice(0, 8),
         latino: latino.length >= 4 ? latino : trendingItems.slice(0, 6),
         continueWatching,
@@ -162,7 +195,13 @@ export const realAnimeService = {
     } catch (err) {
       console.warn('[realAnimeService] Error cargando Home de AniList:', err);
       if (homeDataCache) return homeDataCache.data;
-      throw err;
+      const fallbackList = LATINO_CATALOG || [];
+      return {
+        hero: fallbackList[0],
+        trending: fallbackList,
+        latino: fallbackList,
+        continueWatching: fallbackList.slice(0, 3),
+      };
     }
   },
 

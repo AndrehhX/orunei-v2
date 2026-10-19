@@ -235,14 +235,14 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
       <div className="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden flex-shrink-0 group">
         <CinemaVideoPlayer
           ref={playerRef}
-          streamUrl={currentServer.proxiedStreamUrl || currentServer.embedUrl || ''}
-          isEmbed={currentServer.isEmbed}
+          streamUrl={currentServer?.proxiedStreamUrl || currentServer?.embedUrl || ''}
+          isEmbed={Boolean(currentServer?.isEmbed)}
           isPlaying={isPlaying}
           playbackSpeed={playbackSpeed}
           isLoading={isStreamLoading}
-          serverName={currentServer.sourceName}
+          serverName={currentServer?.sourceName || 'Orunei FastStream'}
           audioLanguage={currentAudio}
-          subtitles={currentServer.subtitles || []}
+          subtitles={currentServer?.subtitles || []}
           selectedSubId={selectedSubId}
           onTimeUpdate={(t, d) => {
             setCurrentTime(t);
@@ -311,7 +311,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
 
               <div className="flex items-center gap-1.5 relative">
                 {/* Botón Selector de Subtítulos */}
-                {currentServer.subtitles && currentServer.subtitles.length > 0 && (
+                {currentServer?.subtitles && currentServer.subtitles.length > 0 && (
                   <motion.button
                     whileTap={{ scale: 0.92 }}
                     onClick={() => setShowSubMenu(!showSubMenu)}
@@ -344,12 +344,12 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
                 </motion.button>
 
                 {/* Menú emergente de pistas de subtítulos */}
-                {showSubMenu && currentServer.subtitles && (
+                {showSubMenu && currentServer?.subtitles && (
                   <div className="absolute top-11 right-0 z-40 bg-black/95 backdrop-blur-xl border border-white/15 rounded-xl p-1.5 min-w-[130px] shadow-2xl flex flex-col gap-1">
                     <span className="text-[9px] font-mono text-on-surface-variant uppercase px-2 py-1 font-bold">
                       Subtítulos
                     </span>
-                    {currentServer.subtitles.map((tr) => (
+                    {(currentServer?.subtitles || []).map((tr) => (
                       <button
                         key={tr.id}
                         onClick={() => {

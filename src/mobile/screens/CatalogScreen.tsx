@@ -193,7 +193,7 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({ onSelectAnime }) =
                     {anime.title}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-on-surface-variant font-mono">
-                    <span className="truncate">{anime.genres.slice(0, 2).join(' • ')}</span>
+                    <span className="truncate">{(anime.genres || ['Anime']).slice(0, 2).join(' • ')}</span>
                     <span>•</span>
                     <span>{anime.year}</span>
                   </div>

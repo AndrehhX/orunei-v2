@@ -203,7 +203,7 @@ export const FavoritesScreen: React.FC<FavoritesScreenProps> = ({
                     </h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="text-[10px] text-on-surface-variant font-mono truncate">
-                        {anime.genres.slice(0, 2).join(' • ')}
+                        {(anime.genres || ['Anime']).slice(0, 2).join(' • ')}
                       </span>
                       {anime.year && (
                         <>

@@ -45,7 +45,7 @@ function PageLoading() {
 function GlobalTasteSync() {
   const { profile } = useProfile()
   const rec = useRec()
-  const profileLibrary = Array.isArray(profile.animeList) ? profile.animeList : []
+  const profileLibrary = Array.isArray(profile?.animeList) ? profile.animeList : []
   const librarySignature = useMemo(() => profileLibrary.map((item) => `${item.id}:${item.status}:${item.favorite ? '1' : '0'}`).join('|'), [profileLibrary])
 
   useEffect(() => {
@@ -123,7 +123,7 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, theme = (dar
       >
         <AvatarFrame
           profile={profile}
-          frameId={profile.avatarFrame}
+          frameId={profile?.avatarFrame || 'none'}
           size="sm"
         />
       </button>

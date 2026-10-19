@@ -42,11 +42,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectAnime, onPlayEpi
     };
   }, []);
 
+  const safeTrendingList = Array.isArray(trendingList) ? trendingList : [];
   const displayedTrending = selectedFilter === 'Doblaje Latino'
-    ? trendingList.filter((a) => a.isDubbed)
+    ? safeTrendingList.filter((a) => a?.isDubbed)
     : selectedFilter === 'Películas'
-    ? trendingList.filter((a) => a.format === 'Movie')
-    : trendingList;
+    ? safeTrendingList.filter((a) => a?.format === 'Movie')
+    : safeTrendingList;
 
   return (
     <div className="flex-1 overflow-y-auto no-scrollbar pb-24 bg-surface">
@@ -195,7 +196,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectAnime, onPlayEpi
                           {anime.title}
                         </h3>
                         <p className="text-[10px] text-on-surface-variant truncate mt-0.5">
-                          {anime.genres.slice(0, 2).join(' • ')}
+                          {(anime.genres || ['Anime']).slice(0, 2).join(' • ')}
                         </p>
                       </div>
 
@@ -272,7 +273,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectAnime, onPlayEpi
                         {anime.title}
                       </h3>
                       <p className="text-[10px] text-on-surface-variant truncate mt-0.5">
-                        {anime.genres.slice(0, 2).join(' • ')}
+                        {(anime.genres || ['Anime']).slice(0, 2).join(' • ')}
                       </p>
                     </div>
 
@@ -330,7 +331,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectAnime, onPlayEpi
                       {anime.title}
                     </h3>
                     <p className="text-[10px] text-on-surface-variant font-mono truncate">
-                      {anime.genres[0]} • {anime.rating}★
+                      {(anime.genres || ['Anime'])[0]} • {anime.rating}★
                     </p>
                   </motion.div>
                 ))}

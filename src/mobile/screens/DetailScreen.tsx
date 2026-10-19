@@ -16,9 +16,10 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({ anime, onBack, onPla
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBatch, setSelectedBatch] = useState(0);
 
+  const safeEpisodes = Array.isArray(episodes) ? episodes : [];
   const BATCH_SIZE = 50;
-  const totalBatches = Math.ceil(episodes.length / BATCH_SIZE);
-  const visibleEpisodes = episodes.slice(selectedBatch * BATCH_SIZE, (selectedBatch + 1) * BATCH_SIZE);
+  const totalBatches = Math.ceil(safeEpisodes.length / BATCH_SIZE);
+  const visibleEpisodes = safeEpisodes.slice(selectedBatch * BATCH_SIZE, (selectedBatch + 1) * BATCH_SIZE);
 
   useEffect(() => {
     let isMounted = true;
@@ -118,7 +119,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({ anime, onBack, onPla
 
         {/* Géneros */}
         <div className="flex gap-1.5 flex-wrap">
-          {currentAnime.genres.map((g) => (
+          {(currentAnime.genres || ['Anime']).map((g) => (
             <span
               key={g}
               className="px-2.5 py-1 rounded-md bg-surface-container-high text-[10px] font-mono font-medium text-on-surface-variant"

@@ -21,15 +21,17 @@ export const ServerBottomSheet: React.FC<ServerBottomSheetProps> = ({
   onSelectServer,
   onSelectLanguage,
 }) => {
-  const [selectedLanguage, setSelectedLanguage] = useState<'latino' | 'sub'>(currentServer.language || 'latino');
-  const [selectedServerId, setSelectedServerId] = useState(currentServer.id);
+  const [selectedLanguage, setSelectedLanguage] = useState<'latino' | 'sub'>(currentServer?.language || 'latino');
+  const [selectedServerId, setSelectedServerId] = useState(currentServer?.id || '');
   const [selectedResolution, setSelectedResolution] = useState('AUTO');
   const [autoPlayNext, setAutoPlayNext] = useState(true);
   const [autoSkipAniSkip, setAutoSkipAniSkip] = useState(true);
 
   useEffect(() => {
-    setSelectedServerId(currentServer.id);
-    if (currentServer.language) setSelectedLanguage(currentServer.language);
+    if (currentServer) {
+      if (currentServer.id) setSelectedServerId(currentServer.id);
+      if (currentServer.language) setSelectedLanguage(currentServer.language);
+    }
   }, [currentServer]);
 
   const resolutions = ['AUTO', '1080P', '720P', '480P'];
