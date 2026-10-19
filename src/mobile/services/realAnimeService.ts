@@ -193,43 +193,37 @@ export const realAnimeService = {
 
       const anime = mapAniListToAnimeItem(media);
 
-      // Construcción de episodios reales con miniaturas oficiales de Crunchyroll / Funimation
+      // Construcción de episodios reales con miniaturas oficiales y cobertura de series largas
       const streamingEps = Array.isArray(media.streamingEpisodes) ? media.streamingEpisodes : [];
-      let episodes: EpisodeItem[] = [];
+      const nextAiring = media.nextAiringEpisode?.episode;
+      const airingTotal = typeof nextAiring === 'number' && nextAiring > 1 ? nextAiring - 1 : null;
+      const totalCount = Math.max(
+        media.episodes || 0,
+        airingTotal || 0,
+        streamingEps.length,
+        1
+      );
 
-      if (streamingEps.length > 0) {
-        episodes = streamingEps.map((ep: any, index: number) => {
-          const epNum = index + 1;
-          const cleanTitle = cleanText(ep.title || `Episodio ${epNum}`);
-          const thumbnail = ep.thumbnail || anime.bannerImage || anime.coverImage;
+      anime.episodesCount = totalCount;
 
-          return {
-            id: `ep-${epNum}`,
-            number: epNum,
-            title: cleanTitle.length > 3 ? cleanTitle : `Episodio ${epNum}`,
-            thumbnail,
-            durationSeconds: (media.duration || 24) * 60,
-            durationLabel: `${media.duration || 24}:00`,
-            airedDate: media.seasonYear ? String(media.seasonYear) : '2024',
-            synopsis: `Episodio oficial ${epNum} emitido en alta definición.`,
-            progressPercent: 0,
-            isCompleted: false,
-          };
-        });
-      } else {
-        const total = media.episodes || 12;
-        episodes = Array.from({ length: Math.min(total, 50) }, (_, i) => ({
-          id: `ep-${i + 1}`,
-          number: i + 1,
-          title: `Episodio ${i + 1}`,
-          thumbnail: anime.bannerImage || anime.coverImage,
+      const episodes: EpisodeItem[] = [];
+      for (let epNum = 1; epNum <= totalCount; epNum++) {
+        const streamEp = streamingEps[epNum - 1];
+        const cleanTitle = streamEp?.title ? cleanText(streamEp.title) : `Episodio ${epNum}`;
+        const thumbnail = streamEp?.thumbnail || anime.bannerImage || anime.coverImage;
+
+        episodes.push({
+          id: `ep-${epNum}`,
+          number: epNum,
+          title: cleanTitle.length > 3 ? cleanTitle : `Episodio ${epNum}`,
+          thumbnail,
           durationSeconds: (media.duration || 24) * 60,
           durationLabel: `${media.duration || 24}:00`,
           airedDate: media.seasonYear ? String(media.seasonYear) : '2024',
-          synopsis: `Episodio ${i + 1} de la temporada.`,
+          synopsis: `Episodio oficial ${epNum} emitido en alta definición.`,
           progressPercent: 0,
           isCompleted: false,
-        }));
+        });
       }
 
       return { anime, episodes };
@@ -256,7 +250,7 @@ export const realAnimeService = {
     const timeoutPromise = (ms: number) =>
       new Promise<null>((resolve) => setTimeout(() => resolve(null), ms));
 
-    // 1. Si se solicita Audio Latino, consultar dubStreamAdapter con timeout de 4s
+    // 1. Si se solicita Audio Latino, consultar dubStreamAdapter con timeout de 6s
     if (audio === 'latino') {
       try {
         const playback = await Promise.race([
@@ -266,7 +260,7 @@ export const realAnimeService = {
             episode,
             language: 'latino',
           }),
-          timeoutPromise(4000),
+          timeoutPromise(6000),
         ]);
 
         if (playback && Array.isArray((playback as any).servers) && (playback as any).servers.length > 0) {
@@ -291,33 +285,60 @@ export const realAnimeService = {
       }
     }
 
-    // 2. Servidores HLS Subtitulados desde Cloudflare Worker con timeout de 3.5s
+    // 2. Servidores HLS Subtitulados desde Cloudflare Worker con timeout de 7s
     if (servers.length === 0 || audio === 'sub') {
       try {
         const miruroId = await Promise.race([
           getMiruroId(anilistId || malId, animeTitle),
-          timeoutPromise(3000),
+          timeoutPromise(6000),
         ]);
 
         if (miruroId) {
           const subPlayback = await Promise.race([
             getEpisodePlayback(miruroId as string, episode),
-            timeoutPromise(3500),
+            timeoutPromise(7000),
           ]);
 
-          if (subPlayback && (subPlayback as any).url) {
-            servers.unshift({
-              id: 'worker-hls-primary',
-              name: 'Cloudflare Edge (Ultra HLS)',
-              sourceName: 'Orunei FastStream',
-              quality: '1080p 60fps',
-              proxiedStreamUrl: (subPlayback as any).url,
-              isEmbed: false,
-              pingMs: 12,
-              language: 'sub',
-              badgeLabel: 'ULTRA RÁPIDO',
-              badgeType: 'fast',
-            });
+          if (subPlayback) {
+            const primaryStream =
+              (subPlayback as any).proxiedStreamUrl ||
+              (subPlayback as any).rawStreamUrl ||
+              (subPlayback as any).url;
+
+            if (primaryStream) {
+              servers.unshift({
+                id: 'worker-hls-primary',
+                name: 'Cloudflare Edge (Ultra HLS)',
+                sourceName: 'Orunei FastStream',
+                quality: '1080p 60fps',
+                proxiedStreamUrl: primaryStream,
+                isEmbed: false,
+                pingMs: 12,
+                language: 'sub',
+                badgeLabel: 'ULTRA RÁPIDO',
+                badgeType: 'fast',
+              });
+            }
+
+            if (Array.isArray((subPlayback as any).servers)) {
+              (subPlayback as any).servers.forEach((srv: any, idx: number) => {
+                const streamUrl = srv.proxiedStreamUrl || srv.url || srv.rawStreamUrl;
+                if (streamUrl && streamUrl !== primaryStream) {
+                  servers.push({
+                    id: `sub-srv-${idx}`,
+                    name: srv.name || `Servidor Sub #${idx + 1}`,
+                    sourceName: srv.name || 'Servidor HLS',
+                    quality: srv.quality || '1080p FHD',
+                    proxiedStreamUrl: streamUrl,
+                    isEmbed: false,
+                    pingMs: 15 + idx * 6,
+                    language: 'sub',
+                    badgeLabel: idx === 0 ? 'HD DIRECTO' : 'RÁPIDO',
+                    badgeType: 'direct',
+                  });
+                }
+              });
+            }
           }
         }
       } catch (err) {
@@ -325,20 +346,33 @@ export const realAnimeService = {
       }
     }
 
-    // 3. Si por alguna razón la red falla, proveer fallback HLS directo para que siempre reproduzca
-    if (servers.length === 0) {
-      servers.push({
-        id: 'hls-fallback',
-        name: 'Stream Directo HLS',
-        sourceName: 'FastCDN Edge (Respaldo)',
-        quality: '1080p FHD',
-        proxiedStreamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-        isEmbed: false,
-        pingMs: 18,
-        language: audio,
-        badgeLabel: 'RESPALDO ACTIVO',
-        badgeType: 'direct',
-      });
+    // 3. Si audio sub falló pero latino tiene fuentes, o viceversa, fallback inteligente
+    if (servers.length === 0 && audio === 'sub') {
+      try {
+        const fallbackDub = await getDubEpisodePlayback({
+          malId: Number(malId),
+          animeTitle,
+          episode,
+          language: 'latino',
+        });
+        if (fallbackDub && Array.isArray((fallbackDub as any).servers) && (fallbackDub as any).servers.length > 0) {
+          (fallbackDub as any).servers.forEach((s: any, idx: number) => {
+            servers.push({
+              id: s.id || `latino-fallback-${idx}`,
+              name: `${s.name || 'Servidor'} (Doblaje Respaldo)`,
+              sourceName: s.sourceName || s.name || 'Doblaje Latino 1080p',
+              quality: s.quality || '1080p FHD',
+              proxiedStreamUrl: s.proxiedStreamUrl || s.embedUrl || '',
+              embedUrl: s.embedUrl,
+              isEmbed: Boolean(s.isEmbed),
+              pingMs: 25 + idx * 8,
+              language: 'latino',
+              badgeLabel: 'RESPALDO',
+              badgeType: 'backup',
+            });
+          });
+        }
+      } catch (_) {}
     }
 
     return servers;

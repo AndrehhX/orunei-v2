@@ -49,6 +49,19 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
 
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [selectedBatch, setSelectedBatch] = useState(0);
+  const BATCH_SIZE = 50;
+  const totalBatches = Math.ceil(episodesList.length / BATCH_SIZE);
+  const visibleEpisodes = episodesList.slice(selectedBatch * BATCH_SIZE, (selectedBatch + 1) * BATCH_SIZE);
+
+  // Sincronizar automáticamente el bloque de episodios activo con el que se está reproduciendo
+  useEffect(() => {
+    if (episodesList.length > 0) {
+      const batchForCurrentEp = Math.floor((currentEpNum - 1) / BATCH_SIZE);
+      setSelectedBatch(batchForCurrentEp);
+    }
+  }, [currentEpNum, episodesList.length]);
+
   // Comprobar si el anime ya está en favoritos
   useEffect(() => {
     storageService.isFavorite(anime.id).then((fav) => setIsSavedInList(fav));
@@ -507,7 +520,31 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
             {/* Contenido de la pestaña: Lista de Episodios con Miniaturas Oficiales */}
             {activeTab === 'episodios' && (
               <div className="space-y-2.5 pt-1">
-                {episodesList.map((ep) => {
+                {/* Selector de Rango si hay más de 50 episodios (Bleach, One Piece, Naruto, etc.) */}
+                {totalBatches > 1 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 pt-0.5">
+                    {Array.from({ length: totalBatches }).map((_, idx) => {
+                      const start = idx * BATCH_SIZE + 1;
+                      const end = Math.min((idx + 1) * BATCH_SIZE, episodesList.length);
+                      const isActive = selectedBatch === idx;
+                      return (
+                        <button
+                          key={`player-batch-${idx}`}
+                          onClick={() => setSelectedBatch(idx)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap transition-all ${
+                            isActive
+                              ? 'bg-forestMint text-black shadow-md shadow-forestMint/20'
+                              : 'bg-surface-container border border-white/10 text-on-surface-variant hover:text-white'
+                          }`}
+                        >
+                          {start} - {end}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {visibleEpisodes.map((ep) => {
                   const isCurrent = ep.number === currentEpNum;
                   return (
                     <motion.div

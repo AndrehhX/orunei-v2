@@ -14,6 +14,11 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({ anime, onBack, onPla
   const [currentAnime, setCurrentAnime] = useState<AnimeItem>(anime);
   const [episodes, setEpisodes] = useState<EpisodeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedBatch, setSelectedBatch] = useState(0);
+
+  const BATCH_SIZE = 50;
+  const totalBatches = Math.ceil(episodes.length / BATCH_SIZE);
+  const visibleEpisodes = episodes.slice(selectedBatch * BATCH_SIZE, (selectedBatch + 1) * BATCH_SIZE);
 
   useEffect(() => {
     let isMounted = true;
@@ -173,12 +178,36 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({ anime, onBack, onPla
         <div className="pt-2">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-geist text-sm font-bold text-primary">
-              Episodios de la Temporada
+              Episodios de la Serie
             </h3>
-            <span className="font-mono text-[10px] text-on-surface-variant uppercase">
-              {episodes.length} disponibles
+            <span className="font-mono text-[10px] text-forestMint font-bold">
+              {episodes.length} episodios en total
             </span>
           </div>
+
+          {/* Selector de Rango si hay más de 50 episodios (Bleach, One Piece, Naruto, etc.) */}
+          {totalBatches > 1 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-3">
+              {Array.from({ length: totalBatches }).map((_, idx) => {
+                const start = idx * BATCH_SIZE + 1;
+                const end = Math.min((idx + 1) * BATCH_SIZE, episodes.length);
+                const isActive = selectedBatch === idx;
+                return (
+                  <button
+                    key={`batch-${idx}`}
+                    onClick={() => setSelectedBatch(idx)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap transition-all ${
+                      isActive
+                        ? 'bg-forestMint text-black shadow-md shadow-forestMint/20'
+                        : 'bg-surface-container border border-white/10 text-on-surface-variant hover:text-white'
+                    }`}
+                  >
+                    {start} - {end}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {isLoading ? (
             <div className="space-y-2.5">
@@ -188,7 +217,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({ anime, onBack, onPla
             </div>
           ) : (
             <div className="space-y-2.5">
-              {episodes.map((ep) => (
+              {visibleEpisodes.map((ep) => (
                 <motion.div
                   key={ep.id}
                   whileTap={{ scale: 0.98 }}
