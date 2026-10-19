@@ -252,8 +252,24 @@ export async function getDubEpisodePlayback({
   // ==========================================
   // CASO 2: ESPAÑOL LATINO
   // ==========================================
-  let animeAv1Error = null;
+  // El proveedor mx/LatAnime es la fuente principal para doblaje latino.
+  // AnimeAV1 solo se consulta cuando mx no entrega ningún servidor.
   try {
+    const latinoSlug = await resolveLatanimeSlug(targetMalId, animeTitle, 'latino');
+    if (latinoSlug) {
+      const soraServers = await getLatanimeEpisodeServers(latinoSlug, targetEpisode, 'latino');
+      if (Array.isArray(soraServers) && soraServers.length > 0) {
+        const enhanced = await enhanceServerCandidates(soraServers);
+        rawCandidates.push(...enhanced);
+      }
+    }
+  } catch (err) {
+    console.warn('[dubStreamAdapter] Aviso en proveedor mx/LatAnime:', err.message);
+  }
+
+  let animeAv1Error = null;
+  if (rawCandidates.length === 0) {
+    try {
     let resolvedSlug = slug;
     if (!resolvedSlug) {
       const slugInfo = await resolveAnimeAV1Slug(targetMalId, animeTitle);
@@ -341,21 +357,6 @@ export async function getDubEpisodePlayback({
               }
             }
 
-            // Se omite deliberadamente ZillaPlayer (player.zilla-networks.com) ya que Cloudflare
-            // rechaza conexiones externas con SAMEORIGIN y devuelve 403 en los segmentos HLS.
-            const byseServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('byse'));
-            if (byseServer && byseServer.url) {
-              rawCandidates.push({
-                id: 'dub-byse-embed',
-                name: 'Byse Player',
-                proxiedStreamUrl: byseServer.url,
-                embedUrl: byseServer.url,
-                quality: '1080p',
-                sourceName: 'Byse',
-                isEmbed: true
-              });
-            }
-
             const megaServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('mega') && !s.url.includes('undef'));
             if (megaServer && megaServer.url) {
               const embedUrl = megaServer.url.includes('/file/') ? megaServer.url.replace('/file/', '/embed/') : megaServer.url;
@@ -398,28 +399,13 @@ export async function getDubEpisodePlayback({
         }
       }
     }
-  } catch (err) {
-    animeAv1Error = err;
-    console.warn('[dubStreamAdapter] Aviso en AnimeAV1:', err.message);
-  }
-
-  // 2. Si faltan fuentes (< 3 servidores) o falló AnimeAV1, consultar proveedor Sora (Latanime)
-  if (rawCandidates.length < 3) {
-    try {
-      const latinoSlug = await resolveLatanimeSlug(targetMalId, animeTitle, 'latino');
-      if (latinoSlug) {
-        const soraServers = await getLatanimeEpisodeServers(latinoSlug, targetEpisode, 'latino');
-        if (Array.isArray(soraServers) && soraServers.length > 0) {
-          const enhanced = await enhanceServerCandidates(soraServers);
-          rawCandidates.push(...enhanced);
-        }
-      }
     } catch (err) {
-      console.warn('[dubStreamAdapter] Aviso en proveedor Sora:', err.message);
+      animeAv1Error = err;
+      console.warn('[dubStreamAdapter] Aviso en AnimeAV1:', err.message);
     }
   }
 
-  // 3. Si aún faltan fuentes (< 3 servidores), consultar conector Monoschinos (Storm Extensions)
+  // Si aún faltan fuentes, consultar conector Monoschinos como respaldo adicional.
   if (rawCandidates.length < 3) {
     try {
       const monoSlug = await resolveMonoschinosSlug(targetMalId, animeTitle, 'latino');

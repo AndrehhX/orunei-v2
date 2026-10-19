@@ -117,9 +117,8 @@ test('sourceSelector: deduplica, limita a máximo 5 servidores y prioriza por di
     { id: 's2', sourceName: 'StreamTape', proxiedStreamUrl: 'https://cdn.example.com/video2.mp4', isUniversalH264: true, quality: '1080p' },
     { id: 's3', sourceName: 'Zilla', embedUrl: 'https://player.example.com/embed1', isEmbed: true, quality: '1080p' },
     { id: 's4', sourceName: 'VOE', embedUrl: 'https://player.example.com/embed2', isEmbed: true, quality: '1080p' },
-    { id: 's5', sourceName: 'Byse', embedUrl: 'https://player.example.com/embed3', isEmbed: true, quality: '1080p' },
-    { id: 's6', sourceName: 'Mega', embedUrl: 'https://player.example.com/embed4', isEmbed: true, quality: '1080p' },
-    { id: 's7', sourceName: 'Duplicate', proxiedStreamUrl: 'https://cdn.example.com/video1.mp4?token=123' } // Duplicado
+    { id: 's5', sourceName: 'Mega', embedUrl: 'https://player.example.com/embed4', isEmbed: true, quality: '1080p' },
+    { id: 's6', sourceName: 'Duplicate', proxiedStreamUrl: 'https://cdn.example.com/video1.mp4?token=123' } // Duplicado
   ];
 
   // 1. En móvil / iPad: Universal H.264 y embeds deben ir primero para evitar pantalla negra
@@ -133,6 +132,28 @@ test('sourceSelector: deduplica, limita a máximo 5 servidores y prioriza por di
   assert.ok(desktopResult.length <= 5);
   assert.equal(desktopResult[0].isEmbed, false, 'En desktop streams directos van primero');
   assert.ok(desktopResult[0].name.includes('🇪🇸 Servidor 1'));
+});
+
+test('dubStreamAdapter: no expone Byse como proveedor de reproducción', async () => {
+  const fs = await import('node:fs/promises');
+  const adapterSource = await fs.readFile(new URL('../src/playback/dubStreamAdapter.js', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(adapterSource, /byse/i, 'Byse no debe aparecer en el adaptador ni en sus servidores');
+});
+
+test('dubStreamAdapter: prioriza mx/LatAnime y usa AnimeAV1 solo como fallback', async () => {
+  const fs = await import('node:fs/promises');
+  const adapterSource = await fs.readFile(new URL('../src/playback/dubStreamAdapter.js', import.meta.url), 'utf8');
+  const latinoFlow = adapterSource.slice(
+    adapterSource.indexOf('CASO 2: ESPAÑOL LATINO'),
+    adapterSource.indexOf('const cleanCandidates')
+  );
+
+  assert.ok(
+    latinoFlow.indexOf('resolveLatanimeSlug') < latinoFlow.indexOf('resolveAnimeAV1Slug'),
+    'LatAnime debe consultarse antes que AnimeAV1'
+  );
+  assert.match(latinoFlow, /if \(rawCandidates\.length === 0\)/, 'AnimeAV1 debe quedar condicionado a ausencia de servidores mx');
 });
 
 test('providerCircuitBreaker: protege contra fallos continuos de proveedores', async () => {
