@@ -15,6 +15,25 @@ function getProxiedUrl(targetUrl, referer = 'https://animeav1.com/') {
   return `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(referer)}`;
 }
 
+async function fetchWithProxyFallback(targetUrl, referer = 'https://animeav1.com/') {
+  const directUrl = targetUrl;
+  const proxyUrl = `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(referer)}`;
+
+  if (typeof window !== 'undefined') {
+    return fetch(proxyUrl);
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(directUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) return res;
+  } catch (_) {}
+
+  return fetch(proxyUrl);
+}
+
 /**
  * Extrae la URL directa de video desde un embed de YourUpload.
  * Retorna video MP4 Full HD (1080p) con cabeceras CORS permisivas.
@@ -105,6 +124,99 @@ async function extractStreamTapeStream(embedUrl) {
   return null;
 }
 
+/**
+ * Extrae la URL directa del stream master HLS (.m3u8) desde un embed de VOE.
+ * Descifra el payload cifrado de VOE (ROT13 + stripping LUTs + Base64 + shift ASCII -3 + reverse + Base64),
+ * eludiendo completamente la ejecución de scripts invasivos, ventanas emergentes (popunders)
+ * y pantallas de advertencia de anti-adblock ("Adblock detected").
+ */
+async function extractVoeStream(embedUrl) {
+  try {
+    let currentUrl = embedUrl;
+    const res = await fetchWithProxyFallback(currentUrl, `${ANIMEAV1_BASE}/`);
+    if (!res.ok) return null;
+    let text = await res.text();
+
+    // Seguir redirección JavaScript si existe (e.g. voe.sx -> derricknationtop.com)
+    const jsRedirectMatch = text.match(/window\.location\.href\s*=\s*['"](https?:\/\/[^'"]+)['"]/);
+    if (jsRedirectMatch) {
+      currentUrl = jsRedirectMatch[1];
+      const redirectRes = await fetchWithProxyFallback(currentUrl, `${ANIMEAV1_BASE}/`);
+      if (!redirectRes.ok) return null;
+      text = await redirectRes.text();
+    }
+
+    // 1. Buscar payload cifrado en <script type="application/json">["..."]</script>
+    const jsonMatch = text.match(/<script type="application\/json">(\[".*?"\])<\/script>/);
+    if (!jsonMatch) {
+      const directMatch = text.match(/'hls':\s*'([^']+)'/) || text.match(/"hls":\s*"([^"]+)"/);
+      if (directMatch?.[1]) return directMatch[1];
+      return null;
+    }
+
+    const payload = JSON.parse(jsonMatch[1])[0];
+    if (!payload || typeof payload !== 'string') return null;
+
+    // 2. Extraer LUTs del script loader companion
+    const scriptMatch = text.match(/<script src="(\/js\/loader[^"]*)"/);
+    let luts = [];
+    if (scriptMatch) {
+      const scriptUrl = new URL(scriptMatch[1], currentUrl).href;
+      const sRes = await fetchWithProxyFallback(scriptUrl, currentUrl);
+      if (sRes.ok) {
+        const sText = await sRes.text();
+        const lutsMatches = [...sText.matchAll(/(\[(?:'\W{2}'[,\]]){1,9})/g)];
+        luts = lutsMatches.map((m) => {
+          try {
+            return JSON.parse(m[0].replace(/'/g, '"'));
+          } catch {
+            return [];
+          }
+        });
+      }
+    }
+
+    // 3. Shift alfabético ROT13
+    let shifted = '';
+    for (let i = 0; i < payload.length; i++) {
+      let c = payload.charCodeAt(i);
+      if (c > 64 && c < 91) c = ((c - 52) % 26) + 65;
+      else if (c > 96 && c < 123) c = ((c - 84) % 26) + 97;
+      shifted += String.fromCharCode(c);
+    }
+
+    // 4. Eliminar patrones LUT
+    for (const lut of luts) {
+      for (const item of lut) {
+        if (item) {
+          shifted = shifted.split(item).join('');
+        }
+      }
+    }
+
+    // 5. Decodificación Base64 -> Shift ASCII -3 -> Reversa -> Base64 -> JSON
+    const b64_1 = typeof atob === 'function' ? atob(shifted) : Buffer.from(shifted, 'base64').toString('latin1');
+    let shifted3 = '';
+    for (let i = 0; i < b64_1.length; i++) {
+      shifted3 += String.fromCharCode(b64_1.charCodeAt(i) - 3);
+    }
+    const reversed = shifted3.split('').reverse().join('');
+    const finalStr = typeof atob === 'function'
+      ? new TextDecoder().decode(Uint8Array.from(atob(reversed), (c) => c.charCodeAt(0)))
+      : Buffer.from(reversed, 'base64').toString('utf-8');
+    const finalJson = JSON.parse(finalStr);
+
+    const streamUrl = finalJson?.source || finalJson?.direct_access_url;
+    if (streamUrl) {
+      const currentOrigin = new URL(currentUrl).origin;
+      return `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(currentOrigin + '/')}`;
+    }
+  } catch (err) {
+    console.warn('[dubStreamAdapter] Error en extractor VOE:', err.message);
+  }
+  return null;
+}
+
 function extractDataNode(json) {
   if (!json) return null;
   if (Array.isArray(json.nodes)) {
@@ -182,6 +294,21 @@ async function enhanceServerCandidates(servers = []) {
           sourceName: 'StreamTape (H.264 Universal)',
           isEmbed: false,
           isUniversalH264: true
+        });
+        continue;
+      }
+    }
+
+    // 4. Extraer VOE directo si viene como embed
+    if (s.isEmbed && (lowerUrl.includes('voe') || lowerName.includes('voe'))) {
+      const direct = await extractVoeStream(url);
+      if (direct) {
+        enhanced.push({
+          ...s,
+          proxiedStreamUrl: direct,
+          quality: '1080p',
+          sourceName: 'VOE Direct HD',
+          isEmbed: false
         });
         continue;
       }
@@ -278,7 +405,7 @@ export async function getDubEpisodePlayback({
 
     if (resolvedSlug) {
       const epUrl = `${ANIMEAV1_BASE}/media/${resolvedSlug}/${targetEpisode}/__data.json`;
-      const res = await fetch(getProxiedUrl(epUrl));
+      const res = await fetchWithProxyFallback(epUrl);
       if (res.ok) {
         const json = await res.json();
         const d = extractDataNode(json);
@@ -373,15 +500,27 @@ export async function getDubEpisodePlayback({
 
             const voeServer = rawServers.find((s) => s.server && s.server.toLowerCase().includes('voe'));
             if (voeServer && voeServer.url) {
-              rawCandidates.push({
-                id: 'dub-voe-embed',
-                name: 'VOE Player',
-                proxiedStreamUrl: voeServer.url,
-                embedUrl: voeServer.url,
-                quality: '1080p',
-                sourceName: 'VOE',
-                isEmbed: true
-              });
+              const directVoe = await extractVoeStream(voeServer.url);
+              if (directVoe) {
+                rawCandidates.push({
+                  id: 'dub-voe-direct',
+                  name: 'VOE Direct HD',
+                  proxiedStreamUrl: directVoe,
+                  quality: '1080p',
+                  sourceName: 'VOE Direct',
+                  isEmbed: false
+                });
+              } else {
+                rawCandidates.push({
+                  id: 'dub-voe-embed',
+                  name: 'VOE Player',
+                  proxiedStreamUrl: voeServer.url,
+                  embedUrl: voeServer.url,
+                  quality: '1080p',
+                  sourceName: 'VOE',
+                  isEmbed: true
+                });
+              }
             }
 
             if (stServer && stServer.url) {

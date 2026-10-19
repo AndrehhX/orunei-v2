@@ -42,8 +42,8 @@ test('El adaptador usa mx como principal cuando su episodio es reproducible', as
   try {
     const { getDubEpisodePlayback } = await import('../src/playback/dubStreamAdapter.js');
     const playback = await getDubEpisodePlayback({
-      malId: 11111,
-      animeTitle: 'Another',
+      malId: 19,
+      animeTitle: 'Monster',
       episode: 1,
       language: 'latino'
     });
