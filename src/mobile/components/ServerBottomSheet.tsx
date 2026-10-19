@@ -6,6 +6,7 @@ interface ServerBottomSheetProps {
   visible: boolean;
   currentServer: StreamSource;
   availableServers?: StreamSource[];
+  isLoadingServers?: boolean;
   onClose: () => void;
   onSelectServer: (server: StreamSource) => void;
   onSelectLanguage?: (lang: 'latino' | 'sub') => void;
@@ -15,6 +16,7 @@ export const ServerBottomSheet: React.FC<ServerBottomSheetProps> = ({
   visible,
   currentServer,
   availableServers = [],
+  isLoadingServers = false,
   onClose,
   onSelectServer,
   onSelectLanguage,
@@ -130,7 +132,15 @@ export const ServerBottomSheet: React.FC<ServerBottomSheetProps> = ({
                   </span>
                 </div>
 
-                <div className="space-y-2">
+                {isLoadingServers ? (
+                  <div className="py-8 flex flex-col items-center justify-center gap-2.5 rounded-xl bg-surface-container border border-white/5">
+                    <span className="w-5 h-5 border-2 border-forestMint border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[10px] font-mono text-on-surface-variant font-bold tracking-wider">
+                      CONECTANDO CON SERVIDORES...
+                    </span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
                   {availableServers.map((server) => {
                     const isSelected = selectedServerId === server.id;
                     return (
@@ -181,7 +191,8 @@ export const ServerBottomSheet: React.FC<ServerBottomSheetProps> = ({
                     );
                   })}
                 </div>
-              </div>
+              )}
+            </div>
 
               {/* Selector de Calidad Máxima */}
               <div className="space-y-2">

@@ -101,24 +101,24 @@ export default function App() {
               />
 
               <main className="flex-1 overflow-hidden relative flex flex-col">
-                {currentTab === 'inicio' && (
+                <div className={`w-full h-full flex flex-col overflow-hidden ${currentTab === 'inicio' ? '' : 'hidden'}`}>
                   <HomeScreen
                     onSelectAnime={handleSelectAnime}
                     onPlayEpisode={handlePlayEpisode}
                   />
-                )}
-                {currentTab === 'catalogo' && (
+                </div>
+                <div className={`w-full h-full flex flex-col overflow-hidden ${currentTab === 'catalogo' ? '' : 'hidden'}`}>
                   <CatalogScreen onSelectAnime={handleSelectAnime} />
-                )}
-                {currentTab === 'favoritos' && (
+                </div>
+                <div className={`w-full h-full flex flex-col overflow-hidden ${currentTab === 'favoritos' ? '' : 'hidden'}`}>
                   <FavoritesScreen
                     onSelectAnime={handleSelectAnime}
                     onExploreCatalog={() => setCurrentTab('catalogo')}
                   />
-                )}
-                {currentTab === 'perfil' && (
+                </div>
+                <div className={`w-full h-full flex flex-col overflow-hidden ${currentTab === 'perfil' ? '' : 'hidden'}`}>
                   <ProfileScreen onPlayResume={handlePlayResume} />
-                )}
+                </div>
               </main>
 
               <BottomNavBar

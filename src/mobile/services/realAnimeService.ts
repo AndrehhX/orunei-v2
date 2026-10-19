@@ -80,6 +80,12 @@ function mapAniListToAnimeItem(m: any): AnimeItem {
   };
 }
 
+// Cachés en memoria de alta velocidad (0ms en navegación repetida)
+let homeDataCache: { data: any; timestamp: number } | null = null;
+const detailCache = new Map<string, { anime: AnimeItem; episodes: EpisodeItem[] }>();
+const catalogCache = new Map<string, AnimeItem[]>();
+const serversCache = new Map<string, StreamSource[]>();
+
 export const realAnimeService = {
   /**
    * Obtiene los datos oficiales de la pantalla de inicio desde AniList GraphQL
@@ -90,6 +96,11 @@ export const realAnimeService = {
     latino: AnimeItem[];
     continueWatching: AnimeItem[];
   }> {
+    // Si ya existe caché reciente (< 10 minutos), devolver de inmediato (0ms)
+    if (homeDataCache && Date.now() - homeDataCache.timestamp < 10 * 60 * 1000) {
+      return homeDataCache.data;
+    }
+
     try {
       const res = await fetch(ANILIST_GQL_ENDPOINT, {
         method: 'POST',
@@ -139,14 +150,18 @@ export const realAnimeService = {
         },
       }));
 
-      return {
+      const homePayload = {
         hero: hero || continueWatching[0],
         trending: trendingItems.slice(0, 8),
         latino: latino.length >= 4 ? latino : trendingItems.slice(0, 6),
         continueWatching,
       };
+
+      homeDataCache = { data: homePayload, timestamp: Date.now() };
+      return homePayload;
     } catch (err) {
       console.warn('[realAnimeService] Error cargando Home de AniList:', err);
+      if (homeDataCache) return homeDataCache.data;
       throw err;
     }
   },
@@ -160,6 +175,11 @@ export const realAnimeService = {
     onlyDubbed = false,
     page = 1
   ): Promise<AnimeItem[]> {
+    const catalogKey = `${queryText.trim()}:${genre}:${onlyDubbed}:${page}`;
+    if (catalogCache.has(catalogKey)) {
+      return catalogCache.get(catalogKey)!;
+    }
+
     try {
       const filters: any = {
         search: queryText.trim() || undefined,
@@ -170,10 +190,12 @@ export const realAnimeService = {
       const result = await searchAnime(filters, page);
       const items = (result?.items || []).map(mapAniListToAnimeItem);
 
-      if (onlyDubbed || genre === 'Doblaje Latino') {
-        return items.filter((a: AnimeItem) => a.isDubbed);
-      }
-      return items;
+      const finalItems = (onlyDubbed || genre === 'Doblaje Latino')
+        ? items.filter((a: AnimeItem) => a.isDubbed)
+        : items;
+
+      catalogCache.set(catalogKey, finalItems);
+      return finalItems;
     } catch (err) {
       console.warn('[realAnimeService] Error en búsqueda de catálogo:', err);
       return [];
@@ -187,6 +209,11 @@ export const realAnimeService = {
     anime: AnimeItem;
     episodes: EpisodeItem[];
   }> {
+    const cacheKey = String(anilistId);
+    if (detailCache.has(cacheKey)) {
+      return detailCache.get(cacheKey)!;
+    }
+
     try {
       const media = await getAnime(Number(anilistId));
       if (!media) throw new Error('Anime no encontrado');
@@ -226,7 +253,9 @@ export const realAnimeService = {
         });
       }
 
-      return { anime, episodes };
+      const detailPayload = { anime, episodes };
+      detailCache.set(cacheKey, detailPayload);
+      return detailPayload;
     } catch (err) {
       console.warn('[realAnimeService] Error cargando detalle:', err);
       throw err;
@@ -245,6 +274,11 @@ export const realAnimeService = {
     animeTitle: string,
     anilistId?: number | string
   ): Promise<StreamSource[]> {
+    const serverKey = `${malId}:${episode}:${audio}`;
+    if (serversCache.has(serverKey) && (serversCache.get(serverKey)?.length || 0) > 0) {
+      return serversCache.get(serverKey)!;
+    }
+
     const servers: StreamSource[] = [];
 
     const timeoutPromise = (ms: number) =>
@@ -386,6 +420,20 @@ export const realAnimeService = {
       } catch (_) {}
     }
 
+    if (servers.length > 0) {
+      serversCache.set(serverKey, servers);
+    }
+
+    // Precargar en segundo plano la pista alternativa (Latino o Sub) para cambio instantáneo (0ms)
+    const altAudio = audio === 'sub' ? 'latino' : 'sub';
+    const altKey = `${malId}:${episode}:${altAudio}`;
+    if (!serversCache.has(altKey)) {
+      setTimeout(() => {
+        realAnimeService.getStreamingServers(malId, episode, altAudio, animeTitle, anilistId).catch(() => {});
+      }, 500);
+    }
+
     return servers;
   },
 };
+

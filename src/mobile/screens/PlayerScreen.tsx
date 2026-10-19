@@ -82,15 +82,19 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
     const loadStreamAndEpisodes = async () => {
       setIsStreamLoading(true);
       try {
-        // 1. Cargar servidores de alta velocidad
-        const srvs = await realAnimeService.getStreamingServers(
-          anime.malId || anime.id,
-          currentEpNum,
-          currentAudio,
-          anime.title,
-          anime.id
-        );
-        if (isMounted && srvs.length > 0) {
+        // Cargar servidores y episodios simultáneamente en paralelo (0ms si están en caché)
+        const [srvs, detail] = await Promise.all([
+          realAnimeService.getStreamingServers(
+            anime.malId || anime.id,
+            currentEpNum,
+            currentAudio,
+            anime.title,
+            anime.id
+          ),
+          realAnimeService.getAnimeDetail(anime.id),
+        ]);
+
+        if (isMounted && srvs && srvs.length > 0) {
           setAvailableServers(srvs);
           const first = srvs[0];
           setCurrentServer(first);
@@ -100,8 +104,6 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
           }
         }
 
-        // 2. Cargar episodios de la temporada
-        const detail = await realAnimeService.getAnimeDetail(anime.id);
         if (isMounted && detail?.episodes?.length > 0) {
           setEpisodesList(detail.episodes);
         }
@@ -802,6 +804,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
         visible={showServerSheet}
         currentServer={currentServer}
         availableServers={availableServers}
+        isLoadingServers={isStreamLoading}
         onClose={() => setShowServerSheet(false)}
         onSelectLanguage={async (lang) => {
           setCurrentAudio(lang);
