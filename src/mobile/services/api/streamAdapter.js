@@ -70,12 +70,23 @@ export async function getEpisodePlayback(miruroId, episodeNum = 1) {
     }
   }
 
-  if (!lastData || !lastData.url) {
+  if (!lastData || lastData.error) {
     throw new Error(lastData?.error || `Error del servidor de streaming (${lastStatus})`);
   }
 
+  let finalUrl = lastData.proxiedStreamUrl || lastData.rawStreamUrl || lastData.url;
+  if (finalUrl && finalUrl.startsWith('/api/stream/') && STREAM_BASE) {
+    finalUrl = `${STREAM_BASE}${finalUrl}`;
+  }
+
+  if (!finalUrl) {
+    throw new Error('No se encontró URL de reproducción válida');
+  }
+
   return {
-    url: lastData.url,
+    ...lastData,
+    url: finalUrl,
+    proxiedStreamUrl: finalUrl,
     subtitles: lastData.subtitles || [],
     title: lastData.title || `Episodio ${episodeNum}`,
     headers: lastData.headers || {},
