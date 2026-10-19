@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AnimeItem, StreamSource, EpisodeItem } from '../types/anime';
 import { realAnimeService } from '../services/realAnimeService';
 import { ServerBottomSheet } from '../components/ServerBottomSheet';
-import { CinemaVideoPlayer } from '../components/CinemaVideoPlayer';
+import { CinemaVideoPlayer, CinemaVideoPlayerRef } from '../components/CinemaVideoPlayer';
 import { storageService } from '../services/storageService';
 import { useProfile } from '../../profile/ProfileProvider';
 
@@ -170,15 +170,52 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
     }
   }, [Math.floor(currentTime / 10)]);
 
+  const playerRef = useRef<CinemaVideoPlayerRef | null>(null);
+  const [doubleTapFeedback, setDoubleTapFeedback] = useState<'forward' | 'rewind' | null>(null);
+  const lastTapRef = useRef<{ time: number; side: 'left' | 'right' } | null>(null);
+
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const handleSkipAniSkip = () => {
-    setCurrentTime((prev) => Math.min(duration, prev + 85));
+  const handleSeek = (targetTime: number) => {
+    const clamped = Math.max(0, Math.min(duration || 1440, targetTime));
+    setCurrentTime(clamped);
+    if (playerRef.current) {
+      playerRef.current.seek(clamped);
+    }
     resetControlsTimer();
+  };
+
+  const handleSkipAniSkip = () => {
+    handleSeek(currentTime + 85);
+  };
+
+  const handleVideoTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const now = Date.now();
+    const side = clickX < width / 2 ? 'left' : 'right';
+
+    if (lastTapRef.current && now - lastTapRef.current.time < 320 && lastTapRef.current.side === side) {
+      // Doble toque detectado
+      if (side === 'right') {
+        handleSeek(currentTime + 10);
+        setDoubleTapFeedback('forward');
+      } else {
+        handleSeek(currentTime - 10);
+        setDoubleTapFeedback('rewind');
+      }
+      setTimeout(() => setDoubleTapFeedback(null), 650);
+      lastTapRef.current = null;
+    } else {
+      lastTapRef.current = { time: now, side };
+      setShowControls(!showControls);
+      resetControlsTimer();
+    }
   };
 
   const currentEpisodeData = episodesList.find((e) => e.number === currentEpNum);
@@ -188,6 +225,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
       {/* 1. Contenedor del Reproductor de Video */}
       <div className="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden flex-shrink-0 group">
         <CinemaVideoPlayer
+          ref={playerRef}
           streamUrl={currentServer.proxiedStreamUrl || currentServer.embedUrl || ''}
           isEmbed={currentServer.isEmbed}
           isPlaying={isPlaying}
@@ -206,14 +244,32 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
           }}
         />
 
-        {/* Capa invisible para toggle de controles */}
+        {/* Capa para toggle de controles y doble toque (Rewind / Fast-Forward) */}
         <div
           className="absolute inset-0 z-10"
-          onClick={() => {
-            setShowControls(!showControls);
-            resetControlsTimer();
-          }}
+          onClick={handleVideoTap}
         />
+
+        {/* Feedback visual de Doble Toque (+10s / -10s) */}
+        <AnimatePresence>
+          {doubleTapFeedback && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className={`absolute top-1/2 -translate-y-1/2 z-30 pointer-events-none flex flex-col items-center justify-center p-4 rounded-full bg-black/75 backdrop-blur-md border border-white/20 ${
+                doubleTapFeedback === 'forward' ? 'right-12' : 'left-12'
+              }`}
+            >
+              <span className="material-symbols-outlined text-2xl text-forestMint">
+                {doubleTapFeedback === 'forward' ? 'fast_forward' : 'fast_rewind'}
+              </span>
+              <span className="font-mono text-xs font-bold text-white mt-1">
+                {doubleTapFeedback === 'forward' ? '+10s' : '-10s'}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* 2. Top Bar del Reproductor */}
         <AnimatePresence>
@@ -314,8 +370,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
                 whileTap={{ scale: 0.88 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setCurrentTime((prev) => Math.max(0, prev - 10));
-                  resetControlsTimer();
+                  handleSeek(currentTime - 10);
                 }}
                 className="w-10 h-10 rounded-full bg-black/60 backdrop-blur text-primary flex items-center justify-center border border-white/10 pointer-events-auto"
               >
@@ -340,8 +395,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
                 whileTap={{ scale: 0.88 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setCurrentTime((prev) => Math.min(duration, prev + 10));
-                  resetControlsTimer();
+                  handleSeek(currentTime + 10);
                 }}
                 className="w-10 h-10 rounded-full bg-black/60 backdrop-blur text-primary flex items-center justify-center border border-white/10 pointer-events-auto"
               >
@@ -380,8 +434,10 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
                   max={duration || 1440}
                   value={currentTime}
                   onChange={(e) => {
-                    setCurrentTime(parseFloat(e.target.value));
-                    resetControlsTimer();
+                    handleSeek(parseFloat(e.target.value));
+                  }}
+                  onInput={(e) => {
+                    handleSeek(parseFloat((e.target as HTMLInputElement).value));
                   }}
                   className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-forestMint"
                 />

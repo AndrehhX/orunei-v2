@@ -1,5 +1,11 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import Hls from 'hls.js';
+
+export interface CinemaVideoPlayerRef {
+  seek: (timeSeconds: number) => void;
+  getCurrentTime: () => number;
+  getDuration: () => number;
+}
 
 interface CinemaVideoPlayerProps {
   streamUrl: string;
@@ -7,6 +13,7 @@ interface CinemaVideoPlayerProps {
   isPlaying: boolean;
   playbackSpeed: number;
   initialTime?: number;
+  seekToTime?: number | null;
   onTimeUpdate: (currentTime: number, duration: number) => void;
   onEnded?: () => void;
   onBuffering?: (isBuffering: boolean) => void;
@@ -15,28 +22,53 @@ interface CinemaVideoPlayerProps {
   audioLanguage?: string;
 }
 
-export const CinemaVideoPlayer: React.FC<CinemaVideoPlayerProps> = ({
+export const CinemaVideoPlayer = forwardRef<CinemaVideoPlayerRef, CinemaVideoPlayerProps>(({
   streamUrl,
   isEmbed = false,
   isPlaying,
   playbackSpeed,
   initialTime = 0,
+  seekToTime = null,
   onTimeUpdate,
   onEnded,
   onBuffering,
   isLoading = false,
   serverName = 'Servidor Principal',
-  audioLanguage = 'latino',
-}) => {
+  audioLanguage = 'sub',
+}, ref) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [internalBuffering, setInternalBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [loadTimedOut, setLoadTimedOut] = useState(false);
+
+  // Exponer métodos imperativos de seek
+  useImperativeHandle(ref, () => ({
+    seek: (timeSeconds: number) => {
+      if (videoRef.current) {
+        try {
+          videoRef.current.currentTime = Math.max(0, timeSeconds);
+        } catch (e) {
+          console.warn('[CinemaVideoPlayer] Error al buscar tiempo:', e);
+        }
+      }
+    },
+    getCurrentTime: () => videoRef.current?.currentTime || 0,
+    getDuration: () => videoRef.current?.duration || 0,
+  }));
+
+  // Reaccionar a cambios en seekToTime prop
+  useEffect(() => {
+    if (typeof seekToTime === 'number' && videoRef.current) {
+      try {
+        videoRef.current.currentTime = Math.max(0, seekToTime);
+      } catch (e) {
+        console.warn('[CinemaVideoPlayer] Error en seekToTime:', e);
+      }
+    }
+  }, [seekToTime]);
 
   useEffect(() => {
     setHasError(false);
-    setLoadTimedOut(false);
 
     if (isEmbed || !streamUrl || !videoRef.current) return;
     const video = videoRef.current;
@@ -179,4 +211,6 @@ export const CinemaVideoPlayer: React.FC<CinemaVideoPlayerProps> = ({
       )}
     </div>
   );
-};
+});
+
+CinemaVideoPlayer.displayName = 'CinemaVideoPlayer';
