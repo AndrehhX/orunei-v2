@@ -757,5 +757,11 @@ video::cue {
   }
 }
 
-
-
+/* Ocultar barras de scroll sin perder la capacidad de deslizamiento en móvil */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

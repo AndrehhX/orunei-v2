@@ -36,6 +36,7 @@ const ProfilePage = lazy(() => import('./components/ProfilePage'))
 const ProfileEditor = lazy(() => import('./components/ProfileEditor'))
 const FriendsPage = lazy(() => import('./components/FriendsPage'))
 const PublicProfileRoute = lazy(() => import('./components/PublicProfileRoute'))
+const MobileApp = lazy(() => import('./mobile/App'))
 
 function PageLoading() {
   return <div className="grid min-h-[18rem] place-items-center text-sm text-slate-500">Cargando…</div>
@@ -256,6 +257,23 @@ export default function App() {
       } catch {}
     }
   }, [signOut])
+
+  const [useMobileLayout] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (isNativeApp()) return true;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') === 'mobile' || params.get('app') === 'mobile') return true;
+    if (params.get('view') === 'desktop') return false;
+    return window.innerWidth < 768;
+  });
+
+  if (useMobileLayout) {
+    return (
+      <Suspense fallback={<PageLoading />}>
+        <MobileApp />
+      </Suspense>
+    );
+  }
 
   if (authStatus === 'loading') return <div className="grid min-h-screen place-items-center text-sm text-slate-500">Cargando tu sesión…</div>
   if (!user) return <Login onSignIn={signIn} onSignUp={signUp} authStatus={authStatus} authError={authError} dark={dark} setDark={setDark} theme={theme} setTheme={setTheme} />

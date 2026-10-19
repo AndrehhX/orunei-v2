@@ -1,11 +1,26 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   theme: {
     extend: {
-      fontFamily: { sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'] },
-      colors: { brand: { DEFAULT: '#6d5cff', soft: '#ece9ff' } },
+      fontFamily: { sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'], geist: ['Geist', 'sans-serif'], inter: ['Inter', 'sans-serif'] },
+      colors: {
+        brand: { DEFAULT: '#6d5cff', soft: '#ece9ff' },
+        surface: '#121315',
+        'surface-dim': '#121315',
+        'surface-bright': '#38393b',
+        'surface-container-lowest': '#0d0e10',
+        'surface-container-low': '#1b1c1e',
+        'surface-container': '#1f2022',
+        'surface-container-high': '#292a2c',
+        'surface-container-highest': '#343537',
+        'on-surface': '#e3e2e5',
+        'on-surface-variant': '#c4c7c8',
+        forestMint: '#00f59b',
+        sakura: '#ff4b82',
+        subtext: '#8e94a5',
+      },
       transitionTimingFunction: { spring: 'cubic-bezier(.34,1.56,.64,1)', smooth: 'cubic-bezier(.16,1,.3,1)' },
       keyframes: {
         drop: { '0%': { opacity: 0, transform: 'translateY(-90px) scale(.8)' }, '60%': { opacity: 1, transform: 'translateY(8px) scale(1.03)' }, '100%': { opacity: 1, transform: 'none' } },
