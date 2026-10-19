@@ -40,6 +40,8 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
   const [availableServers, setAvailableServers] = useState<StreamSource[]>([]);
   const [episodesList, setEpisodesList] = useState<EpisodeItem[]>([]);
   const [showServerSheet, setShowServerSheet] = useState(false);
+  const [selectedSubId, setSelectedSubId] = useState<string>('sub-es');
+  const [showSubMenu, setShowSubMenu] = useState(false);
   const [brightness, setBrightness] = useState(0.75);
   const [volume, setVolume] = useState(0.6);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
@@ -90,7 +92,12 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
         );
         if (isMounted && srvs.length > 0) {
           setAvailableServers(srvs);
-          setCurrentServer(srvs[0]);
+          const first = srvs[0];
+          setCurrentServer(first);
+          if (first.subtitles && first.subtitles.length > 0) {
+            const esTrack = first.subtitles.find((s) => s.lang?.startsWith('es')) || first.subtitles[0];
+            setSelectedSubId(esTrack.id);
+          }
         }
 
         // 2. Cargar episodios de la temporada
@@ -233,6 +240,8 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
           isLoading={isStreamLoading}
           serverName={currentServer.sourceName}
           audioLanguage={currentAudio}
+          subtitles={currentServer.subtitles || []}
+          selectedSubId={selectedSubId}
           onTimeUpdate={(t, d) => {
             setCurrentTime(t);
             if (d > 0) setDuration(d);
@@ -298,7 +307,26 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
                 </h3>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 relative">
+                {/* Botón Selector de Subtítulos */}
+                {currentServer.subtitles && currentServer.subtitles.length > 0 && (
+                  <motion.button
+                    whileTap={{ scale: 0.92 }}
+                    onClick={() => setShowSubMenu(!showSubMenu)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border backdrop-blur transition-all ${
+                      selectedSubId !== 'off'
+                        ? 'bg-forestMint/20 border-forestMint/40 text-forestMint'
+                        : 'bg-black/60 border-white/10 text-on-surface-variant'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[15px]">subtitles</span>
+                    <span className="text-[10px] font-mono font-bold">
+                      {selectedSubId === 'off' ? 'OFF' : 'SUB ES'}
+                    </span>
+                  </motion.button>
+                )}
+
+                {/* Botón Selector de Audio y Servidores */}
                 <motion.button
                   whileTap={{ scale: 0.92 }}
                   onClick={() => setShowServerSheet(true)}
@@ -312,6 +340,50 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
                     tune
                   </span>
                 </motion.button>
+
+                {/* Menú emergente de pistas de subtítulos */}
+                {showSubMenu && currentServer.subtitles && (
+                  <div className="absolute top-11 right-0 z-40 bg-black/95 backdrop-blur-xl border border-white/15 rounded-xl p-1.5 min-w-[130px] shadow-2xl flex flex-col gap-1">
+                    <span className="text-[9px] font-mono text-on-surface-variant uppercase px-2 py-1 font-bold">
+                      Subtítulos
+                    </span>
+                    {currentServer.subtitles.map((tr) => (
+                      <button
+                        key={tr.id}
+                        onClick={() => {
+                          setSelectedSubId(tr.id);
+                          setShowSubMenu(false);
+                        }}
+                        className={`px-2 py-1.5 rounded-lg text-left text-xs font-geist flex items-center justify-between transition-colors ${
+                          selectedSubId === tr.id
+                            ? 'bg-forestMint/20 text-forestMint font-bold'
+                            : 'text-primary hover:bg-white/10'
+                        }`}
+                      >
+                        <span>{tr.label}</span>
+                        {selectedSubId === tr.id && (
+                          <span className="material-symbols-outlined text-[14px]">check</span>
+                        )}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => {
+                        setSelectedSubId('off');
+                        setShowSubMenu(false);
+                      }}
+                      className={`px-2 py-1.5 rounded-lg text-left text-xs font-geist flex items-center justify-between transition-colors ${
+                        selectedSubId === 'off'
+                          ? 'bg-forestMint/20 text-forestMint font-bold'
+                          : 'text-on-surface-variant hover:bg-white/10'
+                      }`}
+                    >
+                      <span>Desactivado</span>
+                      {selectedSubId === 'off' && (
+                        <span className="material-symbols-outlined text-[14px]">check</span>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

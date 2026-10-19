@@ -300,6 +300,15 @@ export const realAnimeService = {
           ]);
 
           if (subPlayback) {
+            const rawTracks = (subPlayback as any).subtitles?.tracks || [];
+            const episodeSubtitles = rawTracks.map((t: any, idx: number) => ({
+              id: t.id || `sub-${t.lang || 'es'}-${idx}`,
+              lang: t.lang || 'es',
+              label: t.label || (t.lang?.startsWith('es') ? 'Español' : t.lang?.startsWith('en') ? 'English' : t.lang || 'Subtítulos'),
+              src: t.src || t.url || t.file || '',
+              default: Boolean(t.default || t.lang?.startsWith('es')),
+            }));
+
             const primaryStream =
               (subPlayback as any).proxiedStreamUrl ||
               (subPlayback as any).rawStreamUrl ||
@@ -315,6 +324,7 @@ export const realAnimeService = {
                 isEmbed: false,
                 pingMs: 12,
                 language: 'sub',
+                subtitles: episodeSubtitles,
                 badgeLabel: 'ULTRA RÁPIDO',
                 badgeType: 'fast',
               });
@@ -333,6 +343,7 @@ export const realAnimeService = {
                     isEmbed: false,
                     pingMs: 15 + idx * 6,
                     language: 'sub',
+                    subtitles: episodeSubtitles,
                     badgeLabel: idx === 0 ? 'HD DIRECTO' : 'RÁPIDO',
                     badgeType: 'direct',
                   });

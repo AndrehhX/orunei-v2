@@ -43,6 +43,14 @@ export interface EpisodeItem {
   isDownloaded?: boolean;
 }
 
+export interface SubtitleTrack {
+  id: string;
+  lang: string;
+  label: string;
+  src: string;
+  default?: boolean;
+}
+
 export interface StreamSource {
   id: string;
   name: string;
@@ -52,7 +60,8 @@ export interface StreamSource {
   embedUrl?: string;
   isEmbed: boolean;
   pingMs?: number;
-  language: 'latino' | 'subtitulado';
+  language: 'latino' | 'subtitulado' | 'sub';
+  subtitles?: SubtitleTrack[];
   badgeLabel?: string;
   badgeType?: 'fast' | 'direct' | 'backup';
 }

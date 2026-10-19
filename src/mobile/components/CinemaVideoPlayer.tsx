@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import Hls from 'hls.js';
+import { SubtitleTrack } from '../types/anime';
 
 export interface CinemaVideoPlayerRef {
   seek: (timeSeconds: number) => void;
@@ -14,6 +15,8 @@ interface CinemaVideoPlayerProps {
   playbackSpeed: number;
   initialTime?: number;
   seekToTime?: number | null;
+  subtitles?: SubtitleTrack[];
+  selectedSubId?: string;
   onTimeUpdate: (currentTime: number, duration: number) => void;
   onEnded?: () => void;
   onBuffering?: (isBuffering: boolean) => void;
@@ -29,6 +32,8 @@ export const CinemaVideoPlayer = forwardRef<CinemaVideoPlayerRef, CinemaVideoPla
   playbackSpeed,
   initialTime = 0,
   seekToTime = null,
+  subtitles = [],
+  selectedSubId = 'sub-es',
   onTimeUpdate,
   onEnded,
   onBuffering,
@@ -67,6 +72,7 @@ export const CinemaVideoPlayer = forwardRef<CinemaVideoPlayerRef, CinemaVideoPla
     }
   }, [seekToTime]);
 
+  // Carga de Stream HLS / MP4
   useEffect(() => {
     setHasError(false);
 
@@ -90,6 +96,11 @@ export const CinemaVideoPlayer = forwardRef<CinemaVideoPlayerRef, CinemaVideoPla
         maxBufferSize: 60 * 1000 * 1000, // 60MB
       });
       hlsRef.current = hls;
+
+      // Desactivar subtítulos internos del m3u8 para no solapar con los WebVTT oficiales
+      try {
+        hls.subtitleTrack = -1;
+      } catch (_) {}
 
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
@@ -132,6 +143,7 @@ export const CinemaVideoPlayer = forwardRef<CinemaVideoPlayerRef, CinemaVideoPla
     };
   }, [streamUrl, isEmbed]);
 
+  // Control de reproducción y velocidad
   useEffect(() => {
     if (!videoRef.current || isEmbed) return;
     videoRef.current.playbackRate = playbackSpeed;
@@ -141,6 +153,52 @@ export const CinemaVideoPlayer = forwardRef<CinemaVideoPlayerRef, CinemaVideoPla
       videoRef.current.pause();
     }
   }, [isPlaying, playbackSpeed, isEmbed]);
+
+  // Sincronización estricta de pistas de subtítulos en español / inglés
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || isEmbed) return;
+
+    if (hlsRef.current) {
+      try {
+        hlsRef.current.subtitleTrack = -1;
+      } catch (_) {}
+    }
+
+    if (!selectedSubId || selectedSubId === 'off') {
+      if (video.textTracks) {
+        for (let i = 0; i < video.textTracks.length; i++) {
+          video.textTracks[i].mode = 'disabled';
+        }
+      }
+      return;
+    }
+
+    const targetTrack = subtitles?.find(
+      (s) => s.id === selectedSubId || s.lang === selectedSubId
+    ) || subtitles?.find((s) => s.lang?.startsWith('es')) || subtitles?.[0];
+
+    if (!targetTrack) return;
+
+    // Sincronizar textTracks de HTML5
+    const syncTracks = () => {
+      if (video.textTracks && video.textTracks.length > 0) {
+        for (let i = 0; i < video.textTracks.length; i++) {
+          const t = video.textTracks[i];
+          const isMatch =
+            (t.label && t.label === targetTrack.label) ||
+            (t.language && t.language === targetTrack.lang) ||
+            (t.language?.startsWith('es') && targetTrack.lang?.startsWith('es'));
+          t.mode = isMatch ? 'showing' : 'disabled';
+        }
+      }
+    };
+
+    syncTracks();
+    // Reintentar tras un breve tick para asegurar que los <track> se montaron en el DOM
+    const tId = setTimeout(syncTracks, 300);
+    return () => clearTimeout(tId);
+  }, [subtitles, selectedSubId, isEmbed]);
 
   const showLoadingOverlay = isLoading || !streamUrl || internalBuffering;
 
@@ -184,9 +242,10 @@ export const CinemaVideoPlayer = forwardRef<CinemaVideoPlayerRef, CinemaVideoPla
           title="Reproductor de Anime"
         />
       ) : (
-        /* 3. Reproductor HTML5 / HLS Nativo */
+        /* 3. Reproductor HTML5 / HLS Nativo con Subtítulos WebVTT */
         <video
           ref={videoRef}
+          crossOrigin="anonymous"
           className="w-full h-full object-contain bg-black"
           playsInline
           onWaiting={() => {
@@ -207,7 +266,20 @@ export const CinemaVideoPlayer = forwardRef<CinemaVideoPlayerRef, CinemaVideoPla
             console.warn('[CinemaVideoPlayer] Error de reproducción en fuente nativa');
             setHasError(true);
           }}
-        />
+        >
+          {/* Inyección de pistas oficiales de subtítulos en español e inglés */}
+          {subtitles.map((tr) => (
+            <track
+              key={tr.id || (tr.lang + tr.src)}
+              data-sub-id={tr.id}
+              kind="subtitles"
+              label={tr.label}
+              srcLang={tr.lang}
+              src={tr.src}
+              default={Boolean(tr.default || tr.lang?.startsWith('es'))}
+            />
+          ))}
+        </video>
       )}
     </div>
   );
