@@ -13,9 +13,80 @@ const STREAM_BASE = (rawEnvUrl && !rawEnvUrl.includes('trycloudflare.com') && ra
 
 const LATANIME_BASE = 'https://latanime.org';
 
+function getBrowserProxyBase() {
+  if (typeof window === 'undefined') return null;
+
+  const hostname = window.location?.hostname || '';
+  const isProductionHost = hostname === 'orunei.sbs'
+    || hostname.endsWith('.orunei.sbs')
+    || hostname.endsWith('.vercel.app');
+
+  // La función serverless de Vercel tiene acceso a LatAnime desde producción;
+  // el Worker se conserva como respaldo para local, previews y otros hosts.
+  return isProductionHost
+    ? `${window.location.origin}/api/stream/proxy`
+    : `${STREAM_BASE}/api/stream/proxy`;
+}
+
 function getProxiedUrl(targetUrl, referer = 'https://latanime.org/') {
   if (typeof window === 'undefined') return targetUrl;
-  return `${STREAM_BASE}/api/stream/proxy?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(referer)}`;
+  const proxyBase = getBrowserProxyBase();
+  return `${proxyBase}?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(referer)}`;
+}
+
+function normalizeSearchTitle(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\b(latino|castellano|espanol|español|sub español|sub espanol)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isTitleMatch(candidate, animeTitle) {
+  const target = normalizeSearchTitle(animeTitle);
+  if (!target) return false;
+
+  const title = normalizeSearchTitle(candidate.title);
+  const slug = normalizeSearchTitle(candidate.slug.replace(/-/g, ' '));
+  if (title === target || slug === target) return true;
+
+  // Admite sufijos de temporada, pero exige que todos los tokens del título
+  // buscado estén presentes para no confundir “Another” con “Re:Zero ...”.
+  const targetTokens = new Set(target.split(' ').filter(Boolean));
+  const titleTokens = new Set(title.split(' ').filter(Boolean));
+  const slugTokens = new Set(slug.split(' ').filter(Boolean));
+  const candidateTokens = titleTokens.size >= slugTokens.size ? titleTokens : slugTokens;
+  const containsAllTargetTokens = [...targetTokens].every((token) => candidateTokens.has(token));
+  const extraTokens = candidateTokens.size - targetTokens.size;
+  if (targetTokens.size === 1) return containsAllTargetTokens && extraTokens === 0;
+  return containsAllTargetTokens && extraTokens <= 2;
+}
+
+async function resolveDirectLatanimeSlug(animeTitle, dialect) {
+  const normalizedTitle = normalizeSearchTitle(animeTitle);
+  if (!normalizedTitle) return null;
+
+  const titleVariants = [normalizedTitle];
+  const seasonVariant = normalizedTitle.replace(/\bseason\s+(\d+)\b/g, 's$1');
+  if (seasonVariant !== normalizedTitle) titleVariants.push(seasonVariant);
+
+  for (const titleVariant of titleVariants) {
+    const slug = `${titleVariant.replace(/\s+/g, '-')}-${dialect}`;
+    try {
+      const detailUrl = `${LATANIME_BASE}/anime/${slug}`;
+      const res = await fetch(getProxiedUrl(detailUrl));
+      if (!res.ok) continue;
+
+      const html = await res.text();
+      const title = html.match(/<title>([^<]+?)\s*[—-]\s*Latanime/i)?.[1]?.trim() || '';
+      if (isTitleMatch({ slug, title }, animeTitle)) return slug;
+    } catch (_) {}
+  }
+
+  return null;
 }
 
 /**
@@ -83,6 +154,13 @@ export async function resolveLatanimeSlug(malId, animeTitle, dialect = 'latino')
   const query = animeTitle || '';
   if (!query) return null;
 
+  const directSlug = await resolveDirectLatanimeSlug(query, normDialect);
+  if (directSlug) {
+    recordProviderOutcome('latanime', 'found', 0);
+    soraSlugCache.set(cacheKey, directSlug);
+    return directSlug;
+  }
+
   const start = Date.now();
   try {
     const searchUrl = `${LATANIME_BASE}/buscar?q=${encodeURIComponent(query.split(':')[0].trim())}`;
@@ -113,9 +191,11 @@ export async function resolveLatanimeSlug(malId, animeTitle, dialect = 'latino')
 
     // Buscar coincidencia exacta con el dialecto
     const targetTag = normDialect === 'castellano' ? 'castellano' : 'latino';
-    const dialectMatch = candidates.find((c) => c.slug.includes(targetTag) || c.title.includes(targetTag));
-
-    const finalSlug = dialectMatch ? dialectMatch.slug : (normDialect === 'latino' ? candidates[0].slug : null);
+    const dialectCandidates = candidates.filter((candidate) => (
+      candidate.slug.includes(targetTag) || candidate.title.includes(targetTag)
+    ));
+    const matchingCandidates = dialectCandidates.filter((candidate) => isTitleMatch(candidate, query));
+    const finalSlug = matchingCandidates[0]?.slug || null;
     if (finalSlug) {
       recordProviderOutcome('latanime', 'found', Date.now() - start);
       soraSlugCache.set(cacheKey, finalSlug);
@@ -173,8 +253,6 @@ export async function getLatanimeEpisodeServers(slug, episode = 1, dialect = 'la
       recordProviderOutcome('latanime', 'empty', Date.now() - start);
       return [];
     }
-
-    recordProviderOutcome('latanime', 'found', Date.now() - start);
 
     // Mapear a servidores compatibles con Orunei
     const servers = [];
@@ -246,6 +324,12 @@ export async function getLatanimeEpisodeServers(slug, episode = 1, dialect = 'la
       }
     }
 
+    if (servers.length === 0) {
+      recordProviderOutcome('latanime', 'empty', Date.now() - start);
+      return [];
+    }
+
+    recordProviderOutcome('latanime', 'found', Date.now() - start);
     return servers;
   } catch (err) {
     recordProviderOutcome('latanime', 'failed', Date.now() - start);
