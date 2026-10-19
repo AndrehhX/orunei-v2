@@ -8,7 +8,10 @@ interface HeaderBarProps {
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({ onSearchPress, onProfilePress }) => {
   return (
-    <header className="sticky top-0 w-full z-40 bg-surface/85 backdrop-blur-xl border-b border-white/[0.07] pt-safe transition-colors">
+    <header
+      className="sticky top-0 w-full z-40 bg-surface/90 backdrop-blur-xl border-b border-white/[0.07] transition-colors"
+      style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))' }}
+    >
       <div className="h-14 px-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="font-geist text-[17px] font-extrabold tracking-[0.25em] text-primary uppercase select-none">
@@ -38,7 +41,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ onSearchPress, onProfilePr
             <img
               alt="Profile"
               className="w-8 h-8 rounded-full object-cover border border-white/20"
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
+              src="https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg"
             />
           </motion.button>
         </div>

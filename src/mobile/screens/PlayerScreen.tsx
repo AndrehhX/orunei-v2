@@ -278,6 +278,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
+              style={{ paddingTop: 'max(0.875rem, env(safe-area-inset-top, 0px))' }}
               className="absolute top-0 inset-x-0 z-20 flex items-center justify-between p-3.5 bg-gradient-to-b from-black/85 via-black/45 to-transparent"
             >
               <motion.button

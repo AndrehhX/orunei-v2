@@ -16,8 +16,11 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentTab, onSelect
   ];
 
   return (
-    <nav className="sticky bottom-0 w-full z-40 bg-[#121315]/90 backdrop-blur-2xl border-t border-white/[0.07] pb-safe">
-      <div className="h-16 px-2 flex items-center justify-around">
+    <nav
+      className="sticky bottom-0 w-full z-40 bg-[#121315]/95 backdrop-blur-2xl border-t border-white/[0.07]"
+      style={{ paddingBottom: 'max(0.6rem, env(safe-area-inset-bottom, 8px))' }}
+    >
+      <div className="h-14 px-2 flex items-center justify-around">
         {tabs.map((tab) => {
           const isActive = currentTab === tab.key;
           return (
@@ -38,7 +41,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentTab, onSelect
                 </span>
               </div>
               <span
-                className={`text-[9px] font-mono tracking-widest mt-1 uppercase transition-colors ${
+                className={`text-[9px] font-mono tracking-widest mt-0.5 uppercase transition-colors ${
                   isActive ? 'text-primary font-bold' : 'text-on-surface-variant'
                 }`}
               >
@@ -47,7 +50,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentTab, onSelect
               {isActive && (
                 <motion.div
                   layoutId="activeTabIndicator"
-                  className="w-1 h-1 rounded-full bg-primary mt-1"
+                  className="w-1.5 h-1.5 rounded-full bg-forestMint mt-0.5 shadow-[0_0_8px_rgba(0,245,155,0.8)]"
                 />
               )}
             </motion.button>

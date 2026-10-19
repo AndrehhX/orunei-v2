@@ -46,7 +46,10 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({ anime, onBack, onPla
   return (
     <div className="flex-1 overflow-y-auto no-scrollbar pb-24 bg-surface">
       {/* Top Bar Flotante */}
-      <header className="sticky top-0 w-full z-30 bg-surface/80 backdrop-blur-xl border-b border-white/[0.07] px-4 h-14 flex items-center justify-between">
+      <header
+        className="sticky top-0 w-full z-30 bg-surface/90 backdrop-blur-xl border-b border-white/[0.07] px-4 flex items-center justify-between"
+        style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))', height: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
+      >
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={onBack}

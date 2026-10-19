@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { App as CapApp } from '@capacitor/app';
 import { MobileFrame } from './components/MobileFrame';
 import { HeaderBar } from './components/HeaderBar';
 import { BottomNavBar } from './components/BottomNavBar';
@@ -34,6 +35,30 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'tabs' | 'detail' | 'player'>('tabs');
   const [selectedAnime, setSelectedAnime] = useState<AnimeItem>(DEFAULT_ANIME);
   const [playingEpNumber, setPlayingEpNumber] = useState<number>(1);
+
+  // Manejo del botón nativo "Atrás" de Android (Gestos del sistema y botón físico)
+  useEffect(() => {
+    let sub: any;
+    try {
+      CapApp.addListener('backButton', () => {
+        if (currentView === 'player') {
+          setCurrentView('detail');
+        } else if (currentView === 'detail') {
+          setCurrentView('tabs');
+        } else if (currentTab !== 'inicio') {
+          setCurrentTab('inicio');
+        } else {
+          CapApp.exitApp();
+        }
+      }).then((handle) => {
+        sub = handle;
+      }).catch(() => {});
+    } catch (_) {}
+
+    return () => {
+      if (sub?.remove) sub.remove();
+    };
+  }, [currentView, currentTab]);
 
   const handleSelectAnime = (anime: AnimeItem) => {
     setSelectedAnime(anime);
