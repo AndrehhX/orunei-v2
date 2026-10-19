@@ -10,7 +10,7 @@ interface DetailScreenProps {
 }
 
 export const DetailScreen: React.FC<DetailScreenProps> = ({ anime, onBack, onPlayEpisode }) => {
-  const [selectedAudio, setSelectedAudio] = useState<'latino' | 'sub'>(anime.isDubbed ? 'latino' : 'sub');
+  const [selectedAudio, setSelectedAudio] = useState<'latino' | 'sub'>('sub');
   const [currentAnime, setCurrentAnime] = useState<AnimeItem>(anime);
   const [episodes, setEpisodes] = useState<EpisodeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);

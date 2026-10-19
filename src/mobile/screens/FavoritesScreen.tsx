@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AnimeItem } from '../types/anime';
 import { storageService } from '../services/storageService';
 import { LATINO_CATALOG } from '../services/animeApi';
+import { useProfile } from '../../profile/ProfileProvider';
 
 interface FavoritesScreenProps {
   onSelectAnime: (anime: AnimeItem) => void;
@@ -13,27 +14,74 @@ export const FavoritesScreen: React.FC<FavoritesScreenProps> = ({
   onSelectAnime,
   onExploreCatalog,
 }) => {
+  const { profile, updateAnimeList } = useProfile();
   const [favorites, setFavorites] = useState<AnimeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadFavorites = async () => {
-    setIsLoading(true);
-    const list = await storageService.getFavorites();
-    if (list.length === 0) {
-      // Si el usuario aún no tiene, precargamos 3 destacados del catálogo latino
-      setFavorites(LATINO_CATALOG.slice(0, 3));
-    } else {
-      setFavorites(list);
-    }
-    setIsLoading(false);
-  };
-
   useEffect(() => {
+    let isMounted = true;
+    const loadFavorites = async () => {
+      setIsLoading(true);
+
+      // Si el usuario tiene animes en Supabase
+      const remoteList = Array.isArray(profile?.animeList) ? profile.animeList : [];
+      const remoteFavs = remoteList.filter((item: any) => Boolean(item.favorite));
+
+      if (remoteFavs.length > 0) {
+        const mapped: AnimeItem[] = remoteFavs.map((item: any) => ({
+          id: String(item.id || item.animeId),
+          title: item.t || item.title || 'Anime Guardado',
+          originalTitle: item.q || item.title || '',
+          coverImage: item.img || item.coverImage || 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg',
+          bannerImage: item.banner || '',
+          rating: 9.0,
+          year: String(item.year || '2024'),
+          episodesCount: 24,
+          genres: item.genres || ['Anime'],
+          format: 'TV',
+          isDubbed: true,
+          synopsis: item.synopsis || '',
+          studio: 'Estudio de Orunei',
+        }));
+        if (isMounted) {
+          setFavorites(mapped);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      // Fallback a almacenamiento local
+      const list = await storageService.getFavorites();
+      if (isMounted) {
+        if (list.length === 0) {
+          setFavorites(LATINO_CATALOG.slice(0, 3));
+        } else {
+          setFavorites(list);
+        }
+        setIsLoading(false);
+      }
+    };
+
     loadFavorites();
-  }, []);
+    return () => {
+      isMounted = false;
+    };
+  }, [profile?.animeList]);
 
   const handleRemove = async (e: React.MouseEvent, anime: AnimeItem) => {
     e.stopPropagation();
+    // Actualizar Supabase si está en la lista remota
+    try {
+      await updateAnimeList((prev: any[]) =>
+        (prev || []).map((item) =>
+          String(item.id || item.animeId) === String(anime.id)
+            ? { ...item, favorite: false }
+            : item
+        )
+      );
+    } catch (_) {}
+
+    // Y en almacenamiento local
     await storageService.toggleFavorite(anime);
     const updated = favorites.filter((f) => String(f.id) !== String(anime.id));
     setFavorites(updated);
@@ -48,7 +96,7 @@ export const FavoritesScreen: React.FC<FavoritesScreenProps> = ({
             Biblioteca de Favoritos
           </h1>
           <p className="text-[10px] font-mono font-bold tracking-widest text-on-surface-variant uppercase mt-0.5">
-            TUS ANIMES GUARDADOS PARA SEGUIMIENTO
+            SINCRONIZADO CON ORUNEI CLOUD
           </p>
         </div>
         <div className="px-2.5 py-1 rounded bg-surface-container border border-white/[0.07] flex items-center gap-1.5">

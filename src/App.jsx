@@ -269,9 +269,11 @@ export default function App() {
 
   if (useMobileLayout) {
     return (
-      <Suspense fallback={<PageLoading />}>
-        <MobileApp />
-      </Suspense>
+      <ProfileProvider user={user} repository={repository}>
+        <Suspense fallback={<PageLoading />}>
+          <MobileApp />
+        </Suspense>
+      </ProfileProvider>
     );
   }
 

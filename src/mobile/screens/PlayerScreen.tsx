@@ -5,6 +5,7 @@ import { realAnimeService } from '../services/realAnimeService';
 import { ServerBottomSheet } from '../components/ServerBottomSheet';
 import { CinemaVideoPlayer } from '../components/CinemaVideoPlayer';
 import { storageService } from '../services/storageService';
+import { useProfile } from '../../profile/ProfileProvider';
 
 interface PlayerScreenProps {
   anime: AnimeItem;
@@ -17,9 +18,10 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
   episodeNumber: initialEpisodeNum,
   onBack,
 }) => {
+  const { updateAnimeList } = useProfile();
   const [currentEpNum, setCurrentEpNum] = useState<number>(initialEpisodeNum);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [currentAudio, setCurrentAudio] = useState<'latino' | 'sub'>(anime.isDubbed ? 'latino' : 'sub');
+  const [currentAudio, setCurrentAudio] = useState<'latino' | 'sub'>('sub');
   const [isStreamLoading, setIsStreamLoading] = useState(true);
   const [isSavedInList, setIsSavedInList] = useState(false);
   const [activeTab, setActiveTab] = useState<'episodios' | 'detalles'>('episodios');
@@ -31,7 +33,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
     quality: '1080p FHD',
     proxiedStreamUrl: '',
     pingMs: 14,
-    language: anime.isDubbed ? 'latino' : 'sub',
+    language: 'sub',
     badgeLabel: 'CONECTANDO',
     badgeType: 'fast',
   });
@@ -138,6 +140,33 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({
         duration: Math.floor(duration),
         updatedAt: Date.now(),
       });
+
+      // Sincronizar en la cuenta de Supabase para que aparezca en Orunei Web
+      try {
+        updateAnimeList?.((prev: any[]) => {
+          const list = Array.isArray(prev) ? [...prev] : [];
+          const idx = list.findIndex((i: any) => String(i.id || i.animeId) === String(anime.id));
+          const entry = {
+            id: String(anime.id),
+            animeId: String(anime.id),
+            t: anime.title,
+            q: anime.title,
+            s: 'Viendo',
+            status: 'watching',
+            img: anime.coverImage,
+            banner: anime.bannerImage,
+            progress: currentEpNum,
+            totalEpisodes: anime.episodesCount,
+            updatedAt: new Date().toISOString(),
+          };
+          if (idx >= 0) {
+            list[idx] = { ...list[idx], ...entry, favorite: list[idx].favorite ?? false };
+          } else {
+            list.unshift({ ...entry, favorite: false });
+          }
+          return list;
+        });
+      } catch (_) {}
     }
   }, [Math.floor(currentTime / 10)]);
 

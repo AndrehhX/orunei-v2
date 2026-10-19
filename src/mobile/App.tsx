@@ -106,10 +106,10 @@ export default function App() {
           {currentView === 'detail' && (
             <motion.div
               key="detail-view"
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               className="flex-1 flex flex-col w-full h-full relative overflow-hidden"
             >
               <DetailScreen
