@@ -84,7 +84,8 @@ function slug(value) {
 }
 
 function identityFromUser(user = {}) {
-  const name = text(user.name) || text(user.email).split('@')[0] || DEFAULT_PROFILE.displayName
+  const safeUser = user || {}
+  const name = text(safeUser.name) || text(safeUser.email).split('@')[0] || DEFAULT_PROFILE.displayName
   return {
     displayName: name.slice(0, 50),
     username: slug(name) || DEFAULT_PROFILE.username,
@@ -92,7 +93,8 @@ function identityFromUser(user = {}) {
 }
 
 export function createProfile(user = {}) {
-  const identity = identityFromUser(user)
+  const safeUser = user || {}
+  const identity = identityFromUser(safeUser)
   return {
     ...clone(DEFAULT_PROFILE),
     ...identity,
@@ -219,9 +221,10 @@ export function toRemoteAnimeEntry(profileId, entry) {
 }
 
 export function normalizeProfile(raw, user = {}) {
-  const base = createProfile(user)
+  const safeUser = user || {}
+  const base = createProfile(safeUser)
   const source = raw && typeof raw === 'object' ? raw : {}
-  const fallbackIdentity = identityFromUser(user)
+  const fallbackIdentity = identityFromUser(safeUser)
   const rawUsername = slug(source.username)
   const username = /^[a-z0-9][a-z0-9_.-]{2,23}$/.test(rawUsername) && rawUsername === text(source.username).toLowerCase()
     ? rawUsername
@@ -229,7 +232,7 @@ export function normalizeProfile(raw, user = {}) {
   const pinned = [...new Set((Array.isArray(source.pinnedSections) ? source.pinnedSections : base.pinnedSections).filter((section) => PROFILE_SECTIONS.includes(section)))]
   return {
     ...base,
-    id: text(source.id) || text(user.id),
+    id: text(source.id) || text(safeUser.id),
     displayName: text(source.displayName, fallbackIdentity.displayName).slice(0, 50) || fallbackIdentity.displayName,
     username,
     visibility: ['private', 'public'].includes(source.visibility) ? source.visibility : base.visibility,

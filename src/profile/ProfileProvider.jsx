@@ -8,7 +8,8 @@ const browserStorage = () => {
   try { return typeof localStorage === 'undefined' ? null : localStorage } catch { return null }
 }
 
-export function ProfileProvider({ children, user = {}, repository = null }) {
+export function ProfileProvider({ children, user: rawUser = {}, repository = null }) {
+  const user = rawUser || {}
   const remote = Boolean(repository && user?.id)
   const [profile, setProfile] = useState(() => remote ? createProfile(user) : readProfileStorage(browserStorage(), user))
   const [profileStatus, setProfileStatus] = useState(() => remote ? 'loading' : 'ready')

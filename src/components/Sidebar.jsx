@@ -82,10 +82,10 @@ export default function Sidebar({ dark, setDark, theme = (dark ? 'dark' : 'light
         <div className="flex items-center gap-3 border-t border-slate-200 dark:border-white/10 pt-4">
           <AvatarFrame
             profile={profile}
-            frameId={profile.avatarFrame}
+            frameId={profile?.avatarFrame || 'none'}
             size="sm"
           />
-          <div className="leading-tight"><p className="max-w-[90px] truncate font-bold text-sm">{profile.displayName || user.name}</p><p className="max-w-[90px] truncate text-xs text-slate-500">@{profile.username}</p></div>
+          <div className="leading-tight"><p className="max-w-[90px] truncate font-bold text-sm">{profile?.displayName || user?.name || 'Usuario'}</p><p className="max-w-[90px] truncate text-xs text-slate-500">@{profile?.username || 'usuario'}</p></div>
           <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className="ml-auto grid h-8 w-8 place-items-center rounded-full text-slate-500 transition hover:bg-red-500/10 hover:text-red-500"><LogOut size={17} /></button>
         </div>
       </div>

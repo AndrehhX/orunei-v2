@@ -6,14 +6,15 @@ export function getUserProfileKey(userId) {
 }
 
 export function readProfileStorage(storage, user = {}) {
-  if (!storage) return createProfile(user)
+  const safeUser = user || {}
+  if (!storage) return createProfile(safeUser)
   try {
-    const userKey = getUserProfileKey(user?.id)
+    const userKey = getUserProfileKey(safeUser?.id)
     const rawUser = userKey !== PROFILE_KEY ? storage.getItem(userKey) : null
     const raw = rawUser || storage.getItem(PROFILE_KEY)
-    return raw ? normalizeProfile(JSON.parse(raw), user) : createProfile(user)
+    return raw ? normalizeProfile(JSON.parse(raw), safeUser) : createProfile(safeUser)
   } catch {
-    return createProfile(user)
+    return createProfile(safeUser)
   }
 }
 

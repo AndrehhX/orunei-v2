@@ -269,7 +269,7 @@ export default function App() {
 
   if (useMobileLayout) {
     return (
-      <ProfileProvider user={user} repository={repository}>
+      <ProfileProvider user={user || {}} repository={repository}>
         <Suspense fallback={<PageLoading />}>
           <MobileApp />
         </Suspense>
