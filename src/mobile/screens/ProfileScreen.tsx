@@ -191,26 +191,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onPlayResume }) =>
                   Sincronizar con Orunei Web
                 </span>
               </div>
-              <div className="flex rounded-lg bg-surface-container-high p-0.5">
-                <button
-                  type="button"
-                  onClick={() => { setAuthMode('login'); setFormError(''); }}
-                  className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-bold transition-all ${
-                    authMode === 'login' ? 'bg-forestMint text-black shadow' : 'text-on-surface-variant'
-                  }`}
-                >
-                  Entrar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setAuthMode('register'); setFormError(''); }}
-                  className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-bold transition-all ${
-                    authMode === 'register' ? 'bg-forestMint text-black shadow' : 'text-on-surface-variant'
-                  }`}
-                >
-                  Registrarse
-                </button>
-              </div>
+              <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-forestMint/15 border border-forestMint/30 text-forestMint">
+                Iniciar Sesión
+              </span>
             </div>
 
             <p className="text-[11px] text-on-surface-variant leading-relaxed">
@@ -284,9 +267,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onPlayResume }) =>
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-[16px]">
-                      {authMode === 'login' ? 'login' : 'person_add'}
+                      login
                     </span>
-                    {authMode === 'login' ? 'Iniciar Sesión' : 'Crear Mi Cuenta'}
+                    Iniciar Sesión
                   </>
                 )}
               </button>

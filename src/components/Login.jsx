@@ -258,9 +258,7 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
                   {state === 'loading' && <i className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
                   {state === 'done' && <Check size={20} className="animate-drop" />}
                 </button>
-                <p className="pt-1 text-center text-sm text-slate-500 dark:text-slate-400">{reg ? '¿Ya tienes cuenta?' : '¿Eres nuevo?'}{' '}
-                  <button type="button" onClick={() => { setReg(!reg); setErr('') }} className="font-bold text-brand hover:underline">{reg ? 'Inicia sesión' : 'Crea una cuenta'}</button>
-                </p>
+                {/* Registro público desactivado temporalmente */}
               </form>
             </div>
 
